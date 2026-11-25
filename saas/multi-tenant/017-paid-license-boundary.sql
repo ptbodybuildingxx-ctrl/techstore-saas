@@ -36,7 +36,7 @@ create function tenant_private.shared_licensed(p_store uuid) returns boolean lan
  where w.store_id=p_store and s.state='provisioning' and s.project_ref is null and s.origin is null and sub.valid_until>now()
  and (sub.state='trial' or (sub.state='active' and exists(select 1 from tenant_private.billing_configuration where singleton and live_enabled)
  and exists(select 1 from tenant_private.payment_bindings b join tenant_private.paid_periods pp on pp.store_id=b.store_id and pp.provider=b.provider and pp.account_id=b.account_id and pp.plan_code=b.plan_code
- where b.store_id=p_store and b.enabled and b.plan_code=sub.plan_code and pp.state='paid' and pp.period_start<=now() and pp.period_end>now() and pp.period_end>=sub.valid_until))))
+ where b.store_id=p_store and b.enabled and b.plan_code=sub.plan_code and pp.state='paid' and pp.period_start<=now() and pp.period_end>now() and pp.period_end>=sub.valid_until)))
  )
 $$;
 create or replace function tenant_private.can_write(p_store uuid) returns boolean language sql stable security definer set search_path='' as $$
@@ -108,7 +108,7 @@ language plpgsql security definer set search_path='' as $$
 declare b tenant_private.payment_bindings%rowtype;pp tenant_private.paid_periods%rowtype;e tenant_private.payment_events%rowtype;sub public.saas_subscriptions%rowtype;v_end timestamptz;
 begin
  if not exists(select 1 from tenant_private.billing_configuration where singleton and live_enabled) then raise exception 'Live billing disabled' using errcode='42501';end if;
- if p_store is null or p_provider is null or p_provider<>'stripe' or p_account is null or p_subscription is null or p_customer is null or p_invoice is null or length(p_invoice) not between 4 and 200 or p_event is null or length(p_event) not between 4 and 200 or p_action is null or p_action not in ('paid','revoked') or p_start is null or p_end is null or p_end<=p_start or p_end>p_start+interval '32 days' or p_start>now()+interval '32 days' or p_amount is null or p_amount<=0 or p_currency is distinct from 'USD' or p_hash is null or p_hash !~ '^[0-9a-f]{64}$' then raise exception 'Invalid verified period' using errcode='22023';end if;
+ if p_store is null or p_provider is null or p_provider<>'stripe' or p_account is null or p_subscription is null or p_customer is null or p_invoice is null or length(p_invoice) not between 4 and 200 or p_event is null or length(p_event) not between 4 and 200 or p_action is null or p_action not in ('paid','revoked') or p_start is null or p_end is null or p_end<=p_start or p_end>p_start+interval '32 days' or p_start>now() or p_amount is null or p_amount<=0 or p_currency is distinct from 'USD' or p_hash is null or p_hash !~ '^[0-9a-f]{64}$' then raise exception 'Invalid verified period' using errcode='22023';end if;
  perform 1 from public.saas_stores where id=p_store and state='provisioning' and project_ref is null and origin is null for update;
  if not found then raise exception 'Shared active store required' using errcode='22023';end if;
  select * into b from tenant_private.payment_bindings where store_id=p_store and enabled for update;
