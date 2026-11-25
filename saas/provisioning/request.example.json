@@ -1,0 +1,32 @@
+{
+  "store": {
+    "slug": "example-shop",
+    "supabaseUrl": "https://aaaaaaaaaaaaaaaaaaaa.supabase.co",
+    "publishableKey": "sb_publishable_REPLACE_WITH_PUBLIC_KEY",
+    "storeOrigin": "https://example-shop.example.invalid"
+  },
+  "target": {
+    "projectRef": "aaaaaaaaaaaaaaaaaaaa",
+    "status": "ACTIVE_HEALTHY",
+    "newProject": true,
+    "publicTables": 0,
+    "authUsers": 0,
+    "storageObjects": 0,
+    "storageBuckets": 0,
+    "edgeFunctions": 0,
+    "appliedMigrations": 0
+  },
+  "inventory": {
+    "protectedProjects": [
+      "jtjnbeywpfdtgohffanl",
+      "mezsyzdieqmqulddcrtg"
+    ],
+    "assignedProjects": [],
+    "assignedOrigins": [],
+    "existingProjects": [
+      "jtjnbeywpfdtgohffanl",
+      "mezsyzdieqmqulddcrtg",
+      "aaaaaaaaaaaaaaaaaaaa"
+    ]
+  }
+}

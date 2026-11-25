@@ -1,6 +1,9 @@
 // @ts-nocheck
-const URL_BASE=Deno.env.get('SUPABASE_URL'),SERVICE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),PUB='sb_publishable_b6YygUoLhEVE78WYApR7Ag_JfDIq1cz';
-const origins=new Set(['https://ptbodybuildingxx-ctrl.github.io','http://localhost:8080','http://127.0.0.1:8080']);
+const storeOrigin=Deno.env.get('TECHSTORE_STORE_ORIGIN');
+const publicKey=Deno.env.get('TECHSTORE_PUBLISHABLE_KEY');
+if(!storeOrigin||!/^https:\/\/[a-z0-9][a-z0-9.-]*\.[a-z]+$/.test(storeOrigin)||new URL(storeOrigin).origin!==storeOrigin||/\.(?:github\.io|supabase\.co)$/.test(new URL(storeOrigin).hostname)||!publicKey||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publicKey))throw Error('Dedicated store environment required');
+const URL_BASE=Deno.env.get('SUPABASE_URL'),SERVICE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),PUB=publicKey;
+const origins=new Set([storeOrigin]);
 const randomUUID=()=>crypto.randomUUID();
 function sessionId(token){try{let x=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');let v=JSON.parse(atob(x.padEnd(Math.ceil(x.length/4)*4,'='))).session_id;return typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)?v:null}catch{return null}}
 async function upstream(path,options={},key=SERVICE,token=key){

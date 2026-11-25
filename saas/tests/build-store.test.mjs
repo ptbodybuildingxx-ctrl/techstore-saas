@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { runInNewContext } from 'node:vm';
 import { mkdtemp, readFile, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -37,6 +38,17 @@ test('creates a clean isolated web bundle and never overwrites a deployment',asy
    const client=await readFile(join(out,'supabase-client.js'),'utf8');
    const html=await readFile(join(out,'workspace.html'),'utf8');
    const worker=await readFile(join(out,'sw.js'),'utf8');
+   const store=await readFile(join(out,'modules/store.js'),'utf8');
+   const context={window:{},location:{hash:''},URLSearchParams,sessionStorage:{getItem:()=>null}};
+   runInNewContext(client,context);
+   assert.equal(context.window.tsCloud.projectOrigin,config.supabaseUrl);
+   runInNewContext(store,context);
+   const photo='catalog/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jpg';
+   const expected=config.supabaseUrl+'/storage/v1/object/public/techstore-products/'+photo;
+   assert.equal(context.tsStorePhotoUrl(photo),expected);
+   assert.equal(context.tsStoreIsPhoto(expected),true);
+   assert.equal(context.tsStoreIsPhoto('https://other.example.com/'+photo),false);
+   assert.equal(context.tsStorePhotoUrl('../private.jpg'),'');
    assert.ok(client.includes(config.supabaseUrl)&&html.includes(config.supabaseUrl));
    assert.ok(worker.includes('techstore-v638-saas-aaaaaaaaaaaaaaaaaaaa'));
    assert.ok(!client.includes('jtjnbeywpfdtgohffanl'));
