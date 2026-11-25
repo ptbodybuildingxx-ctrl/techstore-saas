@@ -47,3 +47,12 @@ test('backup requests and isolated restore drills validate inputs and use only o
  assert.equal(await api.backupRequest(id,'restore_drill','request',id),id);assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_store:id,p_kind:'restore_drill',p_action:'request',p_backup:id});
 });
 test('backup overview rejects fabricated status payloads',async()=>{const fetcher=async(u)=>({ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:{stores:[],backups:[{id,store_id:id,store_name:'Fixture',captured_at:'2026-01-01T00:00:00Z',status:'complete'}],requests:[]}});const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.backups())});
+
+test('billing uses sandbox-only RPC and validates event identity',async()=>{
+ const calls=[];const data={mode:'sandbox',month:'2026-11-01',stores:[],invoices:[]};
+ const fetcher=async(u,o)=>{calls.push({u,o});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:u.includes('saas_admin_billing_overview')?data:id}};
+ const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await assert.rejects(api.billing());await api.signIn('a@example.invalid','pass');assert.deepEqual(await api.billing(),data);
+ await assert.rejects(api.billingDraft(id,'2026-11-02'));await assert.rejects(api.billingSimulate(id,'charge',id));await assert.rejects(api.billingSimulate(id,'paid','bad'));
+ assert.equal(await api.billingDraft(id,'2026-11-01'),id);assert.equal(await api.billingSimulate(id,'paid',id),id);assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_invoice:id,p_action:'paid',p_request:id});
+});
+test('reject live billing payloads in sandbox console',async()=>{const fetcher=async(u)=>({ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:{mode:'live',month:'2026-11-01',stores:[],invoices:[]}});const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.billing())});

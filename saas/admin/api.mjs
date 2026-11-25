@@ -61,6 +61,26 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(!(action==='cancel'&&result===null)&&(typeof result!=='string'||!uuid.test(result)))throw Error('Unconfirmed provisioning request');
    return result;
   },
+  async billing(limit=50){
+   if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('Invalid limit');
+   const r=await rpc('saas_admin_billing_overview',{p_limit:limit});
+   const isId=x=>typeof x==='string'&&uuid.test(x),date=x=>typeof x==='string'&&/^\d{4}-\d{2}-01$/.test(x)&&Number.isFinite(Date.parse(x));
+   if(!r||r.mode!=='sandbox'||!date(r.month)||!['stores','invoices'].every(k=>Array.isArray(r[k])&&r[k].length<=limit))throw Error('Invalid sandbox billing overview');
+   if(r.stores.some(x=>!x||!isId(x.id)||typeof x.name!=='string'||!['basic','business','pro'].includes(x.plan_code)||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1)||r.invoices.some(x=>!x||!isId(x.id)||!isId(x.store_id)||typeof x.store_name!=='string'||!date(x.period_start)||!date(x.period_end)||!Number.isSafeInteger(x.amount_cents)||x.amount_cents<1||x.currency!=='USD'||!['basic','business','pro'].includes(x.plan_code)||!['draft','paid','failed','refunded','void'].includes(x.state)))throw Error('Invalid sandbox billing data');
+   return r;
+  },
+  async billingDraft(store,month){
+   if(typeof store!=='string'||!uuid.test(store)||typeof month!=='string'||!/^\d{4}-\d{2}-01$/.test(month))throw Error('Invalid sandbox draft');
+   const id=await rpc('saas_admin_billing_draft',{p_store:store,p_month:month});
+   if(typeof id!=='string'||!uuid.test(id))throw Error('Unconfirmed sandbox draft');
+   return id;
+  },
+  async billingSimulate(invoice,action,requestId){
+   if(typeof invoice!=='string'||!uuid.test(invoice)||!['paid','failed','refunded','void'].includes(action)||typeof requestId!=='string'||!uuid.test(requestId))throw Error('Invalid sandbox event');
+   const id=await rpc('saas_admin_billing_simulate',{p_invoice:invoice,p_action:action,p_request:requestId});
+   if(id!==invoice)throw Error('Unconfirmed sandbox event');
+   return id;
+  },
   async backups(limit=50){
    if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('Invalid limit');
    const r=await rpc('saas_admin_backup_overview',{p_limit:limit});
