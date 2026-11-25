@@ -1,7 +1,10 @@
 // @ts-nocheck
 // Optional, explicitly enabled server-side OpenAI integration.
+const storeOrigin=Deno.env.get('TECHSTORE_STORE_ORIGIN');
+const publicKey=Deno.env.get('TECHSTORE_PUBLISHABLE_KEY');
+if(!storeOrigin||!/^https:\/\/[a-z0-9][a-z0-9.-]*\.[a-z]+$/.test(storeOrigin)||new URL(storeOrigin).origin!==storeOrigin||/\.(?:github\.io|supabase\.co)$/.test(new URL(storeOrigin).hostname)||!publicKey||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publicKey))throw Error('Dedicated store environment required');
 const base=Deno.env.get('SUPABASE_URL'),service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),key=Deno.env.get('OPENAI_API_KEY'),enabled=Deno.env.get('TECHSTORE_AI_ENABLED')==='true';
-const allowedOrigins=new Set(['https://ptbodybuildingxx-ctrl.github.io','http://localhost:8080','http://127.0.0.1:8080']);
+const allowedOrigins=new Set([storeOrigin]);
 const roles={customer:['buying'],admin:['buying','content','pricing','inventory','business','repair'],cashier:['buying'],stock:['buying','inventory','content'],tech:['repair','buying']};
 const tasks={buying:'Recommend products from the supplied public catalog only. Respect budget, explain tradeoffs and unknown specifications.',content:'Draft an accurate product description and translation from the facts provided. Never invent specifications.',pricing:'Suggest a pricing approach using the provided facts, clearly label estimates, do not set any price.',inventory:'Analyze aggregate stock information, warn about insufficient history and do not invent demand.',business:'Analyze aggregate business data, explain limitations, do not claim audited profits.',repair:'Suggest safe troubleshooting and questions for a qualified technician; never recommend unsafe battery or high-voltage repair.'};
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status})};
@@ -14,7 +17,7 @@ Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
  try{if(req.method!=='POST')fail(405,'Method not allowed');if(!enabled||!key)fail(503,'AI not enabled by owner');
  let token=req.headers.get('authorization')?.match(/^Bearer (.+)$/i)?.[1];if(!token)fail(401,'Sign in required');
- let u=await get('/auth/v1/user',token,'sb_publishable_b6YygUoLhEVE78WYApR7Ag_JfDIq1cz');if(!u.id||!u.email_confirmed_at)fail(401,'Sign in required');
+ let u=await get('/auth/v1/user',token,publicKey);if(!u.id||!u.email_confirmed_at)fail(401,'Sign in required');
  let sid;try{let x=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');sid=JSON.parse(atob(x.padEnd(Math.ceil(x.length/4)*4,'='))).session_id}catch{}if(typeof sid!=='string'||!/^[0-9a-f-]{36}$/i.test(sid)||await get('/rest/v1/rpc/ts_session_valid',service,service,'POST',{p_user:u.id,p_session:sid})!==true)fail(401,'Session expired; sign in again');
  let p=(await get('/rest/v1/ts_profiles?user_id=eq.'+encodeURIComponent(u.id)+'&select=role,active',service))[0];if(!p?.active)fail(403,'Account disabled');
  let raw=await req.text();if(raw.length>10000)fail(413,'Request too large');let b;try{b=JSON.parse(raw)}catch{fail(400,'Invalid request')}
