@@ -23,6 +23,11 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
   async designRead(store){if(!uuid.test(store))throw Error('Invalid store');return designResponse(await rpc('mt_design_read',{p_store:store,p_editor:true}))},
   async designHistory(store){if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_design_history',{p_store:store,p_before:null,p_limit:50});if(!Array.isArray(r)||r.length>50||r.some(x=>!Number.isSafeInteger(x?.revision)||x.revision<1))throw Error('Invalid history');return r},
   async designChange(store,state,action,theme=null,restore=null){if(!uuid.test(store)||!['save','publish','restore'].includes(action))throw Error('Invalid design action');designResponse(state);if(action==='save')theme=validateTheme(theme);else if(theme!==null)throw Error('Unexpected theme');if(action==='restore'?(!Number.isSafeInteger(restore)||restore<1):restore!==null)throw Error('Invalid restore');return designResponse(await rpc('mt_design_change',{p_store:store,p_expected:state.revision,p_expected_published:state.published_revision,p_action:action,p_theme:theme,p_restore:restore}))},
+  async sharedLicenseStatus(ids){
+   if(!Array.isArray(ids)||ids.length>100||ids.some(x=>typeof x!=='string'||!uuid.test(x)))throw Error('Invalid license page');
+   const r=await rpc('mt_admin_shared_license_status',{p_stores:ids});
+   if(!Array.isArray(r)||r.length>ids.length||new Set(r.map(x=>x?.id)).size!==r.length||r.some(x=>!x||!ids.includes(x.id)||!['pending','trial','active','past_due','suspended','cancelled'].includes(x.state)||!plans.includes(x.plan)||typeof x.write_entitlement!=='boolean'))throw Error('Invalid license page');return r;
+  },
   async contact(email=null){
    if(email!==null&&(typeof email!=='string'||email.trim().length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(email.trim())||email.trim().toLowerCase().endsWith('.invalid')))throw Error('Invalid contact email');
    const r=await rpc('saas_admin_contact',{p_email:email===null?null:email.trim(),p_write:email!==null});

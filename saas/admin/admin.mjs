@@ -24,7 +24,7 @@ let lastMatched=0;
 async function load(){
  const f=new FormData(el('filters'));
  const r=await api.overview({offset,limit,query:String(f.get('query')||''),state:String(f.get('state')||'')});
- const statuses=new Map((await api.provisioningStatus(r.rows.map(s=>s.id))).map(s=>[s.id,s]));
+ const statuses=new Map((await api.sharedLicenseStatus(r.rows.map(s=>s.id))).map(s=>[s.id,s]));
  lastMatched=r.matched;
  el('metrics').replaceChildren(...[['المحلات',r.total],['جاهزة',r.ready],['موقوفة',r.suspended],['اشتراكات نشطة',r.active_subscriptions]].map(([label,value])=>{const d=node('div',label,'metric');d.append(node('strong',String(value)));return d}));
  el('rows').replaceChildren(...r.rows.map(s=>{
@@ -32,10 +32,10 @@ async function load(){
   for(const v of [s.name,s.slug,labels[s.state],labels[s.plan_code]||'—',labels[s.subscription_state]||'—',s.valid_until?new Date(s.valid_until).toISOString().slice(0,10):'—'])tr.append(node('td',v));
   const status=statuses.get(s.id);
   const licenseLabels={unprovisioned_or_blocked:'غير مهيأ / محظور',expired:'منتهٍ',verification_required:'يتطلب التحقق'};
-  tr.append(node('td',status?.queue==='queued'?'طلب قديم':'لا يحتاج مشروعاً جديداً'),node('td',licenseLabels[status?.license]||'غير مؤكد'));
+  tr.append(node('td',status?'قاعدة مشتركة':'مسار قديم'),node('td',status?.write_entitlement?'صلاحية تشغيل سارية':status?'غير نشط':'غير مؤكد'));
   const td=document.createElement('td');
   if(!s.provisioned){
-   const choices=s.state==='provisioning'?[['trial','تجربة 14 يوماً',14],['suspend','إيقاف',null],['cancel','إغلاق',null]]:s.state==='suspended'?[['reopen','إعادة فتح',null],['cancel','إغلاق',null]]:s.state==='closed'?[['reopen','إعادة فتح',null]]:[];
+   const choices=s.state==='provisioning'?[...(['pending','trial'].includes(s.subscription_state)?[['trial','تجربة 14 يوماً',14]]:[]),['suspend','إيقاف',null],['cancel','إغلاق',null]]:s.state==='suspended'?[['reopen','إعادة فتح',null],['cancel','إغلاق',null]]:s.state==='closed'?[['reopen','إعادة فتح',null]]:[];
    // Dedicated-project requests are deliberately disabled in the shared architecture UI.
    for(const [action,label,days] of choices){const btn=node('button',label);btn.type='button';btn.addEventListener('click',()=>{if(confirm(label+' — '+s.name+'؟'))run(async()=>{await api.manage(s.id,action,days);await load();setMessage('تم تحديث السجل الإداري.')})});td.append(btn)}
    const design=node('button','تصميم المحل');design.type='button';design.onclick=()=>run(()=>openDesign(s));td.append(design);

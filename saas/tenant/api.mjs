@@ -119,7 +119,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!validReturn(x,store)))throw Error('Invalid returns');return r;
   },
   async operationsList(store,kind,after=null,limit=50){
-   if(!['suppliers','purchases','repairs','staff','repair_invoices','warranty_claims','fx_rates','orders'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   if(!['suppliers','purchases','purchase_batches','repairs','staff','repair_invoices','warranty_claims','fx_rates','orders'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc(kind==='staff'?'mt_staff_list':'mt_list_'+kind,{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
   },
@@ -130,6 +130,11 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    switch(x.kind){
     case 'supplier':if(!validText(x.name,160)||typeof x.contact!=='string'||x.contact.length>160)throw Error('Invalid supplier');name='mt_add_supplier';params={p_name:x.name,p_contact:x.contact};break;
     case 'purchase':if(!isId(x.supplier)||!isId(x.product)||!currency(x.currency)||!int(x.units,1,1000000)||!int(x.cost,1,100000000)||!int(x.paid,0,x.units*x.cost)||!validText(x.note,300))throw Error('Invalid purchase');name='mt_purchase';params={p_supplier:x.supplier,p_product:x.product,p_currency:x.currency,p_units:x.units,p_cost:x.cost,p_paid:x.paid,p_note:x.note};break;
+    case 'purchaseBatch':{
+     if(!isId(x.supplier)||!currency(x.currency)||!validText(x.reference,160)||!Array.isArray(x.lines)||x.lines.length<1||x.lines.length>100||x.lines.some(l=>!l||!isId(l.product_id)||!int(l.units,1,1000000)||!int(l.unit_cost_minor,1,100000000))||new Set(x.lines.map(l=>l.product_id.toLowerCase())).size!==x.lines.length)throw Error('Invalid invoice lines');
+     const total=x.lines.reduce((n,l)=>n+BigInt(l.units)*BigInt(l.unit_cost_minor),0n);if(total>100000000000000n||!int(x.paid,0,Number(total)))throw Error('Invalid invoice total');
+     name='mt_purchase_batch';params={p_supplier:x.supplier,p_currency:x.currency,p_reference:x.reference,p_lines:x.lines.map(({product_id,units,unit_cost_minor})=>({product_id,units,unit_cost_minor})),p_paid:x.paid};break;
+    }
     case 'supplierPayment':if(!isId(x.purchase)||!currency(x.currency)||!int(x.amount,1,100000000000000))throw Error('Invalid payment');name='mt_pay_supplier';params={p_purchase:x.purchase,p_currency:x.currency,p_amount:x.amount};break;
     case 'repair':if(!isId(x.customer)||!validText(x.device,160)||!validText(x.fault,300)||!(x.imei===null||typeof x.imei==='string'&&/^\d{15}$/.test(x.imei)))throw Error('Invalid repair');name='mt_add_repair';params={p_customer:x.customer,p_device:x.device,p_imei:x.imei,p_fault:x.fault};break;
     case 'transition':if(!isId(x.repair)||!['diagnosing','repairing','ready','delivered','cancelled'].includes(x.next)||!validText(x.note,300))throw Error('Invalid transition');name='mt_repair_transition';params={p_repair:x.repair,p_next:x.next,p_note:x.note};break;
