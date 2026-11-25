@@ -30,3 +30,7 @@ Integrated rollback SQL fixture: saas/tests/sql/integrated-commerce.sql. Managem
 - [x] Central monitoring uses true entitlement and backup-evidence rules; bounded store-page aggregate details; no PII. Not uptime/load monitoring, nor proof of 100,000 concurrent stores.
 - [ ] Real customer email, custom-domain hosting verifier/provider, public media endpoint and actual hardware print acceptance. These require operational configuration and dedicated origin; don't enable prematurely.
 - [ ] Jurisdiction-specific tax/invoice requirements and full accounting reconciliation. Do not mark the software phase complete or launch approved.
+
+## Follow-up verification (2026-11-25)
+- [x] Executed the expanded `saas/tests/sql/integrated-commerce.sql` against the dedicated SaaS development database; all synthetic changes rolled back. Includes classified funding, income-tax accrual retry, loyalty earning/reservation/replay/cancellation/redemption/return deficit, operator dashboard and buyer denial.
+- Exact rational FX evidence validation and explicit warnings for unresolved balances and unrecorded income tax; CI validates client behavior. The tax and public-hosting gates above remain open.

@@ -195,15 +195,21 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=await rpc('mt_management_statements',{p_store:store,p_from:from,p_to:to,p_currency:c},store),keys=['cash','inventory','receivable','assets','payable','cumulative_result','unresolved_balance','revenue','cost','expenses','result_before_tax'],extra=['capital','loan_payable','tax_payable','income_tax','result_after_recorded_tax'],num=x=>typeof x==='string'&&/^-?\d+$/.test(x),hasExtra=x=>extra.some(k=>Object.hasOwn(x,k)),valid=x=>x&&keys.every(k=>num(x[k]))&&(!hasExtra(x)||extra.every(k=>num(x[k]))),sum=x=>BigInt(x.cash)+BigInt(x.inventory)+BigInt(x.receivable)===BigInt(x.assets)&&BigInt(x.assets)===BigInt(x.payable)+BigInt(x.cumulative_result)+BigInt(x.unresolved_balance)+BigInt(x.capital??0)+BigInt(x.loan_payable??0)+BigInt(x.tax_payable??0)&&BigInt(x.revenue)-BigInt(x.cost)-BigInt(x.expenses)===BigInt(x.result_before_tax)&&(!hasExtra(x)||BigInt(x.result_before_tax)-BigInt(x.income_tax)===BigInt(x.result_after_recorded_tax));
    if(!r||r.mode!=='management_closing_rate'||r.currency!==c||!['not_calculated','manual_recorded'].includes(r.tax_status)||r.final_profit!==null||!int(r.missing_rates,0,3)||!int(r.unknown_cost_events,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>3||r.rows.some(x=>!currency(x.currency)||!valid(x)||!sum(x))||new Set(r.rows.map(x=>x.currency)).size!==r.rows.length||!Array.isArray(r.rates)||r.rates.length>3||((r.missing_rates||r.unknown_cost_events)?r.translated!==null:!valid(r.translated)))throw Error('Invalid management statement');
    if(r.translated){
-    const t=r.translated,all=[...keys,...(hasExtra(t)?extra:[])],n=k=>BigInt(t[k]??0),abs=x=>x<0n?-x:x;
+    const t=r.translated,all=[...keys,...(hasExtra(t)?extra:[])];
     if(r.rows.some(x=>hasExtra(x)!==hasExtra(t)))throw Error('Inconsistent accounting schema');
-    // SQL independently rounds converted fields to minor units. Single-currency totals must match exactly.
-    if(r.rows.every(x=>x.currency===c||all.every(k=>BigInt(x[k])===0n))){
-     if(all.some(k=>n(k)!==r.rows.reduce((s,x)=>s+BigInt(x[k]),0n)))throw Error('Invalid same-currency totals');
-    }else if(abs(n('cash')+n('inventory')+n('receivable')-n('assets'))>2n||
-      abs(n('assets')-n('payable')-n('cumulative_result')-n('unresolved_balance')-n('capital')-n('loan_payable')-n('tax_payable'))>4n||
-      abs(n('revenue')-n('cost')-n('expenses')-n('result_before_tax'))>2n||
-      (hasExtra(t)&&abs(n('result_before_tax')-n('income_tax')-n('result_after_recorded_tax'))>1n))throw Error('Unbalanced translated statement');
+    // Recompute each translated field using exact rational rates, with PostgreSQL half-away-from-zero rounding.
+    const used=r.rows.filter(x=>all.some(k=>BigInt(x[k])!==0n)),quotes=new Map();
+    for(const q of r.rates){
+     if(!q||!currency(q.currency)||quotes.has(q.currency)||!used.some(x=>x.currency===q.currency)||!int(q.numerator,1,1000000000000)||!int(q.denominator,1,1000000000000)|| (q.currency===c?(q.numerator!==1||q.denominator!==1):(!isId(q.rate_id)||typeof q.quoted_at!=='string'||!Number.isFinite(Date.parse(q.quoted_at)))))throw Error('Invalid FX evidence');
+     quotes.set(q.currency,[BigInt(q.numerator),BigInt(q.denominator)]);
+    }
+    for(const row of used)if(row.currency!==c&&!quotes.has(row.currency))throw Error('Missing FX evidence');
+    for(const k of all){
+     let n=0n,d=1n;
+     for(const row of used){const [a,b]=quotes.get(row.currency)??[1n,1n];n=n*b+BigInt(row[k])*a*d;d*=b}
+     const sign=n<0n?-1n:1n,abs=n*sign,rounded=sign*((2n*abs+d)/(2n*d));
+     if(BigInt(t[k])!==rounded)throw Error('Translated amount differs from FX evidence');
+    }
    }
    return r;
   },
