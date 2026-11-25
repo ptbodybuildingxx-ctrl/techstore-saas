@@ -51,3 +51,5 @@ html[data-design=on][data-layout=list] .grid{grid-template-columns:1fr}
 [data-design=on][data-mobile-layout=list] #products>tr>td{display:table-cell;padding:8px}
 .site-block.banner>.site-image{float:none;margin:0;max-width:100%}
 }
+
+.site-preview[data-design=on]{background:var(--design-bg);color:var(--design-text);font-family:var(--design-font)}.published-products{display:grid;grid-template-columns:repeat(var(--site-desktop-cols,3),minmax(0,1fr));gap:10px}.published-products .site-block{display:grid;align-content:start;gap:8px;padding:var(--site-desktop-space,16px)}[data-desktop-layout=list] .published-products{grid-template-columns:1fr}.site-preview[data-preview-device=desktop] .site-block{padding:var(--site-desktop-space,16px)}.site-preview[data-preview-device=mobile] .site-block{padding:var(--site-mobile-space,16px)}@media(max-width:700px){[data-mobile-layout=cards] .published-products,.published-products{grid-template-columns:repeat(var(--site-mobile-cols,1),minmax(0,1fr))}[data-mobile-layout=list] .published-products{grid-template-columns:1fr}.published-products .site-block{padding:var(--site-mobile-space,16px)}}
