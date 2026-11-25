@@ -1,7 +1,7 @@
 /* Store identity and public catalog pictures. */
 let tsPurchasePending=null;
 let tsStoreIdentity=null,tsStoreGalleryMap={},tsStoreProducts=[],tsStorePicked='',tsSupplierPending=null;
-const tsStorePhotoRoot='https://jtjnbeywpfdtgohffanl.supabase.co/storage/v1/object/public/techstore-products/';
+const tsStorePhotoRoot=window.tsCloud.projectOrigin+'/storage/v1/object/public/techstore-products/';
 function tsStorePhotoUrl(path){return typeof path==='string'&&/^catalog\/[0-9a-f-]{36}\.jpg$/.test(path)?tsStorePhotoRoot+path:''}
 function tsStoreIsPhoto(s){return typeof s==='string'&&s.startsWith(tsStorePhotoRoot)&&!!tsStorePhotoUrl(s.slice(tsStorePhotoRoot.length))}
 function tsStoreApply(){if(!tsStoreIdentity)return;let x=tsStoreIdentity,name=String(x.name||'TechStore'),a=document.querySelector('.brand'),span=a?.querySelector('.ts-brand-name'),img=a?.querySelector('img');if(span)span.textContent=name;if(img)img.src=typeof x.logo==='string'&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(x.logo)?x.logo:'icon-192.png';document.title=name+' | TechStore 6.3.6';if(/^#[0-9a-f]{6}$/i.test(x.accent||'')){document.documentElement.style.setProperty('--blue',x.accent);document.documentElement.style.setProperty('--accent',x.accent)}let tag=a?.querySelector('.ts-brand-tagline');if(tag)tag.textContent=lang==='ar'?x.tagline_ar||'':x.tagline_en||''}
