@@ -20,6 +20,15 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(typeof username!=='string'||username.trim().toLowerCase()!=='king')throw Error('Invalid username');
    return this.signIn('king@techstore-admin.invalid',password);
   },
+  async domains(store){
+   if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_domain_list',{p_store:store});
+   if(!Array.isArray(r)||r.length>20||r.some(x=>!x||!uuid.test(x.id)||typeof x.hostname!=='string'||!['pending','active','disabled'].includes(x.state)||x.dns_name!=='_techstore.'+x.hostname||typeof x.dns_value!=='string'||!x.dns_value.startsWith('techstore-verification=')||!uuid.test(x.dns_value.slice('techstore-verification='.length))))throw Error('Invalid domain list');return r;
+  },
+  async requestDomain({store,request,hostname}){
+   if(!uuid.test(store)||!uuid.test(request)||typeof hostname!=='string'||hostname.length>253||!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(hostname))throw Error('Invalid host');
+   const r=await rpc('mt_domain_request',{p_store:store,p_request:request,p_host:hostname});if(!r||!uuid.test(r.id)||r.hostname!==hostname||!['pending','active','disabled'].includes(r.state)||r.dns_name!=='_techstore.'+hostname||typeof r.dns_value!=='string'||!r.dns_value.startsWith('techstore-verification='))throw Error('Domain request unconfirmed');return r;
+  },
+  async disableDomain(store,id){if(!uuid.test(store)||!uuid.test(id))throw Error('Invalid domain');const r=await rpc('mt_domain_disable',{p_store:store,p_id:id});if(typeof r!=='boolean')throw Error('Invalid response');return r},
   async designOriginals(store){
    if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_list_design_originals',{p_store:store});
    if(!Array.isArray(r)||r.length>12||r.some(x=>!x||!uuid.test(x.id)||typeof x.image_id!=='string'||!/^[a-z0-9-]{1,40}$/.test(x.image_id)||typeof x.alt!=='string'||x.path!==store+'/'+x.id+'.jpg'||typeof x.uploaded!=='boolean'))throw Error('Invalid image list');return r;
