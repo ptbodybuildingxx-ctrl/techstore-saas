@@ -1,13 +1,13 @@
 const origin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const isId=x=>typeof x==='string'&&uuid.test(x);
-const currency=x=>['SEK','EUR','USD'].includes(x);
+const currency=x=>['SYP','USD','EUR'].includes(x);
 const int=(x,min,max)=>Number.isSafeInteger(x)&&x>=min&&x<=max;
-export function saleAttempt(store,lines,requestId=crypto.randomUUID()){
- if(!isId(store)||!isId(requestId)||!Array.isArray(lines)||lines.length<1||lines.length>100||lines.some(x=>!x||!isId(x.product_id)||!int(x.units,1,10000)||!int(x.expected_price_minor,1,100000000)))throw Error('Invalid cart');
+export function saleAttempt(store,lines,c,requestId=crypto.randomUUID()){
+ if(!currency(c)||!isId(store)||!isId(requestId)||!Array.isArray(lines)||lines.length<1||lines.length>100||lines.some(x=>!x||!isId(x.product_id)||!int(x.units,1,10000)||!int(x.expected_price_minor,1,100000000)))throw Error('Invalid cart');
  const normalized=lines.map(x=>Object.freeze({product_id:x.product_id.toLowerCase(),units:x.units,expected_price_minor:x.expected_price_minor})).sort((a,b)=>a.product_id.localeCompare(b.product_id));
  if(new Set(normalized.map(x=>x.product_id)).size!==normalized.length)throw Error('Duplicate product');
- return Object.freeze({store:store.toLowerCase(),requestId:requestId.toLowerCase(),lines:Object.freeze(normalized)});
+ return Object.freeze({store:store.toLowerCase(),requestId:requestId.toLowerCase(),currency:c,lines:Object.freeze(normalized)});
 }
 export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now}){
  if(url!==origin||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey))throw Error('Invalid shared project configuration');
@@ -41,22 +41,22 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!Array.isArray(r)||r.some(x=>!x||!isId(x.id)||typeof x.name!=='string'||typeof x.slug!=='string'||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.can_write!=='boolean'))throw Error('Invalid stores');
    allowed=new Set(r.map(x=>x.id.toLowerCase()));return r;
   },
-  async context(store){const r=await rpc('mt_sale_context',{p_store:store},store);if(!r||!(r.currency===null||currency(r.currency))||typeof r.can_sell!=='boolean'||typeof r.can_price!=='boolean')throw Error('Invalid context');return r},
-  async products(store,after=null,limit=50){
-   if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
-   const r=await rpc('mt_list_products',{p_store:store,p_after:after,p_limit:limit},store);
+  async context(store){const r=await rpc('mt_sale_context',{p_store:store},store);if(!r||!(r.currency===null||currency(r.currency))||!Array.isArray(r.currencies)||r.currencies.length>3||r.currencies.some(x=>!currency(x))||new Set(r.currencies).size!==r.currencies.length||(r.currency===null?r.currencies.length!==0:!r.currencies.includes(r.currency))||typeof r.can_sell!=='boolean'||typeof r.can_price!=='boolean')throw Error('Invalid context');return r},
+  async products(store,c=null,after=null,limit=50){
+   if(!(c===null||currency(c))||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   const r=await rpc('mt_list_currency_products',{p_store:store,p_currency:c,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||typeof x.sku!=='string'||typeof x.name!=='string'||!int(x.quantity,0,1000000000)||!(x.unit_price_minor===null||int(x.unit_price_minor,1,100000000))))throw Error('Invalid product page');
    return r;
   },
   async configure(store,c){if(!currency(c))throw Error('Invalid currency');const r=await rpc('mt_configure_sales',{p_store:store,p_currency:c},store);if(r!==c)throw Error('Currency not confirmed');return r},
   async addProduct(store,sku,name){if(typeof sku!=='string'||!sku.trim()||sku.trim().length>80||typeof name!=='string'||!name.trim()||name.trim().length>160)throw Error('Invalid product');const r=await rpc('mt_add_product',{p_store:store,p_sku:sku.trim(),p_name:name.trim()},store);if(!isId(r))throw Error('Product not confirmed');return r},
   async adjustStock(store,product,delta,requestId){if(!isId(product)||!isId(requestId)||!int(delta,-1000000000,1000000000)||delta===0)throw Error('Invalid adjustment');const r=await rpc('mt_adjust_stock',{p_store:store,p_product:product,p_delta:delta,p_request:requestId},store);if(!int(r,0,1000000000))throw Error('Stock not confirmed');return r},
-  async setPrice(store,product,price){if(!isId(product)||!int(price,1,100000000))throw Error('Invalid price');const r=await rpc('mt_set_price',{p_store:store,p_product:product,p_price:price},store);if(r!==price)throw Error('Price not confirmed');return r},
+  async setPrice(store,product,c,price){if(!currency(c)||!isId(product)||!int(price,1,100000000))throw Error('Invalid price');const r=await rpc('mt_set_currency_price',{p_store:store,p_product:product,p_currency:c,p_price:price},store);if(r!==price)throw Error('Price not confirmed');return r},
   async recordSale(attempt){
-   const x=saleAttempt(attempt.store,attempt.lines,attempt.requestId);
-   const r=await rpc('mt_record_sale',{p_store:x.store,p_request:x.requestId,p_lines:x.lines},x.store);
+   const x=saleAttempt(attempt.store,attempt.lines,attempt.currency,attempt.requestId);
+   const r=await rpc('mt_record_currency_sale',{p_store:x.store,p_request:x.requestId,p_currency:x.currency,p_lines:x.lines},x.store);
    const total=x.lines.reduce((s,l)=>s+l.units*l.expected_price_minor,0);
-   if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||!currency(r.currency)||r.request_id!==x.requestId||r.total_minor!==total)throw Error('Sale not confirmed');
+   if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.currency!==x.currency||r.request_id!==x.requestId||r.total_minor!==total)throw Error('Sale not confirmed');
    return r;
   },
   async sales(store,before=null,limit=50){if(!(before===null||int(before,1,Number.MAX_SAFE_INTEGER))||!int(limit,1,100))throw Error('Invalid page');const r=await rpc('mt_list_sales',{p_store:store,p_before:before,p_limit:limit},store);if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.request_id)||!int(x.number,1,Number.MAX_SAFE_INTEGER)||!currency(x.currency)||!int(x.total_minor,1,100000000000000)))throw Error('Invalid sales page');return r}
