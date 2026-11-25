@@ -140,7 +140,7 @@ begin
  select * into v_sale from public.mt_sales where store_id=p_store and request_id=p_request;
  if found then
   select jsonb_agg(jsonb_build_object('product_id',l.product_id,'units',l.units,'expected_price_minor',l.unit_price_minor) order by l.product_id) into v_previous from public.mt_sale_lines l where l.store_id=p_store and l.sale_id=v_sale.id;
-  if v_sale.payment_mode<>case when p_customer is null then 'cash' else 'credit' end then raise exception 'Conflicting payment mode' using errcode='22023';end if;
+  if v_sale.payment_mode<>(case when p_customer is null then 'cash' else 'credit' end) then raise exception 'Conflicting payment mode' using errcode='22023';end if;
   if p_customer is not null then
    select * into d from public.mt_debts where store_id=p_store and sale_id=v_sale.id;
    if not found or d.customer_id<>p_customer or d.deposit_minor<>p_deposit or d.installment_count<>p_count or d.first_due<>p_due then raise exception 'Conflicting credit terms' using errcode='22023';end if;
