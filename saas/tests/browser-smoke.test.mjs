@@ -1,0 +1,29 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {createServer} from 'node:http';import {access,mkdtemp,readFile,rm} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';import {fileURLToPath} from 'node:url';import {execFile} from 'node:child_process';import {promisify} from 'node:util';
+const exec=promisify(execFile),root=fileURLToPath(new URL('../..',import.meta.url));
+async function browser(){for(const p of [process.env.CHROME_BIN,'/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].filter(Boolean)){try{await access(p);return p}catch{}}return null}
+const harness=`window.addEventListener('load',async()=>{try{
+ const assert=(condition,reason)=>{if(!condition)throw Error(reason)};
+ const click=(label,scope=document)=>{const b=[...scope.querySelectorAll('button')].find(x=>x.textContent.trim()===label);assert(b,'Missing '+label);b.click()};
+ const tick=()=>new Promise(resolve=>setTimeout(resolve,50));window.confirm=()=>true;
+ click('تصميم المحلات',document.getElementById('nav'));await tick();
+ let editor=document.querySelector('.design-editor');assert(editor,'Design editor not loaded');
+ const brand=editor.querySelector('input[name=brand]');brand.value='Browser fixture';brand.dispatchEvent(new Event('input',{bubbles:true}));
+ const format=editor.querySelector('select[name=invoice_format]');format.value='thermal';format.dispatchEvent(new Event('input',{bubbles:true}));
+ assert(editor.querySelector('.design-receipt.thermal')?.textContent.includes('Browser fixture'),'Receipt preview did not update');
+ click('حفظ مسودة',editor);await tick();editor=document.querySelector('.design-editor');click('نشر المسودة المحفوظة',editor);await tick();
+ click('عرض واجهة المحل المنشورة');await tick();assert(document.querySelector('header h1').textContent.includes('Browser fixture'),'Published theme not applied');
+ const shop=document.getElementById('shopSelect');shop.value='aleppo';shop.dispatchEvent(new Event('change',{bubbles:true}));await tick();assert(!document.querySelector('header h1').textContent.includes('Browser fixture'),'Tenant theme leaked');
+ document.body.dataset.browserResult='pass';
+ }catch(e){document.body.dataset.browserResult='fail';document.body.append(document.createTextNode('BROWSER_TEST_ERROR: '+e.message))}});`;
+const printHtml='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="/saas/admin/admin.css"></head><body class="design-printing"><section id="receiptPrint"></section><script type="module" src="/receipt-fixture.mjs"></script></body></html>';
+const printJs=`import {receiptView,defaults} from '/saas/design/theme.mjs';document.getElementById('receiptPrint').append(receiptView({...defaults,brand:'Print fixture',invoice_format:'thermal'},{number:1,currency:'USD',total_minor:3000},[{product_name:'Fixture',units:1,unit_price_minor:3000,line_total_minor:3000}]));document.body.dataset.browserResult='pass';`;
+const staticFiles=new Set(['/docs/index.html','/docs/preview.css','/docs/preview.mjs','/docs/preview-model.mjs','/docs/design-theme.mjs','/docs/site.mjs','/saas/admin/admin.css','/saas/design/theme.mjs','/saas/design/site.mjs']);
+test('real headless Chromium tests preview isolation, responsive editor and receipt PDF rendering',{timeout:90000},async t=>{
+ const chrome=await browser();if(!chrome){if(process.env.GITHUB_ACTIONS==='true')assert.fail('Chrome required on CI runner');t.skip('Local Chrome not installed');return}
+ const dir=await mkdtemp(join(tmpdir(),'ts-browser-'));const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http://127.0.0.1').pathname;let data,type='text/javascript';if(path==='/browser-harness.mjs')data=harness;else if(path==='/receipt-fixture.mjs')data=printJs;else if(path==='/receipt.html'){data=printHtml;type='text/html'}else if(staticFiles.has(path)){data=await readFile(join(root,path.slice(1)),'utf8');if(path.endsWith('.html')){type='text/html';data=data.replace('</body>','<script type="module" src="/browser-harness.mjs"></script></body>')}else if(path.endsWith('.css'))type='text/css'}else{res.writeHead(404);res.end();return}res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store'});res.end(data)}catch{res.writeHead(500);res.end()}});
+ try{await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});const url='http://127.0.0.1:'+server.address().port;
+ const common=['--headless','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--disable-background-networking','--disable-default-apps','--no-first-run','--no-default-browser-check','--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1','--virtual-time-budget=5000'];
+ for(const [i,size] of ['1280,900','390,844'].entries()){const r=await exec(chrome,[...common,'--user-data-dir='+join(dir,'profile-'+i),'--window-size='+size,'--dump-dom',url+'/docs/index.html'],{timeout:25000,maxBuffer:4000000});assert.match(r.stdout,/data-browser-result="pass"/,r.stdout.match(/BROWSER_TEST_ERROR:[^<]*/)?.[0]||'Browser preview failed at '+size)}
+ const pdf=join(dir,'receipt.pdf');await exec(chrome,[...common,'--user-data-dir='+join(dir,'print-profile'),'--no-pdf-header-footer','--print-to-pdf='+pdf,url+'/receipt.html'],{timeout:25000,maxBuffer:2000000});const bytes=await readFile(pdf);assert.ok(bytes.length>1000&&bytes.subarray(0,4).toString()==='%PDF','Receipt PDF missing');
+ }finally{server.closeAllConnections?.();await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true})}
+});
