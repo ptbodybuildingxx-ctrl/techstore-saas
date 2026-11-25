@@ -90,6 +90,18 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!isId(debt)||!isId(requestId)||!currency(c)||!int(amount,1,100000000000000))throw Error('Invalid payment');
    const r=await rpc('mt_pay_debt',{p_store:store,p_debt:debt,p_request:requestId,p_currency:c,p_amount:amount},store);if(!isId(r))throw Error('Payment not confirmed');return r;
   },
+  async receiveCostedStock(store,x){
+   if(!x||!isId(x.product)||!isId(x.requestId)||!int(x.units,1,1000000000)||!currency(x.currency)||!int(x.cost,0,100000000)||typeof x.note!=='string'||!x.note.trim()||x.note.trim().length>300)throw Error('Invalid cost intake');
+   const r=await rpc('mt_receive_costed_stock',{p_store:store,p_product:x.product,p_request:x.requestId,p_units:x.units,p_currency:x.currency,p_cost:x.cost,p_note:x.note.trim()},store);
+   if(!int(r,0,1000000000))throw Error('Cost intake not confirmed');return r;
+  },
+  async saleMargin(store,sale){
+   if(!isId(sale))throw Error('Invalid sale');
+   const r=await rpc('mt_sale_margin',{p_store:store,p_sale:sale},store);
+   const validAmounts=x=>!!x&&int(x.net_revenue_minor,0,100000000000000)&&(x.cost_minor===null?x.gross_margin_minor===null:int(x.cost_minor,0,100000000000000)&&x.gross_margin_minor===x.net_revenue_minor-x.cost_minor);
+   if(!r||r.sale_id!==sale||!currency(r.currency)||!validAmounts(r)||!Array.isArray(r.lines)||r.lines.length<1||r.lines.length>100||r.lines.some(x=>!validAmounts(x)||!isId(x.product_id)||typeof x.product_name!=='string'||!int(x.units,1,10000)||!int(x.returned_units,0,x.units))||r.net_revenue_minor!==r.lines.reduce((s,x)=>s+x.net_revenue_minor,0)||(r.lines.some(x=>x.cost_minor===null)?r.cost_minor!==null:r.cost_minor!==r.lines.reduce((s,x)=>s+x.cost_minor,0)))throw Error('Invalid sale margin');
+   return r;
+  },
   async returnableLines(store,sale){
    if(!isId(sale))throw Error('Invalid sale');
    const r=await rpc('mt_returnable_lines',{p_store:store,p_sale:sale},store);
