@@ -3,13 +3,21 @@ const validId=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f
 const currency=x=>['SYP','USD','EUR'].includes(x);
 const slug=x=>typeof x==='string'&&/^[a-z][a-z0-9-]{2,39}$/.test(x);
 const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
-export function createStorefrontApi({url,publishableKey,fetcher=fetch,clock=Date.now}){
+export function createStorefrontApi({url,publishableKey,fetcher=fetch,clock=Date.now,customerAuthEnabled=false}){
  if(url!=='https://mezsyzdieqmqulddcrtg.supabase.co'||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey))throw Error('Invalid backend');
  let session=null,epoch=0;
  const clear=()=>{session=null;epoch++};
- async function request(path,body,token=null){const r=await fetcher(url+path,{method:'POST',headers:{apikey:publishableKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',redirect:'error',credentials:'omit'});if(!r.ok){const e=Error('Request unconfirmed');e.status=r.status;throw e}return r.status===204?null:r.json()}
+ async function request(path,body,token=null,method='POST'){const r=await fetcher(url+path,{method,headers:{apikey:publishableKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',redirect:'error',credentials:'omit'});if(!r.ok){const e=Error('Request unconfirmed');e.status=r.status;throw e}return r.status===204?null:r.json()}
  async function rpc(name,body,auth=false){if(auth&&(!session||session.expires<=clock()+5000)){clear();throw Error('Sign in again')}const e=epoch;try{const r=await request('/rest/v1/rpc/'+name,body,auth?session.token:null);if(e!==epoch)throw Error('Session changed');return r}catch(err){if(auth&&e===epoch&&[401,403].includes(err.status))clear();throw err}}
+ const emailValue=x=>{if(typeof x!=='string'||x.trim().length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(x.trim()))throw Error('Invalid email');return x.trim()};
+ const passwordValue=x=>{if(typeof x!=='string'||x.length<12||x.length>128)throw Error('Invalid password');return x};
+ const authGate=()=>{if(customerAuthEnabled!==true)throw Error('Customer email flows disabled');if(session)throw Error('Sign out first')};
  return {
+ customerAuthEnabled(){return customerAuthEnabled===true},
+ async signUp(email,password){authGate();const r=await request('/auth/v1/signup',{email:emailValue(email),password:passwordValue(password)});if(r?.access_token){await request('/auth/v1/logout?scope=local',undefined,r.access_token);throw Error('Email confirmation must be enabled')}return true},
+ async confirmEmail(email,code){authGate();if(typeof code!=='string'||!/^\d{6,10}$/.test(code))throw Error('Invalid code');const r=await request('/auth/v1/verify',{email:emailValue(email),token:code,type:'email'});if(typeof r?.access_token!=='string'||!r.access_token)throw Error('Email not confirmed');await request('/auth/v1/logout?scope=local',undefined,r.access_token);return true},
+ async requestRecovery(email){authGate();await request('/auth/v1/recover',{email:emailValue(email)});return true},
+ async resetPassword(email,code,password){authGate();if(typeof code!=='string'||!/^\d{6,10}$/.test(code))throw Error('Invalid code');const value=passwordValue(password);const r=await request('/auth/v1/verify',{email:emailValue(email),token:code,type:'recovery'});if(typeof r?.access_token!=='string'||!r.access_token)throw Error('Recovery not verified');try{await request('/auth/v1/user',{password:value},r.access_token,'PUT')}finally{await request('/auth/v1/logout?scope=global',undefined,r.access_token)}return true},
  async signIn(email,password){clear();const e=epoch;if(typeof email!=='string'||!email.trim()||typeof password!=='string'||!password)throw Error('Credentials required');const r=await request('/auth/v1/token?grant_type=password',{email:email.trim(),password});if(e!==epoch||typeof r?.access_token!=='string'||!r.access_token||!Number.isFinite(r.expires_in)||r.expires_in<=0)throw Error('Invalid session');session={token:r.access_token,expires:clock()+r.expires_in*1000}},
  signedIn(){return !!session&&session.expires>clock()+5000},
  async signOut(){const s=session;clear();if(s)await request('/auth/v1/logout?scope=local',undefined,s.token)},

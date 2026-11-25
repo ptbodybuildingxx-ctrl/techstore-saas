@@ -28,6 +28,13 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    const r=await rpc('mt_admin_shared_license_status',{p_stores:ids});
    if(!Array.isArray(r)||r.length>ids.length||new Set(r.map(x=>x?.id)).size!==r.length||r.some(x=>!x||!ids.includes(x.id)||!['pending','trial','active','past_due','suspended','cancelled'].includes(x.state)||!plans.includes(x.plan)||typeof x.write_entitlement!=='boolean'))throw Error('Invalid license page');return r;
   },
+  async planPrices(){
+   const r=await rpc('mt_admin_plan_prices',{});if(!r||typeof r.editable!=='boolean'||!Array.isArray(r.plans)||r.plans.length!==3||new Set(r.plans.map(x=>x?.code)).size!==3||r.plans.some(x=>!x||!plans.includes(x.code)||typeof x.name!=='string'||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1)||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!x||!uuid.test(x.id)||!plans.includes(x.plan_code)||!Number.isSafeInteger(x.previous_cents)||!Number.isSafeInteger(x.new_cents)||typeof x.note!=='string'))throw Error('Invalid plans');return r;
+  },
+  async changePlanPrice({request,plan,expected,price,note}){
+   if(typeof request!=='string'||!uuid.test(request)||!plans.includes(plan)||!Number.isSafeInteger(expected)||expected<1||!Number.isSafeInteger(price)||price<100||price>10000000||typeof note!=='string'||!note.trim()||note.trim().length>300)throw Error('Invalid price');
+   const r=await rpc('mt_admin_plan_price_change',{p_request:request,p_plan:plan,p_expected:expected,p_price:price,p_note:note.trim()});if(typeof r!=='string'||!uuid.test(r))throw Error('Price not confirmed');return r;
+  },
   async contact(email=null){
    if(email!==null&&(typeof email!=='string'||email.trim().length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(email.trim())||email.trim().toLowerCase().endsWith('.invalid')))throw Error('Invalid contact email');
    const r=await rpc('saas_admin_contact',{p_email:email===null?null:email.trim(),p_write:email!==null});
