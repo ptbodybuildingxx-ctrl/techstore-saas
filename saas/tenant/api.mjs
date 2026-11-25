@@ -59,6 +59,18 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.currency!==x.currency||r.request_id!==x.requestId||r.total_minor!==total)throw Error('Sale not confirmed');
    return r;
   },
+  async cashOverview(store,before=null,beforeId=null,limit=50){
+   if(!int(limit,1,100)||(before===null)!==(beforeId===null)||(before!==null&&(typeof before!=='string'||!Number.isFinite(Date.parse(before))||!isId(beforeId))))throw Error('Invalid cash page');
+   const r=await rpc('mt_cash_overview',{p_store:store,p_before:before,p_before_id:beforeId,p_limit:limit},store);
+   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
+   return r;
+  },
+  async recordCash(store,attempt){
+   const x=attempt;
+   if(!x||!isId(x.requestId)||!['funding','expense','exchange'].includes(x.kind)||!currency(x.currency)||!int(x.amount,1,100000000000000)||typeof x.note!=='string'||!x.note.trim()||x.note.trim().length>300||(x.kind==='exchange'?(!currency(x.targetCurrency)||x.targetCurrency===x.currency||!int(x.targetAmount,1,100000000000000)):(x.targetCurrency!==null||x.targetAmount!==null)))throw Error('Invalid cash movement');
+   const r=await rpc('mt_record_cash',{p_store:store,p_request:x.requestId,p_kind:x.kind,p_currency:x.currency,p_amount:x.amount,p_note:x.note.trim(),p_target_currency:x.targetCurrency,p_target_amount:x.targetAmount},store);
+   if(!isId(r))throw Error('Cash movement not confirmed');return r;
+  },
   async sales(store,before=null,limit=50){if(!(before===null||int(before,1,Number.MAX_SAFE_INTEGER))||!int(limit,1,100))throw Error('Invalid page');const r=await rpc('mt_list_sales',{p_store:store,p_before:before,p_limit:limit},store);if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.request_id)||!int(x.number,1,Number.MAX_SAFE_INTEGER)||!currency(x.currency)||!int(x.total_minor,1,100000000000000)))throw Error('Invalid sales page');return r}
  };
 }
