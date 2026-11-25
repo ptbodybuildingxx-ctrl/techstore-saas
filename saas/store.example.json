@@ -1,0 +1,6 @@
+{
+  "slug": "example-shop",
+  "supabaseUrl": "https://YOUR_SEPARATE_PROJECT.supabase.co",
+  "publishableKey": "REPLACE_WITH_PUBLISHABLE_KEY",
+  "storeOrigin": "https://shop.example.com"
+}
