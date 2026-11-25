@@ -20,7 +20,7 @@ function scriptsIn(dir, recursive = false) {
 
 const scripts = [
   ...scriptsIn(root),
-  ...['modules', 'scripts', 'tests'].flatMap((dir) => scriptsIn(resolve(root, dir), true)),
+  ...['modules', 'scripts', 'tests', 'saas', 'docs'].flatMap((dir) => scriptsIn(resolve(root, dir), true)),
 ].sort();
 for (const file of scripts) {
   const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
