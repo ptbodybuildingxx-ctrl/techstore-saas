@@ -1,3 +1,4 @@
+import {designResponse} from '../design/theme.mjs';
 const origin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const isId=x=>typeof x==='string'&&uuid.test(x);
@@ -151,6 +152,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(x.kind==='mixed'){const total=x.lines.reduce((v,l)=>v+l.units*l.expected_price_minor,0);if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.request_id!==x.requestId||r.currency!==x.currency||r.total_minor!==total)throw Error('Sale not confirmed');return r}
    if(['transition','warrantyTransition'].includes(x.kind)?r!==x.next:!isId(r))throw Error('Operation not confirmed');return r;
   },
+  async design(store){return designResponse(await rpc('mt_design_read',{p_store:store,p_editor:false},store))},
   async storefrontStatus(store,after=null,limit=50){
    if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');const r=await rpc('mt_storefront_status',{p_store:store,p_after:after,p_limit:limit},store);
    if(!r||typeof r.enabled!=='boolean'||typeof r.active!=='boolean'||!Array.isArray(r.products)||r.products.length>limit||r.products.some(x=>!x||!isId(x.id)||typeof x.name!=='string'||typeof x.sku!=='string'||typeof x.listed!=='boolean'))throw Error('Invalid storefront');return r;

@@ -1,3 +1,4 @@
+import {validateTheme,designResponse} from '../design/theme.mjs';
 const allowedOrigin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const states=['','provisioning','ready','suspended','closed'];
 const plans=['basic','business','pro'];
@@ -19,6 +20,9 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(typeof username!=='string'||username.trim().toLowerCase()!=='king')throw Error('Invalid username');
    return this.signIn('king@techstore-admin.invalid',password);
   },
+  async designRead(store){if(!uuid.test(store))throw Error('Invalid store');return designResponse(await rpc('mt_design_read',{p_store:store,p_editor:true}))},
+  async designHistory(store){if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_design_history',{p_store:store,p_before:null,p_limit:50});if(!Array.isArray(r)||r.length>50||r.some(x=>!Number.isSafeInteger(x?.revision)||x.revision<1))throw Error('Invalid history');return r},
+  async designChange(store,state,action,theme=null,restore=null){if(!uuid.test(store)||!['save','publish','restore'].includes(action))throw Error('Invalid design action');designResponse(state);if(action==='save')theme=validateTheme(theme);else if(theme!==null)throw Error('Unexpected theme');if(action==='restore'?(!Number.isSafeInteger(restore)||restore<1):restore!==null)throw Error('Invalid restore');return designResponse(await rpc('mt_design_change',{p_store:store,p_expected:state.revision,p_expected_published:state.published_revision,p_action:action,p_theme:theme,p_restore:restore}))},
   async contact(email=null){
    if(email!==null&&(typeof email!=='string'||email.trim().length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(email.trim())||email.trim().toLowerCase().endsWith('.invalid')))throw Error('Invalid contact email');
    const r=await rpc('saas_admin_contact',{p_email:email===null?null:email.trim(),p_write:email!==null});

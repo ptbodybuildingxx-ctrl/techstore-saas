@@ -1,3 +1,4 @@
+import {defaults,createDesignEditor} from '../design/theme.mjs';
 import {configuration} from './config.mjs';
 import {createAdminApi} from './api.mjs';
 // Hosted GitHub Pages is a static showcase only, never accept credentials there.
@@ -11,7 +12,7 @@ const labels={provisioning:'قيد الإعداد',ready:'جاهز',suspended:'�
 const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n};
 let offset=0,limit=25,busy=false;
 function setMessage(text){el('message').textContent=text}
-function loggedOut(){shardPages=[null];shardNext=null;el('shardRows').replaceChildren();el('placementRows').replaceChildren();el('moveStore').replaceChildren();el('moveDestination').replaceChildren();el('shardForm').reset();el('billingRows').replaceChildren();el('billingStore').replaceChildren();el('billingMonth').textContent='';el('billingForm').reset();el('backupRows').replaceChildren();el('backupRequests').replaceChildren();el('backupStore').replaceChildren();el('backupRequest').reset();el('releaseRows').replaceChildren();el('releaseTargets').replaceChildren();el('releaseChoice').replaceChildren();el('releaseStore').replaceChildren();el('releaseRegister').reset();el('contact').reset();el('contactStatus').textContent='';el('dashboard').hidden=true;el('logout').hidden=true;el('loginPanel').hidden=false;el('rows').replaceChildren();el('metrics').replaceChildren()}
+function loggedOut(){el('designPanel').hidden=true;el('designEditor').replaceChildren();shardPages=[null];shardNext=null;el('shardRows').replaceChildren();el('placementRows').replaceChildren();el('moveStore').replaceChildren();el('moveDestination').replaceChildren();el('shardForm').reset();el('billingRows').replaceChildren();el('billingStore').replaceChildren();el('billingMonth').textContent='';el('billingForm').reset();el('backupRows').replaceChildren();el('backupRequests').replaceChildren();el('backupStore').replaceChildren();el('backupRequest').reset();el('releaseRows').replaceChildren();el('releaseTargets').replaceChildren();el('releaseChoice').replaceChildren();el('releaseStore').replaceChildren();el('releaseRegister').reset();el('contact').reset();el('contactStatus').textContent='';el('dashboard').hidden=true;el('logout').hidden=true;el('loginPanel').hidden=false;el('rows').replaceChildren();el('metrics').replaceChildren()}
 function loggedIn(){el('loginPanel').hidden=true;el('logout').hidden=false;el('dashboard').hidden=false}
 async function run(fn){
  if(busy)return;busy=true;
@@ -37,11 +38,18 @@ async function load(){
    const choices=s.state==='provisioning'?[['trial','تجربة 14 يوماً',14],['suspend','إيقاف',null],['cancel','إغلاق',null]]:s.state==='suspended'?[['reopen','إعادة فتح',null],['cancel','إغلاق',null]]:s.state==='closed'?[['reopen','إعادة فتح',null]]:[];
    // Dedicated-project requests are deliberately disabled in the shared architecture UI.
    for(const [action,label,days] of choices){const btn=node('button',label);btn.type='button';btn.addEventListener('click',()=>{if(confirm(label+' — '+s.name+'؟'))run(async()=>{await api.manage(s.id,action,days);await load();setMessage('تم تحديث السجل الإداري.')})});td.append(btn)}
+   const design=node('button','تصميم المحل');design.type='button';design.onclick=()=>run(()=>openDesign(s));td.append(design);
   }else td.textContent='يحتاج مسار إدارة إنتاج معتمد';
   tr.append(td);return tr
  }));
  el('count').textContent=r.matched+' محل';el('page').textContent=(Math.floor(offset/limit)+1)+' / '+Math.max(1,Math.ceil(r.matched/limit));
  el('prev').disabled=offset===0;el('next').disabled=offset+limit>=r.matched;
+}
+async function openDesign(s){
+ const state=await api.designRead(s.id),history=await api.designHistory(s.id);
+ el('designPanel').hidden=false;el('designTitle').textContent='تصميم '+s.name;
+ const change=async(action,theme=null,restore=null)=>{await api.designChange(s.id,state,action,theme,restore);await openDesign(s)};
+ el('designEditor').replaceChildren(createDesignEditor({initial:state.theme||{...defaults,brand:s.name.slice(0,80)},revision:state.revision,publishedRevision:state.published_revision,history,onSave:t=>change('save',t),onPublish:()=>change('publish'),onRestore:r=>change('restore',null,r)}));el('designPanel').scrollIntoView({block:'start'});
 }
 el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password);offset=0;await load();await loadContact();await loadShards();await loadBilling();await loadBackups();await loadReleases();loggedIn();setMessage('تم تسجيل الدخول.')})});
 async function loadContact(){
