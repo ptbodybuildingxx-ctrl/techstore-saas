@@ -1,5 +1,11 @@
 import {configuration} from './config.mjs';
 import {createAdminApi} from './api.mjs';
+// Hosted GitHub Pages is a static showcase only, never accept credentials there.
+if(location.hostname.endsWith('.github.io')){
+ document.getElementById('loginPanel').hidden=true;
+ document.getElementById('message').textContent='GitHub Pages للمعاينة فقط. تسجيل الدخول غير متاح على هذا النطاق.';
+ throw Error('GitHub Pages is preview-only');
+}
 const api=createAdminApi(configuration),el=id=>document.getElementById(id);
 const labels={provisioning:'قيد الإعداد',ready:'جاهز',suspended:'موقوف',closed:'مغلق',pending:'قيد الانتظار',trial:'تجريبي إداري',active:'نشط',past_due:'متأخر',cancelled:'ملغى',basic:'Basic',business:'Business',pro:'Business Pro'};
 const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n};

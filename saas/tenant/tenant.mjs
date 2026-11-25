@@ -1,5 +1,11 @@
 import {configuration} from '../admin/config.mjs';
 import {createTenantApi,saleAttempt} from './api.mjs';
+// Hosted GitHub Pages is a static showcase only, never accept credentials there.
+if(location.hostname.endsWith('.github.io')){
+ document.getElementById('loginPanel').hidden=true;
+ document.getElementById('message').textContent='GitHub Pages للمعاينة فقط. تسجيل الدخول غير متاح على هذا النطاق.';
+ throw Error('GitHub Pages is preview-only');
+}
 const api=createTenantApi(configuration),el=id=>document.getElementById(id);
 const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n};
 let stores=[],current=null,ctx=null,selectedCurrency=null,products=[],cart=new Map(),attempt=null,stockAttempt=null,cashAttempt=null,cashCursor=null,receivableAttempt=null,returnAttempt=null,costAttempt=null,returnCursor=null,customerCursor=null,debtCursor=null,customerNames=new Map(),busy=false,productCursor=null,salesCursor=null;
