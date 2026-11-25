@@ -119,7 +119,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!validReturn(x,store)))throw Error('Invalid returns');return r;
   },
   async operationsList(store,kind,after=null,limit=50){
-   if(!['suppliers','purchases','purchase_batches','supplier_returns','repairs','staff','repair_invoices','warranty_claims','warranty_parts','repair_refunds','fx_rates','orders'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   if(!['suppliers','purchases','purchase_batches','period_closes','supplier_returns','repairs','staff','repair_invoices','warranty_claims','warranty_parts','repair_refunds','fx_rates','orders'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc(kind==='staff'?'mt_staff_list':'mt_list_'+kind,{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
   },
@@ -134,6 +134,10 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
      if(!isId(x.supplier)||!currency(x.currency)||!validText(x.reference,160)||!Array.isArray(x.lines)||x.lines.length<1||x.lines.length>100||x.lines.some(l=>!l||!isId(l.product_id)||!int(l.units,1,1000000)||!int(l.unit_cost_minor,1,100000000))||new Set(x.lines.map(l=>l.product_id.toLowerCase())).size!==x.lines.length)throw Error('Invalid invoice lines');
      const total=x.lines.reduce((n,l)=>n+BigInt(l.units)*BigInt(l.unit_cost_minor),0n);if(total>100000000000000n||!int(x.paid,0,Number(total)))throw Error('Invalid invoice total');
      name='mt_purchase_batch';params={p_supplier:x.supplier,p_currency:x.currency,p_reference:x.reference,p_lines:x.lines.map(({product_id,units,unit_cost_minor})=>({product_id,units,unit_cost_minor})),p_paid:x.paid};break;
+    }
+    case 'closePeriod':{
+     if(![x.from,x.to].every(v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v)))||Date.parse(x.to)<Date.parse(x.from)||Date.parse(x.to)-Date.parse(x.from)>365*86400000||!validText(x.note,300)||x.confirm!==true)throw Error('Invalid period close');
+     name='mt_close_period';params={p_from:x.from,p_to:x.to,p_note:x.note,p_confirm:true};break;
     }
     case 'supplierReturn':if(!isId(x.purchase)||!int(x.units,1,1000000)||!validText(x.reason,300)||typeof x.confirmRefund!=='boolean')throw Error('Invalid supplier return');name='mt_supplier_return';params={p_purchase:x.purchase,p_units:x.units,p_reason:x.reason,p_confirm_refund:x.confirmRefund};break;
     case 'supplierPayment':if(!isId(x.purchase)||!currency(x.currency)||!int(x.amount,1,100000000000000))throw Error('Invalid payment');name='mt_pay_supplier';params={p_purchase:x.purchase,p_currency:x.currency,p_amount:x.amount};break;
@@ -174,6 +178,10 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   async licenseStatus(store){
    const r=await rpc('mt_license_status',{p_store:store},store);
    if(!r||!['pending','trial','active','past_due','suspended','cancelled'].includes(r.state)||!['basic','business','pro'].includes(r.plan)||typeof r.write_entitlement!=='boolean'||typeof r.live_billing_enabled!=='boolean')throw Error('Invalid license status');return r;
+  },
+  async periodSnapshot(store,close){
+   if(!isId(close))throw Error('Invalid period');const r=await rpc('mt_period_snapshot',{p_store:store,p_close:close},store);
+   if(!r||typeof r.period_from!=='string'||typeof r.period_to!=='string'||!Array.isArray(r.trial_balance?.rows)||r.trial_balance.rows.length>39||!Array.isArray(r.operating_report)||r.operating_report.length>3||!Array.isArray(r.cash_report)||r.cash_report.length>3)throw Error('Invalid snapshot');return r;
   },
   async trialBalance(store,from,to){
    if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');

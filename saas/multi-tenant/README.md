@@ -44,3 +44,6 @@ Read-only derived journal pairs from immutable cash, sale, repair, payable, retu
 
 ## Warranty parts and repair settlements (027)
 Accepted warranty claims may consume replacement stock at historical FIFO cost, without additional revenue. Repair cash refunds are append-only, limited to the original collected total, with actual payout confirmation and sufficient balance. No automatic restock of used parts, chargeback or real money transfer. Reports include warranty costs and repair refunds; journal excludes warranty consumption from generic shrinkage to avoid double counting. Rollback fixture covers accepted/closed claim boundaries, stock shortage, retry, excess refund, cash, margin, journal and isolation.
+
+## Operational period closing (028)
+Owners may close contiguous past UTC periods of up to 366 days, with explicit confirmation. The close saves immutable trial balance, operating and cash reports. Backdated financial inserts are rejected under store lock. Closure rejects unknown historical cost/FX and does not support reopening; future-period corrections only. First closure must include all earlier known journal pairs. Not statutory accounting; unclassified accounts and FX clearing remain. SQL rollback fixture checks current-day denial, overlap, retry, snapshots, current-period writes, backdate rejection, operator isolation.
