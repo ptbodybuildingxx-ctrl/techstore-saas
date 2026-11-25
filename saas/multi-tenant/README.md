@@ -47,3 +47,6 @@ Accepted warranty claims may consume replacement stock at historical FIFO cost, 
 
 ## Operational period closing (028)
 Owners may close contiguous past UTC periods of up to 366 days, with explicit confirmation. The close saves immutable trial balance, operating and cash reports. Backdated financial inserts are rejected under store lock. Closure rejects unknown historical cost/FX and does not support reopening; future-period corrections only. First closure must include all earlier known journal pairs. Not statutory accounting; unclassified accounts and FX clearing remain. SQL rollback fixture checks current-day denial, overlap, retry, snapshots, current-period writes, backdate rejection, operator isolation.
+
+## Manual delivery (029)
+Opt-in, zero shipping fee, manual tracking and cash on delivery. Address/contact restricted to order owner and buyer by existing RLS. Dispatch reserves stock and locks quoted product prices; ordinary reductions cannot consume reserved stock. Owner confirms actual cash on delivery, releasing reservations atomically with the sale. Cancellation after dispatch requires confirmation that all goods physically returned. No carrier API, online payment, route calculation or delivery SLA. SQL rollback tested retry, reservation, price lock, denied buyer dispatch, cash fulfillment and anonymous isolation.
