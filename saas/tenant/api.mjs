@@ -168,6 +168,10 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=await rpc('mt_operating_report',{p_store:store,p_from:from,p_to:to},store),integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
    if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['goods_revenue','repair_revenue','returns','net_revenue','unclassified_cash_expenses'].every(k=>integer(x[k]))||!int(x.unknown_cost_allocations,0,Number.MAX_SAFE_INTEGER)||(x.unknown_cost_allocations===0?!['cost','gross_margin','indicative_after_cash_expenses'].every(k=>integer(x[k])):!['cost','gross_margin','indicative_after_cash_expenses'].every(k=>x[k]===null))||BigInt(x.goods_revenue)+BigInt(x.repair_revenue)-BigInt(x.returns)!==BigInt(x.net_revenue)||(x.cost!==null&&(BigInt(x.net_revenue)-BigInt(x.cost)!==BigInt(x.gross_margin)||BigInt(x.gross_margin)-BigInt(x.unclassified_cash_expenses)!==BigInt(x.indicative_after_cash_expenses)))))throw Error('Invalid operating report');return r;
   },
+  async licenseStatus(store){
+   const r=await rpc('mt_license_status',{p_store:store},store);
+   if(!r||!['pending','trial','active','past_due','suspended','cancelled'].includes(r.state)||!['basic','business','pro'].includes(r.plan)||typeof r.write_entitlement!=='boolean'||typeof r.live_billing_enabled!=='boolean')throw Error('Invalid license status');return r;
+  },
   async cashReconciliation(store){
    const r=await rpc('mt_cash_reconciliation',{p_store:store},store),integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
    if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['recorded','computed','difference'].every(k=>integer(x[k]))||typeof x.balanced!=='boolean'||BigInt(x.recorded)-BigInt(x.computed)!==BigInt(x.difference)||x.balanced!==(BigInt(x.difference)===0n)))throw Error('Invalid reconciliation');return r;

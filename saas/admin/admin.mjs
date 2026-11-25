@@ -48,7 +48,7 @@ async function load(){
 async function openDesign(s){
  const state=await api.designRead(s.id),history=await api.designHistory(s.id);
  el('designPanel').hidden=false;el('designTitle').textContent='تصميم '+s.name;
- const change=async(action,theme=null,restore=null)=>{await api.designChange(s.id,state,action,theme,restore);await openDesign(s)};
+ const change=async(action,theme=null,restore=null)=>{if(busy)throw Error('Busy');busy=true;try{await api.designChange(s.id,state,action,theme,restore);await openDesign(s)}finally{busy=false}};
  el('designEditor').replaceChildren(createDesignEditor({initial:state.theme||{...defaults,brand:s.name.slice(0,80)},revision:state.revision,publishedRevision:state.published_revision,history,onSave:t=>change('save',t),onPublish:()=>change('publish'),onRestore:r=>change('restore',null,r)}));el('designPanel').scrollIntoView({block:'start'});
 }
 el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password);offset=0;await load();await loadContact();await loadShards();await loadBilling();await loadBackups();await loadReleases();loggedIn();setMessage('تم تسجيل الدخول.')})});

@@ -17,6 +17,7 @@ export function createOperationsPanel({api,run,refresh,blocked,getCart,clearCart
  async function page(cursor){const r=await api.operationsList(s.id,kind,cursor,50);if(store?.id!==s.id)return;after=r.length===50?(kind==='staff'?r.at(-1).user_id:r.at(-1).id):null;area.replaceChildren(table(headers,r.map(rows)));next.hidden=!after}
  next.addEventListener('click',()=>run(()=>page(after)));first.addEventListener('click',()=>run(()=>page(null)));pager.append(first,next);sec.append(area,pager);await page(null);return sec}
  if(owner){
+ const license=await api.licenseStatus(s.id),licensePanel=section('حالة الاشتراك');licensePanel.append(node('p','الخطة: '+license.plan+' — الحالة: '+license.state+' — صلاحية التشغيل: '+(license.write_entitlement?'سارية':'غير متاحة')),node('p','الانتهاء: '+(license.valid_until||'—')+' — الدفع الحقيقي: '+(license.live_billing_enabled?'مهيأ':'غير مفعل')));
  const suppliers=await listPanel('الموردون','suppliers',['الاسم','التواصل','المعرّف'],x=>[x.name,x.contact,x.id]);
  if(write)suppliers.append(form([['name','اسم المورد','text'],['contact','مرجع التواصل (اختياري)','optional']],'إضافة مورد',v=>start({kind:'supplier',...v})));
  const purchases=await listPanel('المشتريات والمستحقات','purchases',['مرجع الشراء','المورد','المنتج','الكمية','الإجمالي','المسدد','المتبقي'],x=>[x.id,x.supplier_id,x.product_id,x.units,money(x.total_minor,x.currency),money(x.paid_minor,x.currency),money(BigInt(x.total_minor)-BigInt(x.paid_minor),x.currency)]);
