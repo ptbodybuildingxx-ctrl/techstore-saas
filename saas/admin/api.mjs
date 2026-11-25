@@ -20,6 +20,22 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(typeof username!=='string'||username.trim().toLowerCase()!=='king')throw Error('Invalid username');
    return this.signIn('king@techstore-admin.invalid',password);
   },
+  async designOriginals(store){
+   if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_list_design_originals',{p_store:store});
+   if(!Array.isArray(r)||r.length>12||r.some(x=>!x||!uuid.test(x.id)||typeof x.image_id!=='string'||!/^[a-z0-9-]{1,40}$/.test(x.image_id)||typeof x.alt!=='string'||x.path!==store+'/'+x.id+'.jpg'||typeof x.uploaded!=='boolean'))throw Error('Invalid image list');return r;
+  },
+  async reserveOriginal({store,request,image,alt}){
+   if(!uuid.test(store)||!uuid.test(request)||typeof image!=='string'||!/^[a-z0-9-]{1,40}$/.test(image)||typeof alt!=='string'||!alt.trim()||alt.trim().length>100)throw Error('Invalid image');
+   const r=await rpc('mt_reserve_design_original',{p_store:store,p_request:request,p_image:image,p_alt:alt.trim()});if(!r||!uuid.test(r.id)||r.image_id!==image||r.path!==store+'/'+r.id+'.jpg'||typeof r.uploaded!=='boolean')throw Error('Image reservation not confirmed');return r;
+  },
+  async uploadOriginal(store,asset,blob){
+   if(!uuid.test(store)||!uuid.test(asset?.id)||asset.path!==store+'/'+asset.id+'.jpg'||!(blob instanceof Blob)||blob.type!=='image/jpeg'||blob.size<4||blob.size>2000000)throw Error('Invalid image upload');
+   const r=await fetcher(url+'/storage/v1/object/saas-design-originals/'+asset.path,{method:'POST',headers:{apikey:publishableKey,Authorization:'Bearer '+token(),'Content-Type':'image/jpeg','x-upsert':'false'},body:blob,cache:'no-store',redirect:'error',credentials:'omit'});if(!r.ok)throw Error('Upload not confirmed; refresh library before retrying');
+  },
+  async readOriginal(store,asset){
+   if(!uuid.test(store)||!uuid.test(asset?.id)||asset.path!==store+'/'+asset.id+'.jpg'||asset.uploaded!==true)throw Error('Invalid image');
+   const r=await fetcher(url+'/storage/v1/object/authenticated/saas-design-originals/'+asset.path,{method:'GET',headers:{apikey:publishableKey,Authorization:'Bearer '+token()},cache:'no-store',redirect:'error',credentials:'omit'});if(!r.ok)throw Error('Image unavailable');const blob=await r.blob();if(blob.type!=='image/jpeg'||blob.size>2000000||blob.size<4)throw Error('Invalid image response');return blob;
+  },
   async designRead(store){if(!uuid.test(store))throw Error('Invalid store');return designResponse(await rpc('mt_design_read',{p_store:store,p_editor:true}))},
   async designHistory(store){if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_design_history',{p_store:store,p_before:null,p_limit:50});if(!Array.isArray(r)||r.length>50||r.some(x=>!Number.isSafeInteger(x?.revision)||x.revision<1))throw Error('Invalid history');return r},
   async designChange(store,state,action,theme=null,restore=null){if(!uuid.test(store)||!['save','publish','restore'].includes(action))throw Error('Invalid design action');designResponse(state);if(action==='save')theme=validateTheme(theme);else if(theme!==null)throw Error('Unexpected theme');if(action==='restore'?(!Number.isSafeInteger(restore)||restore<1):restore!==null)throw Error('Invalid restore');return designResponse(await rpc('mt_design_change',{p_store:store,p_expected:state.revision,p_expected_published:state.published_revision,p_action:action,p_theme:theme,p_restore:restore}))},

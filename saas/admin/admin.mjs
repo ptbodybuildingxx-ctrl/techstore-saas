@@ -45,11 +45,22 @@ async function load(){
  el('count').textContent=r.matched+' محل';el('page').textContent=(Math.floor(offset/limit)+1)+' / '+Math.max(1,Math.ceil(r.matched/limit));
  el('prev').disabled=offset===0;el('next').disabled=offset+limit>=r.matched;
 }
+async function originalJpeg(file){
+ if(!file||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>12000000)throw Error('Invalid source image');
+ const bmp=await createImageBitmap(file);try{if(bmp.width>6000||bmp.height>6000)throw Error('Image too large');const canvas=document.createElement('canvas'),scale=Math.min(1,1600/Math.max(bmp.width,bmp.height));canvas.width=Math.max(1,Math.round(bmp.width*scale));canvas.height=Math.max(1,Math.round(bmp.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bmp,0,0,canvas.width,canvas.height);for(const quality of [.9,.8,.65]){const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));if(blob&&blob.size<=2000000)return blob}throw Error('Image exceeds quota')}finally{bmp.close()}
+}
+async function originalLibrary(s,state){
+ const area=node('section'),items=await api.designOriginals(s.id),images=state.theme?.site?.images||[],status=node('p','الملفات الأصلية خاصة بالمدير العام؛ العرض العام يستخدم الصور المصغرة المنشورة. الحد 12 ملفاً للمحل، حتى 1600 بكسل و2 MB للملف. احفظ الصورة المصغرة في المسودة أولاً.');area.append(node('h3','مكتبة الصور الأصلية'),status);
+ const select=node('select'),file=node('input');file.type='file';file.accept='image/jpeg,image/png,image/webp';
+ const available=images.filter(x=>!items.some(y=>y.image_id===x.id&&y.uploaded));for(const x of available){const opt=node('option',x.alt);opt.value=x.id;select.append(opt)}
+ const upload=node('button','رفع النسخة الأصلية');upload.type='button';upload.disabled=!available.length;upload.onclick=()=>run(async()=>{const image=available.find(x=>x.id===select.value);if(!image)throw Error('Save thumbnail first');const blob=await originalJpeg(file.files[0]);let asset=items.find(x=>x.image_id===image.id);if(!asset)asset=await api.reserveOriginal({store:s.id,request:crypto.randomUUID(),image:image.id,alt:image.alt});if(!asset.uploaded)await api.uploadOriginal(s.id,asset,blob);if(area.isConnected){const list=await originalLibrary(s,state);area.replaceWith(list)}});
+ area.append(select,file,upload);for(const asset of items){const row=node('div');row.append(node('span',asset.alt+' — '+(asset.uploaded?'مرفوع':'بانتظار الملف')));if(asset.uploaded){const view=node('button','عرض الأصل');view.type='button';view.onclick=()=>run(async()=>{const blob=await api.readOriginal(s.id,asset);if(!row.isConnected)return;row.querySelector('img')?.remove();const im=document.createElement('img'),u=URL.createObjectURL(blob);im.alt=asset.alt;im.width=300;im.onload=im.onerror=()=>URL.revokeObjectURL(u);im.src=u;row.append(im)});row.append(view)}area.append(row)}return area
+}
 async function openDesign(s){
  const state=await api.designRead(s.id),history=await api.designHistory(s.id);
  el('designPanel').hidden=false;el('designTitle').textContent='تصميم '+s.name;
  const change=async(action,theme=null,restore=null)=>{if(busy)throw Error('Busy');busy=true;try{await api.designChange(s.id,state,action,theme,restore);await openDesign(s)}finally{busy=false}};
- el('designEditor').replaceChildren(createDesignEditor({initial:state.theme||{...defaults,brand:s.name.slice(0,80)},revision:state.revision,publishedRevision:state.published_revision,history,onSave:t=>change('save',t),onPublish:()=>change('publish'),onRestore:r=>change('restore',null,r)}));el('designPanel').scrollIntoView({block:'start'});
+ el('designEditor').replaceChildren(createDesignEditor({initial:state.theme||{...defaults,brand:s.name.slice(0,80)},revision:state.revision,publishedRevision:state.published_revision,history,onSave:t=>change('save',t),onPublish:()=>change('publish'),onRestore:r=>change('restore',null,r)}));el('designEditor').append(await originalLibrary(s,state));el('designPanel').scrollIntoView({block:'start'});
 }
 el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password);offset=0;await load();await loadContact();await loadPlanPrices();await loadShards();await loadBilling();await loadBackups();await loadReleases();await loadSharedRecovery();loggedIn();setMessage('تم تسجيل الدخول.')})});
 let recoveryAttempt=null;
