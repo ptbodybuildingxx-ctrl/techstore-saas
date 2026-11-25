@@ -31,8 +31,9 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
   async disableDomain(store,id){if(!uuid.test(store)||!uuid.test(id))throw Error('Invalid domain');const r=await rpc('mt_domain_disable',{p_store:store,p_id:id});if(typeof r!=='boolean')throw Error('Invalid response');return r},
   async designOriginals(store){
    if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_list_design_originals',{p_store:store});
-   if(!Array.isArray(r)||r.length>12||r.some(x=>!x||!uuid.test(x.id)||typeof x.image_id!=='string'||!/^[a-z0-9-]{1,40}$/.test(x.image_id)||typeof x.alt!=='string'||x.path!==store+'/'+x.id+'.jpg'||typeof x.uploaded!=='boolean'))throw Error('Invalid image list');return r;
+   if(!Array.isArray(r)||r.length>12||r.some(x=>!x||!uuid.test(x.id)||typeof x.image_id!=='string'||!/^[a-z0-9-]{1,40}$/.test(x.image_id)||typeof x.alt!=='string'||x.path!==store+'/'+x.id+'.jpg'||typeof x.uploaded!=='boolean'||(x.public_enabled!==undefined&&typeof x.public_enabled!=='boolean')||(x.public_visible!==undefined&&typeof x.public_visible!=='boolean')))throw Error('Invalid image list');return r;
   },
+  async setOriginalPublic(store,asset,enabled){if(!uuid.test(store)||!uuid.test(asset)||typeof enabled!=='boolean')throw Error('Invalid publication');const r=await rpc('mt_set_original_public',{p_store:store,p_asset:asset,p_enabled:enabled});if(r!==enabled)throw Error('Publication not confirmed');return r},
   async reserveOriginal({store,request,image,alt}){
    if(!uuid.test(store)||!uuid.test(request)||typeof image!=='string'||!/^[a-z0-9-]{1,40}$/.test(image)||typeof alt!=='string'||!alt.trim()||alt.trim().length>100)throw Error('Invalid image');
    const r=await rpc('mt_reserve_design_original',{p_store:store,p_request:request,p_image:image,p_alt:alt.trim()});if(!r||!uuid.test(r.id)||r.image_id!==image||r.path!==store+'/'+r.id+'.jpg'||typeof r.uploaded!=='boolean')throw Error('Image reservation not confirmed');return r;
