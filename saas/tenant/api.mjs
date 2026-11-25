@@ -119,7 +119,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!validReturn(x,store)))throw Error('Invalid returns');return r;
   },
   async operationsList(store,kind,after=null,limit=50){
-   if(!['suppliers','purchases','purchase_batches','period_closes','supplier_returns','repairs','staff','repair_invoices','warranty_claims','warranty_parts','repair_refunds','fx_rates','orders'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   if(!['suppliers','purchases','purchase_batches','period_closes','supplier_returns','repairs','staff','repair_invoices','warranty_claims','warranty_parts','repair_refunds','fx_rates','orders','coupons'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc(kind==='staff'?'mt_staff_list':'mt_list_'+kind,{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
   },
@@ -155,6 +155,8 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
      if(x.refundPolicy!=='invoice_currency'||!Array.isArray(x.tenders)||x.tenders.length<2||x.tenders.length>3||new Set(x.tenders.map(t=>t?.currency)).size!==x.tenders.length||x.tenders.some(t=>!t||!currency(t.currency)||!int(t.amount_minor,1,100000000000000)||!int(t.expected_invoice_minor,1,100000000000000)||(t.currency===x.currency?t.rate_id!==null||t.amount_minor!==t.expected_invoice_minor:!isId(t.rate_id)))||x.tenders.reduce((v,t)=>v+t.expected_invoice_minor,0)!==total)throw Error('Invalid mixed tenders');
      name='mt_record_mixed_sale';params={p_currency:x.currency,p_lines:sale.lines,p_tenders:x.tenders,p_refund_policy:x.refundPolicy};break;
     }
+    case 'coupon':if(typeof x.code!=='string'||!/^[A-Z0-9-]{3,24}$/.test(x.code)||!int(x.bps,100,5000)||!int(x.min,0,100)||!int(x.max,1,10000)||typeof x.expires!=='string'||!Number.isFinite(Date.parse(x.expires)))throw Error('Invalid coupon');name='mt_add_coupon';params={p_code:x.code,p_bps:x.bps,p_min:x.min,p_max:x.max,p_expires:x.expires};break;
+    case 'couponEnable':if(!isId(x.coupon)||typeof x.enabled!=='boolean')throw Error('Invalid coupon setting');{const v=await rpc('mt_coupon_enable',{p_store:store,p_coupon:x.coupon,p_enabled:x.enabled},store);if(v!==x.enabled)throw Error('Coupon change unconfirmed');return v}
     case 'deliveryEnable':if(typeof x.enabled!=='boolean')throw Error('Invalid flag');{const v=await rpc('mt_delivery_enable',{p_store:store,p_enabled:x.enabled},store);if(v!==x.enabled)throw Error('Flag not confirmed');return v}
     case 'dispatchDelivery':if(!isId(x.order)||!validText(x.tracking,100))throw Error('Invalid dispatch');{const v=await rpc('mt_dispatch_delivery',{p_store:store,p_order:x.order,p_tracking:x.tracking},store);if(v!=='dispatched')throw Error('Dispatch not confirmed');return v}
     case 'cancelDispatch':if(!isId(x.order)||x.confirm!==true)throw Error('Confirm physical return');{const v=await rpc('mt_cancel_dispatched_delivery',{p_store:store,p_order:x.order,p_confirm:true},store);if(v!=='cancelled')throw Error('Cancellation not confirmed');return v}
