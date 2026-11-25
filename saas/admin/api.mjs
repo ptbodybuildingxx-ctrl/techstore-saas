@@ -61,6 +61,27 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(!(action==='cancel'&&result===null)&&(typeof result!=='string'||!uuid.test(result)))throw Error('Unconfirmed provisioning request');
    return result;
   },
+  async releases(limit=50){
+   if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('Invalid limit');
+   const r=await rpc('saas_admin_release_overview',{p_limit:limit});
+   const version=/^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$/;
+   if(!r||!['releases','targets','eligible_stores'].every(k=>Array.isArray(r[k])&&r[k].length<=limit))throw Error('Invalid release overview');
+   const isId=x=>typeof x==='string'&&uuid.test(x);
+   if(r.releases.some(x=>!x||!isId(x.id)||typeof x.version!=='string'||!version.test(x.version)||!(/^[0-9a-f]{40}$/).test(x.commit_sha)||!(/^[0-9a-f]{64}$/).test(x.bundle_sha256)||!(/^[0-9a-f]{64}$/).test(x.migrations_sha256)||typeof x.notes!=='string'||typeof x.rollback_plan!=='string')||r.targets.some(x=>!x||!isId(x.id)||!isId(x.release_id)||!isId(x.store_id)||!version.test(x.version)||typeof x.store_name!=='string'||!['planned','cancelled'].includes(x.state))||r.eligible_stores.some(x=>!x||!isId(x.id)||typeof x.name!=='string'||typeof x.slug!=='string'))throw Error('Invalid release data');
+   return r;
+  },
+  async registerRelease({version,commit,bundle,migrations,notes='',rollback}){
+   if(typeof version!=='string'||!/^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$/.test(version)||typeof commit!=='string'||!/^[0-9a-f]{40}$/.test(commit)||typeof bundle!=='string'||!/^[0-9a-f]{64}$/.test(bundle)||typeof migrations!=='string'||!/^[0-9a-f]{64}$/.test(migrations)||typeof notes!=='string'||notes.length>2000||typeof rollback!=='string'||!rollback.trim()||rollback.trim().length>2000)throw Error('Invalid manifest');
+   const id=await rpc('saas_admin_release_register',{p_version:version,p_commit:commit,p_bundle:bundle,p_migrations:migrations,p_notes:notes,p_rollback:rollback.trim()});
+   if(typeof id!=='string'||!uuid.test(id))throw Error('Unconfirmed release registration');
+   return id;
+  },
+  async planRelease(release,store,action){
+   if(typeof release!=='string'||!uuid.test(release)||typeof store!=='string'||!uuid.test(store)||!['plan','cancel'].includes(action))throw Error('Invalid release plan');
+   const id=await rpc('saas_admin_release_plan',{p_release:release,p_store:store,p_action:action});
+   if(!(action==='cancel'&&id===null)&&(typeof id!=='string'||!uuid.test(id)))throw Error('Unconfirmed release plan');
+   return id;
+  },
   async manage(id,action,days=null){
    if(typeof id!=='string'||!uuid.test(id)||!actions.includes(action)||(action==='trial'?(!Number.isInteger(days)||days<1||days>30):days!==null))throw Error('Invalid action');
    await rpc('saas_admin_manage',{p_store:id,p_action:action,p_days:days});

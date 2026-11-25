@@ -27,3 +27,14 @@ test('provisioning status rejects mismatched or missing records',async()=>{
 
 test('king username maps to the development alias and retains server authorization',async()=>{const {api,calls}=fixture();await assert.rejects(api.signInUsername('someone','pass'));assert.equal(calls.length,0);await api.signInUsername('king','pass');assert.equal(JSON.parse(calls[0].o.body).email,'king@techstore-admin.invalid');assert.equal(api.signedIn(),true)});
 test('contact is optional, private and explicitly unverified',async()=>{const calls=[];const fetcher=async(u,o)=>{calls.push({u,o});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:{username:'king',contact_email:'user@example.com',verified:false}}};const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await assert.rejects(api.contact());await api.signInUsername('king','pass');await assert.rejects(api.contact('x@a.invalid'));const r=await api.contact('user@example.com');assert.equal(r.verified,false);assert.equal(calls.at(-1).o.headers.Authorization,'Bearer fixture-token');assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_email:'user@example.com',p_write:true})});
+
+test('central releases use validated immutable manifests and planning RPC only',async()=>{
+ const calls=[];const manifest={version:'6.4.0',commit:'a'.repeat(40),bundle:'b'.repeat(64),migrations:'c'.repeat(64),rollback:'Restore verified backup'};
+ const fetcher=async(u,o)=>{calls.push({u,o});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:u.includes('saas_admin_release_overview')?{releases:[],targets:[],eligible_stores:[]}:id}};
+ const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await assert.rejects(api.releases());await api.signIn('a@example.invalid','pass');
+ await assert.rejects(api.registerRelease({...manifest,bundle:'bad'}));await assert.rejects(api.registerRelease({...manifest,rollback:''}));
+ assert.equal(await api.registerRelease(manifest),id);assert.equal(JSON.parse(calls.at(-1).o.body).p_bundle,manifest.bundle);
+ await assert.rejects(api.planRelease(id,id,'deploy'));assert.equal(await api.planRelease(id,id,'plan'),id);assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_release:id,p_store:id,p_action:'plan'});
+ assert.deepEqual(await api.releases(),{releases:[],targets:[],eligible_stores:[]});
+});
+test('release overview rejects malformed server payload',async()=>{const fetcher=async(u)=>({ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:{releases:[{version:'bad'}],targets:[],eligible_stores:[]}});const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.releases())});
