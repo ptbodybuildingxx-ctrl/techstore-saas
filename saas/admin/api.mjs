@@ -15,6 +15,16 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
  function token(){if(!session||session.expiresAt<=clock()+5000){session=null;throw Error('Sign in again')}return session.accessToken}
  async function rpc(name,args){try{return await request('/rest/v1/rpc/'+name,args,token())}catch(e){if(e.status===401||e.status===403)session=null;throw e}}
  return {
+  async signInUsername(username,password){
+   if(typeof username!=='string'||username.trim().toLowerCase()!=='king')throw Error('Invalid username');
+   return this.signIn('king@techstore-admin.invalid',password);
+  },
+  async contact(email=null){
+   if(email!==null&&(typeof email!=='string'||email.trim().length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(email.trim())||email.trim().toLowerCase().endsWith('.invalid')))throw Error('Invalid contact email');
+   const r=await rpc('saas_admin_contact',{p_email:email===null?null:email.trim(),p_write:email!==null});
+   if(!r||r.username!=='king'||r.verified!==false||!(r.contact_email===null||typeof r.contact_email==='string'))throw Error('Invalid contact response');
+   return r;
+  },
   async signIn(email,password){
    session=null;
    if(typeof email!=='string'||!email.trim()||typeof password!=='string'||!password)throw Error('Email and password required');

@@ -5,7 +5,7 @@ const labels={provisioning:'قيد الإعداد',ready:'جاهز',suspended:'�
 const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n};
 let offset=0,limit=25,busy=false;
 function setMessage(text){el('message').textContent=text}
-function loggedOut(){el('dashboard').hidden=true;el('logout').hidden=true;el('loginPanel').hidden=false;el('rows').replaceChildren();el('metrics').replaceChildren()}
+function loggedOut(){el('contact').reset();el('contactStatus').textContent='';el('dashboard').hidden=true;el('logout').hidden=true;el('loginPanel').hidden=false;el('rows').replaceChildren();el('metrics').replaceChildren()}
 function loggedIn(){el('loginPanel').hidden=true;el('logout').hidden=false;el('dashboard').hidden=false}
 async function run(fn){
  if(busy)return;busy=true;
@@ -42,7 +42,12 @@ async function load(){
  el('count').textContent=r.matched+' محل';el('page').textContent=(Math.floor(offset/limit)+1)+' / '+Math.max(1,Math.ceil(r.matched/limit));
  el('prev').disabled=offset===0;el('next').disabled=offset+limit>=r.matched;
 }
-el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signIn(String(f.get('email')),password);offset=0;await load();loggedIn();setMessage('تم تسجيل الدخول.')})});
+el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password);offset=0;await load();await loadContact();loggedIn();setMessage('تم تسجيل الدخول.')})});
+async function loadContact(){
+ const r=await api.contact();el('contact').elements.email.value=r.contact_email||'';
+ el('contactStatus').textContent=r.contact_email?'محفوظ كبريد تواصل غير مؤكد':'لم تتم إضافة البريد بعد';
+}
+el('contact').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);run(async()=>{await api.contact(String(f.get('email')));await loadContact();setMessage('تم حفظ بريد التواصل؛ لا يستخدم لاسترداد كلمة المرور حتى التحقق منه.')})});
 el('logout').addEventListener('click',()=>run(async()=>{try{await api.signOut();setMessage('تم تسجيل الخروج.')}finally{loggedOut()}}));
 el('register').addEventListener('submit',e=>{e.preventDefault();const form=e.currentTarget,f=new FormData(form);run(async()=>{await api.register({name:String(f.get('name')),slug:String(f.get('slug')),plan:String(f.get('plan'))});form.reset();offset=0;el('filters').reset();await load();setMessage('تم تسجيل المحل. لم تُنشأ قاعدة بيانات بعد.')})});
 el('filters').addEventListener('submit',e=>{e.preventDefault();run(async()=>{offset=0;await load()})});
