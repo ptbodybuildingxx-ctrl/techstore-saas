@@ -1,5 +1,5 @@
 {
-  "name": "techstore-pwa",
+  "name": "techstore-saas",
   "version": "6.3.8",
   "private": true,
   "type": "module",
@@ -7,9 +7,9 @@
     "node": ">=24"
   },
   "scripts": {
-    "start": "node server.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test tests/*.test.mjs saas/tests/*.test.mjs",
     "check": "node scripts/check.mjs",
-    "verify": "npm run check && npm test"
+    "verify": "npm run check && npm test",
+    "build:store": "node saas/build-store.mjs"
   }
 }

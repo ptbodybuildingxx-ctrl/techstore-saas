@@ -1,0 +1,5 @@
+# Import status
+
+Source: TechStore SaaS development commit af977492a59dc8d8807b5de4842588bf5ff2cfec. Imported cloud UI and ten modules, icons, three Edge function sources, SaaS foundation and 56 of 58 live migration entries. Auth profile hardening was recovered from the migration history (schema logic only). Two original migrations intentionally excluded: 20261124112815 initial password change (production-specific account operation; do not copy credentials) and 20261124125805 push schedule (production endpoint; configure separately on new projects). The original shop remains unchanged.
+
+Legacy local SQLite server/demo, historical docs, original complete test suite and Git history were not copied. Two original regression test files and SaaS builder tests are present; CI configured for main. The new project is not yet deployed or tested end to end. All copied migrations and Edge functions require clean-project review before use. No production records, secrets or billing activation copied.

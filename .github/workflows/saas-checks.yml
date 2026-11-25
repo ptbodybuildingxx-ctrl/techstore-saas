@@ -1,7 +1,7 @@
 name: TechStore SaaS checks
 on:
   push:
-    branches: [saas/development]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,5 +14,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --test saas/tests/*.test.mjs
       - run: npm run verify
