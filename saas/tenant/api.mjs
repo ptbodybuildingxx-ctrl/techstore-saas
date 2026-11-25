@@ -1,3 +1,4 @@
+import {designResponse} from '../design/theme.mjs';
 const origin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const isId=x=>typeof x==='string'&&uuid.test(x);
@@ -118,7 +119,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!validReturn(x,store)))throw Error('Invalid returns');return r;
   },
   async operationsList(store,kind,after=null,limit=50){
-   if(!['suppliers','purchases','repairs','staff'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   if(!['suppliers','purchases','purchase_batches','period_closes','supplier_returns','repairs','staff','repair_invoices','warranty_claims','warranty_parts','repair_refunds','fx_rates','orders'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc(kind==='staff'?'mt_staff_list':'mt_list_'+kind,{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
   },
@@ -129,24 +130,82 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    switch(x.kind){
     case 'supplier':if(!validText(x.name,160)||typeof x.contact!=='string'||x.contact.length>160)throw Error('Invalid supplier');name='mt_add_supplier';params={p_name:x.name,p_contact:x.contact};break;
     case 'purchase':if(!isId(x.supplier)||!isId(x.product)||!currency(x.currency)||!int(x.units,1,1000000)||!int(x.cost,1,100000000)||!int(x.paid,0,x.units*x.cost)||!validText(x.note,300))throw Error('Invalid purchase');name='mt_purchase';params={p_supplier:x.supplier,p_product:x.product,p_currency:x.currency,p_units:x.units,p_cost:x.cost,p_paid:x.paid,p_note:x.note};break;
+    case 'purchaseBatch':{
+     if(!isId(x.supplier)||!currency(x.currency)||!validText(x.reference,160)||!Array.isArray(x.lines)||x.lines.length<1||x.lines.length>100||x.lines.some(l=>!l||!isId(l.product_id)||!int(l.units,1,1000000)||!int(l.unit_cost_minor,1,100000000))||new Set(x.lines.map(l=>l.product_id.toLowerCase())).size!==x.lines.length)throw Error('Invalid invoice lines');
+     const total=x.lines.reduce((n,l)=>n+BigInt(l.units)*BigInt(l.unit_cost_minor),0n);if(total>100000000000000n||!int(x.paid,0,Number(total)))throw Error('Invalid invoice total');
+     name='mt_purchase_batch';params={p_supplier:x.supplier,p_currency:x.currency,p_reference:x.reference,p_lines:x.lines.map(({product_id,units,unit_cost_minor})=>({product_id,units,unit_cost_minor})),p_paid:x.paid};break;
+    }
+    case 'closePeriod':{
+     if(![x.from,x.to].every(v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v)))||Date.parse(x.to)<Date.parse(x.from)||Date.parse(x.to)-Date.parse(x.from)>365*86400000||!validText(x.note,300)||x.confirm!==true)throw Error('Invalid period close');
+     name='mt_close_period';params={p_from:x.from,p_to:x.to,p_note:x.note,p_confirm:true};break;
+    }
+    case 'supplierReturn':if(!isId(x.purchase)||!int(x.units,1,1000000)||!validText(x.reason,300)||typeof x.confirmRefund!=='boolean')throw Error('Invalid supplier return');name='mt_supplier_return';params={p_purchase:x.purchase,p_units:x.units,p_reason:x.reason,p_confirm_refund:x.confirmRefund};break;
     case 'supplierPayment':if(!isId(x.purchase)||!currency(x.currency)||!int(x.amount,1,100000000000000))throw Error('Invalid payment');name='mt_pay_supplier';params={p_purchase:x.purchase,p_currency:x.currency,p_amount:x.amount};break;
     case 'repair':if(!isId(x.customer)||!validText(x.device,160)||!validText(x.fault,300)||!(x.imei===null||typeof x.imei==='string'&&/^\d{15}$/.test(x.imei)))throw Error('Invalid repair');name='mt_add_repair';params={p_customer:x.customer,p_device:x.device,p_imei:x.imei,p_fault:x.fault};break;
     case 'transition':if(!isId(x.repair)||!['diagnosing','repairing','ready','delivered','cancelled'].includes(x.next)||!validText(x.note,300))throw Error('Invalid transition');name='mt_repair_transition';params={p_repair:x.repair,p_next:x.next,p_note:x.note};break;
     case 'staff':if(!isId(x.user)||!['stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean')throw Error('Invalid staff');name='mt_staff_set';params={p_user:x.user,p_role:x.role,p_active:x.active};break;
+    case 'repairCheckout':if(!isId(x.repair)||!currency(x.currency)||!int(x.service,0,100000000000000)||!int(x.warranty,0,730)||!Array.isArray(x.lines)||x.lines.length>50||x.lines.some(l=>!l||!isId(l.product_id)||!int(l.units,1,10000)||!int(l.expected_price_minor,1,100000000))||new Set(x.lines.map(l=>l.product_id.toLowerCase())).size!==x.lines.length)throw Error('Invalid repair invoice');name='mt_repair_checkout';params={p_repair:x.repair,p_currency:x.currency,p_service:x.service,p_lines:x.lines,p_warranty:x.warranty};break;
+    case 'warrantyPart':if(!isId(x.claim)||!isId(x.product)||!int(x.units,1,10000)||!validText(x.reason,300))throw Error('Invalid warranty part');name='mt_warranty_part';params={p_claim:x.claim,p_product:x.product,p_units:x.units,p_reason:x.reason};break;
+    case 'repairRefund':if(!isId(x.invoice)||!int(x.amount,1,100000000000000)||!validText(x.reason,300)||x.confirm!==true)throw Error('Invalid refund');name='mt_repair_refund';params={p_invoice:x.invoice,p_amount:x.amount,p_reason:x.reason,p_confirm:true};break;
+    case 'warrantyOpen':if(!isId(x.invoice)||!validText(x.reason,300))throw Error('Invalid warranty claim');name='mt_warranty_open';params={p_invoice:x.invoice,p_reason:x.reason};break;
+    case 'warrantyTransition':if(!isId(x.claim)||!['accepted','rejected','resolved'].includes(x.next)||!validText(x.note,300))throw Error('Invalid warranty transition');name='mt_warranty_transition';params={p_claim:x.claim,p_next:x.next,p_note:x.note};break;
+    case 'rate':if(!currency(x.from)||!currency(x.to)||x.from===x.to||!int(x.numerator,1,1000000000000)||!int(x.denominator,1,1000000000000)||!validText(x.note,300))throw Error('Invalid rate');name='mt_add_fx_rate';params={p_from:x.from,p_to:x.to,p_numerator:x.numerator,p_denominator:x.denominator,p_note:x.note};break;
+    case 'mixed':{
+     const sale=saleAttempt(store,x.lines,x.currency,x.requestId),total=sale.lines.reduce((v,l)=>v+l.units*l.expected_price_minor,0);
+     if(x.refundPolicy!=='invoice_currency'||!Array.isArray(x.tenders)||x.tenders.length<2||x.tenders.length>3||new Set(x.tenders.map(t=>t?.currency)).size!==x.tenders.length||x.tenders.some(t=>!t||!currency(t.currency)||!int(t.amount_minor,1,100000000000000)||!int(t.expected_invoice_minor,1,100000000000000)||(t.currency===x.currency?t.rate_id!==null||t.amount_minor!==t.expected_invoice_minor:!isId(t.rate_id)))||x.tenders.reduce((v,t)=>v+t.expected_invoice_minor,0)!==total)throw Error('Invalid mixed tenders');
+     name='mt_record_mixed_sale';params={p_currency:x.currency,p_lines:sale.lines,p_tenders:x.tenders,p_refund_policy:x.refundPolicy};break;
+    }
+    case 'deliveryEnable':if(typeof x.enabled!=='boolean')throw Error('Invalid flag');{const v=await rpc('mt_delivery_enable',{p_store:store,p_enabled:x.enabled},store);if(v!==x.enabled)throw Error('Flag not confirmed');return v}
+    case 'dispatchDelivery':if(!isId(x.order)||!validText(x.tracking,100))throw Error('Invalid dispatch');{const v=await rpc('mt_dispatch_delivery',{p_store:store,p_order:x.order,p_tracking:x.tracking},store);if(v!=='dispatched')throw Error('Dispatch not confirmed');return v}
+    case 'cancelDispatch':if(!isId(x.order)||x.confirm!==true)throw Error('Confirm physical return');{const v=await rpc('mt_cancel_dispatched_delivery',{p_store:store,p_order:x.order,p_confirm:true},store);if(v!=='cancelled')throw Error('Cancellation not confirmed');return v}
+    case 'storefrontEnable':if(typeof x.enabled!=='boolean')throw Error('Invalid flag');{const v=await rpc('mt_storefront_enable',{p_store:store,p_enabled:x.enabled},store);if(v!==x.enabled)throw Error('Flag not confirmed');return v}
+    case 'listProduct':if(!isId(x.product)||typeof x.listed!=='boolean')throw Error('Invalid listing');{const v=await rpc('mt_storefront_list_product',{p_store:store,p_product:x.product,p_listed:x.listed},store);if(v!==x.listed)throw Error('Listing not confirmed');return v}
+    case 'finishOrder':if(!isId(x.order)||!['cancel','fulfill'].includes(x.action))throw Error('Invalid order action');{const v=await rpc('mt_finish_order',{p_store:store,p_order:x.order,p_action:x.action},store);if(x.action==='cancel'?v!==null:!isId(v))throw Error('Order not confirmed');return v}
     default:throw Error('Invalid operation');
    }
    const r=await rpc(name,{...req,...params},store);
-   if(x.kind==='transition'?r!==x.next:!isId(r))throw Error('Operation not confirmed');return r;
+   if(x.kind==='mixed'){const total=x.lines.reduce((v,l)=>v+l.units*l.expected_price_minor,0);if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.request_id!==x.requestId||r.currency!==x.currency||r.total_minor!==total)throw Error('Sale not confirmed');return r}
+   if(['transition','warrantyTransition'].includes(x.kind)?r!==x.next:!isId(r))throw Error('Operation not confirmed');return r;
+  },
+  async receiptLines(store,sale,total){if(!isId(sale)||!int(total,1,100000000000000))throw Error('Invalid receipt');const r=await rpc('mt_sale_receipt_lines',{p_store:store,p_sale:sale},store);if(!Array.isArray(r)||r.length<1||r.length>100||r.some(x=>x.store_id!==store||x.sale_id!==sale||!isId(x.product_id)||typeof x.product_name!=='string'||!int(x.units,1,10000)||!int(x.unit_price_minor,1,100000000)||x.line_total_minor!==x.units*x.unit_price_minor)||r.reduce((n,x)=>n+x.line_total_minor,0)!==total)throw Error('Receipt not confirmed');return r},
+  async design(store){return designResponse(await rpc('mt_design_read',{p_store:store,p_editor:false},store))},
+  async storefrontStatus(store,after=null,limit=50){
+   if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');const r=await rpc('mt_storefront_status',{p_store:store,p_after:after,p_limit:limit},store);
+   if(!r||typeof r.enabled!=='boolean'||typeof r.active!=='boolean'||!Array.isArray(r.products)||r.products.length>limit||r.products.some(x=>!x||!isId(x.id)||typeof x.name!=='string'||typeof x.sku!=='string'||typeof x.listed!=='boolean'))throw Error('Invalid storefront');return r;
+  },
+  async operatingReport(store,from,to){
+   if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
+   const r=await rpc('mt_operating_report',{p_store:store,p_from:from,p_to:to},store),integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
+   if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['goods_revenue','repair_revenue','returns','net_revenue','unclassified_cash_expenses'].every(k=>integer(x[k]))||!int(x.unknown_cost_allocations,0,Number.MAX_SAFE_INTEGER)||(x.unknown_cost_allocations===0?!['cost','gross_margin','indicative_after_cash_expenses'].every(k=>integer(x[k])):!['cost','gross_margin','indicative_after_cash_expenses'].every(k=>x[k]===null))||BigInt(x.goods_revenue)+BigInt(x.repair_revenue)-BigInt(x.returns)!==BigInt(x.net_revenue)||(x.cost!==null&&(BigInt(x.net_revenue)-BigInt(x.cost)!==BigInt(x.gross_margin)||BigInt(x.gross_margin)-BigInt(x.unclassified_cash_expenses)!==BigInt(x.indicative_after_cash_expenses)))))throw Error('Invalid operating report');return r;
+  },
+  async licenseStatus(store){
+   const r=await rpc('mt_license_status',{p_store:store},store);
+   if(!r||!['pending','trial','active','past_due','suspended','cancelled'].includes(r.state)||!['basic','business','pro'].includes(r.plan)||typeof r.write_entitlement!=='boolean'||typeof r.live_billing_enabled!=='boolean')throw Error('Invalid license status');return r;
+  },
+  async periodSnapshot(store,close){
+   if(!isId(close))throw Error('Invalid period');const r=await rpc('mt_period_snapshot',{p_store:store,p_close:close},store);
+   if(!r||typeof r.period_from!=='string'||typeof r.period_to!=='string'||!Array.isArray(r.trial_balance?.rows)||r.trial_balance.rows.length>39||!Array.isArray(r.operating_report)||r.operating_report.length>3||!Array.isArray(r.cash_report)||r.cash_report.length>3)throw Error('Invalid snapshot');return r;
+  },
+  async trialBalance(store,from,to){
+   if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
+   const r=await rpc('mt_trial_balance',{p_store:store,p_from:from,p_to:to},store),accounts=['cash','accounts_receivable','accounts_payable','inventory','sales_revenue','sales_returns','repair_revenue','cost_of_goods_services','expense_unclassified','funding_unclassified','stock_intake_unclassified','stock_adjustment_expense','fx_clearing'];
+   if(!r||r.mode!=='operational_unclassified'||!int(r.unknown_cost_events,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>39||r.rows.some(x=>!x||!currency(x.currency)||!accounts.includes(x.account)||!['opening','debit','credit','closing'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||BigInt(x.debit)<0n||BigInt(x.credit)<0n||BigInt(x.opening)+BigInt(x.debit)-BigInt(x.credit)!==BigInt(x.closing))||new Set(r.rows.map(x=>x.currency+':'+x.account)).size!==r.rows.length)throw Error('Invalid ledger');
+   for(const c of ['USD','EUR','SYP']){const rows=r.rows.filter(x=>x.currency===c);if(rows.reduce((n,x)=>n+BigInt(x.opening),0n)!==0n||rows.reduce((n,x)=>n+BigInt(x.debit)-BigInt(x.credit),0n)!==0n)throw Error('Unbalanced ledger')}
+   return r;
+  },
+  async cashReconciliation(store){
+   const r=await rpc('mt_cash_reconciliation',{p_store:store},store),integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
+   if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['recorded','computed','difference'].every(k=>integer(x[k]))||typeof x.balanced!=='boolean'||BigInt(x.recorded)-BigInt(x.computed)!==BigInt(x.difference)||x.balanced!==(BigInt(x.difference)===0n)))throw Error('Invalid reconciliation');return r;
   },
   async cashReport(store,from,to){
    if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
    const r=await rpc('mt_cash_report',{p_store:store,p_from:from,p_to:to},store);
-   if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['incoming','outgoing','net','collections','refunds','supplier_payments','expenses'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||BigInt(x.incoming)-BigInt(x.outgoing)!==BigInt(x.net)))throw Error('Invalid report');return r;
+   if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['incoming','outgoing','net','collections','refunds','supplier_payments','expenses'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||(x.supplier_refunds!==undefined&&(typeof x.supplier_refunds!=='string'||!/^\d+$/.test(x.supplier_refunds)))||BigInt(x.incoming)-BigInt(x.outgoing)!==BigInt(x.net)))throw Error('Invalid report');return r;
   },
   async cashOverview(store,before=null,beforeId=null,limit=50){
    if(!int(limit,1,100)||(before===null)!==(beforeId===null)||(before!==null&&(typeof before!=='string'||!Number.isFinite(Date.parse(before))||!isId(beforeId))))throw Error('Invalid cash page');
    const r=await rpc('mt_cash_overview',{p_store:store,p_before:before,p_before_id:beforeId,p_limit:limit},store);
-   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange','debt_payment','return_refund','supplier_payment'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
+   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange','debt_payment','return_refund','supplier_payment','repair_receipt','mixed_receipt','supplier_refund','repair_refund'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
    return r;
   },
   async recordCash(store,attempt){
@@ -155,6 +214,6 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=await rpc('mt_record_cash',{p_store:store,p_request:x.requestId,p_kind:x.kind,p_currency:x.currency,p_amount:x.amount,p_note:x.note.trim(),p_target_currency:x.targetCurrency,p_target_amount:x.targetAmount},store);
    if(!isId(r))throw Error('Cash movement not confirmed');return r;
   },
-  async sales(store,before=null,limit=50){if(!(before===null||int(before,1,Number.MAX_SAFE_INTEGER))||!int(limit,1,100))throw Error('Invalid page');const r=await rpc('mt_list_sales',{p_store:store,p_before:before,p_limit:limit},store);if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.request_id)||!int(x.number,1,Number.MAX_SAFE_INTEGER)||!currency(x.currency)||!['cash','credit'].includes(x.payment_mode)||!int(x.total_minor,1,100000000000000)))throw Error('Invalid sales page');return r}
+  async sales(store,before=null,limit=50){if(!(before===null||int(before,1,Number.MAX_SAFE_INTEGER))||!int(limit,1,100))throw Error('Invalid page');const r=await rpc('mt_list_sales',{p_store:store,p_before:before,p_limit:limit},store);if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.request_id)||!int(x.number,1,Number.MAX_SAFE_INTEGER)||!currency(x.currency)||!['cash','credit','mixed'].includes(x.payment_mode)||!int(x.total_minor,1,100000000000000)))throw Error('Invalid sales page');return r}
  };
 }
