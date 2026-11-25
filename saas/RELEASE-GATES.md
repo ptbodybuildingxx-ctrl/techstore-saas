@@ -21,3 +21,12 @@ DEVELOPMENT — no commercial authorization.
 
 ## Closure-stage evidence
 Integrated rollback SQL fixture: saas/tests/sql/integrated-commerce.sql. Management statements, coupon and media reservation migrations applied to shared development database. Real browser, printer, email delivery, actual Storage object upload/download, public high-resolution serving, private domain DNS/TLS/routing, country-specific tax and statutory accounting remain gates. No commercial authorization or paid service activation.
+
+## Software closure batch (035–039)
+- [x] Order-earned nontransferable points, reserve/release/redeem, return reversal, owner policy, buyer UI and rollback verification.
+- [x] Typed responsive grid spans, per-block alignment/padding/image fit/heading, copy and cross-page move, legacy theme compatibility. No arbitrary HTML/CSS/JS or pixel-position overlay editor.
+- [x] Explicit high-resolution publication authorization, service-only path resolution, bounded media worker and storefront fallback. Actual deployment and genuine Storage roundtrip remain open; publicMediaEnabled is false.
+- [x] Source-bound classifications, capital/loans, documented income-tax accrual and settlement, result after recorded tax, classified balance equation and rollback verification. VAT/sales-tax treatment, jurisdiction rules, fiscal invoice numbering/legal reporting and statutory profit remain incomplete; no fabricated tax rate.
+- [x] Central monitoring uses true entitlement and backup-evidence rules; bounded store-page aggregate details; no PII. Not uptime/load monitoring, nor proof of 100,000 concurrent stores.
+- [ ] Real customer email, custom-domain hosting verifier/provider, public media endpoint and actual hardware print acceptance. These require operational configuration and dedicated origin; don't enable prematurely.
+- [ ] Jurisdiction-specific tax/invoice requirements and full accounting reconciliation. Do not mark the software phase complete or launch approved.
