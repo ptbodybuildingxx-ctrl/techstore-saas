@@ -33,6 +33,14 @@ if (select quantity from public.mt_products where id=pr) is distinct from 3::big
 v:=public.mt_cash_reconciliation(t);if not exists(select 1 from jsonb_array_elements(v)x where x->>'currency'='USD' and x->>'recorded'='27000' and x->>'balanced'='true') then raise exception 'Cash mismatch %',v;end if;
 v:=public.mt_operating_report(t,today,today);if not exists(select 1 from jsonb_array_elements(v)x where x->>'currency'='USD' and x->>'net_revenue'='9000' and x->>'cost'='4000' and x->>'gross_margin'='5000') then raise exception 'Profit mismatch %',v;end if;
 v:=public.mt_trial_balance(t,today,today);if v->>'unknown_cost_events' is distinct from '0' or exists(select 1 from jsonb_array_elements(v->'rows')x group by x->>'currency' having sum((x->>'closing')::numeric)<>0) then raise exception 'Trial balance mismatch';end if;
+v:=public.mt_management_statements(t,today,today,'USD');
+if v->'translated'->>'cash' is distinct from '27000' or v->'translated'->>'result_before_tax' is distinct from '5000' or v->>'final_profit' is not null then raise exception 'Management statement mismatch %',v;end if;
+perform public.mt_record_cash(t,gen_random_uuid(),'exchange','USD',1000,'Fixture FX','EUR',900);
+v:=public.mt_management_statements(t,today,today,'USD');
+if v->>'missing_rates' is distinct from '1' or v->>'translated' is not null then raise exception 'Missing FX not detected';end if;
+perform public.mt_add_fx_rate(t,gen_random_uuid(),'EUR','USD',10,9,'Fixture');
+v:=public.mt_management_statements(t,today,today,'USD');
+if v->'translated'->>'cash' is distinct from '27000' or v->'translated'->>'result_before_tax' is distinct from '5000' then raise exception 'FX mismatch %',v;end if;
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
 if exists(select 1 from public.mt_sale_receipt_lines(t,sale)) or exists(select 1 from public.mt_list_repair_refunds(t)) then raise exception 'Tenant leak';end if;
 reset role;raise exception using errcode='ZX001',message='rollback';

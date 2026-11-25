@@ -186,6 +186,12 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!isId(close))throw Error('Invalid period');const r=await rpc('mt_period_snapshot',{p_store:store,p_close:close},store);
    if(!r||typeof r.period_from!=='string'||typeof r.period_to!=='string'||!Array.isArray(r.trial_balance?.rows)||r.trial_balance.rows.length>39||!Array.isArray(r.operating_report)||r.operating_report.length>3||!Array.isArray(r.cash_report)||r.cash_report.length>3)throw Error('Invalid snapshot');return r;
   },
+  async managementStatements(store,from,to,c){
+   if(!currency(c)||![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid report range');
+   const r=await rpc('mt_management_statements',{p_store:store,p_from:from,p_to:to,p_currency:c},store),keys=['cash','inventory','receivable','assets','payable','cumulative_result','unresolved_balance','revenue','cost','expenses','result_before_tax'],valid=x=>x&&keys.every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k])),sum=x=>BigInt(x.cash)+BigInt(x.inventory)+BigInt(x.receivable)===BigInt(x.assets)&&BigInt(x.assets)===BigInt(x.payable)+BigInt(x.cumulative_result)+BigInt(x.unresolved_balance)&&BigInt(x.revenue)-BigInt(x.cost)-BigInt(x.expenses)===BigInt(x.result_before_tax);
+   if(!r||r.mode!=='management_closing_rate'||r.currency!==c||r.tax_status!=='not_calculated'||r.final_profit!==null||!int(r.missing_rates,0,3)||!int(r.unknown_cost_events,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>3||r.rows.some(x=>!currency(x.currency)||!valid(x)||!sum(x))||new Set(r.rows.map(x=>x.currency)).size!==r.rows.length||!Array.isArray(r.rates)||r.rates.length>3||((r.missing_rates||r.unknown_cost_events)?r.translated!==null:!valid(r.translated)))throw Error('Invalid management statement');
+   return r;
+  },
   async trialBalance(store,from,to){
    if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
    const r=await rpc('mt_trial_balance',{p_store:store,p_from:from,p_to:to},store),accounts=['cash','accounts_receivable','accounts_payable','inventory','sales_revenue','sales_returns','repair_revenue','cost_of_goods_services','expense_unclassified','funding_unclassified','stock_intake_unclassified','stock_adjustment_expense','fx_clearing'];
