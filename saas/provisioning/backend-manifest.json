@@ -1,18 +1,18 @@
 {
   "version": "6.3.8",
-  "sourceCommit": "aafd0928ecb8a1746dacdd2519f02ad525767c27",
+  "sourceCommit": "7027ac067c6e6384c02d1b5a5ae701508c4fb5da",
   "files": [
     {
       "path": "supabase/functions/techstore-ai/index.ts",
-      "gitBlob": "fa31f1569d304790f7f6cdab61a120cd9f930449"
+      "gitBlob": "5cb98287c5c703b6c8ffb9ddcd493ea646cb0267"
     },
     {
       "path": "supabase/functions/techstore-api/index.ts",
-      "gitBlob": "2e6a4eefa4a6424ace33ff35455c42fc14ac0da0"
+      "gitBlob": "a0394afb1d2ae89fa04e79e7f4d4b83081823298"
     },
     {
       "path": "supabase/functions/techstore-push/index.ts",
-      "gitBlob": "9493c36d777f4e5b6896b65d8be021422b540e8e"
+      "gitBlob": "01fa3be33ac375705a38c942ceada8d29996d057"
     },
     {
       "path": "supabase/migrations/20261124111621_techstore_secure_workspace.sql",

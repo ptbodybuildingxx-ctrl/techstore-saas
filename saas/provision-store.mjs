@@ -46,7 +46,7 @@ export async function inspectBackend(root=rootDefault){
   const data=await readRegular(root,x.path);
   if(gitBlob(data)!==x.gitBlob)throw Error('Backend source changed: '+x.path);
   const code=data.toString('utf8');
-  if(/jtjnbeywpfdtgohffanl|mezsyzdieqmqulddcrtg|https?:\/\/[a-z0-9]{20}\.supabase\.co|sb_secret_[A-Za-z0-9_-]{20,}|sb_publishable_[A-Za-z0-9_-]{20,}/i.test(code))findings.push({path:x.path,code:'embedded-project-or-key'});
+  if(/jtjnbeywpfdtgohffanl|mezsyzdieqmqulddcrtg|ptbodybuildingxx\.github\.io|ptbodybuildingxx-ctrl\.github\.io|https?:\/\/[a-z0-9]{20}\.supabase\.co|sb_secret_[A-Za-z0-9_-]{20,}|sb_publishable_[A-Za-z0-9_-]{20,}/i.test(code))findings.push({path:x.path,code:'embedded-project-or-key'});
   if(x.path.endsWith('.sql')&&/\b(?:cron\.schedule|net\.http_(?:post|get)|alter\s+role\s+[^;]+password|insert\s+into\s+auth\.users)\b/i.test(code))findings.push({path:x.path,code:'environment-specific-operation-review'});
   files.push({path:x.path,sha256:sha256(data),bytes:data.length,data});
  }
