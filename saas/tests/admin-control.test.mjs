@@ -11,3 +11,16 @@ test('no session means no management request',async()=>{const {api,calls}=fixtur
 test('registration and trial are bounded and server-side',async()=>{const {api,calls}=fixture();await api.signIn('a@example.invalid','pass');await assert.rejects(api.register({name:'A',slug:'bad/path',plan:'basic'}));assert.equal(await api.register({name:'A',slug:'store-a',plan:'basic'}),id);await assert.rejects(api.manage(id,'trial',31));await api.manage(id,'trial',14);assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_store:id,p_action:'trial',p_days:14})});
 test('permission denial and expiry invalidate session',async()=>{let f=fixture();await f.api.signIn('a@example.invalid','pass');f.deny();await assert.rejects(f.api.overview());assert.equal(f.api.signedIn(),false);f=fixture();await f.api.signIn('a@example.invalid','pass');f.expire();await assert.rejects(f.api.overview());assert.equal(f.api.signedIn(),false)});
 test('logout clears local session',async()=>{const {api,calls}=fixture();await api.signIn('a@example.invalid','pass');await api.signOut();assert.equal(api.signedIn(),false);assert.match(calls.at(-1).u,/logout/)});
+
+test('provisioning request uses only operator RPC and validates ids',async()=>{
+ const calls=[];const fetcher=async(u,o)=>{calls.push({u,o});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:u.includes('saas_admin_provisioning_status')?[{id,queue:'queued',license:'unprovisioned_or_blocked'}]:id}};
+ const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');
+ await assert.rejects(api.provisioning('bad','request'));await assert.rejects(api.provisioning(id,'create-paid'));
+ assert.equal(await api.provisioning(id,'request'),id);assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_store:id,p_action:'request'});
+ assert.deepEqual(await api.provisioningStatus([id]),[{id,queue:'queued',license:'unprovisioned_or_blocked'}]);
+ const before=calls.length;assert.deepEqual(await api.provisioningStatus([]),[]);assert.equal(calls.length,before);
+});
+test('provisioning status rejects mismatched or missing records',async()=>{
+ const fetcher=async(u)=>({ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:[]});
+ const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.provisioningStatus([id]));
+});

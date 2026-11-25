@@ -17,14 +17,24 @@ let lastMatched=0;
 async function load(){
  const f=new FormData(el('filters'));
  const r=await api.overview({offset,limit,query:String(f.get('query')||''),state:String(f.get('state')||'')});
+ const statuses=new Map((await api.provisioningStatus(r.rows.map(s=>s.id))).map(s=>[s.id,s]));
  lastMatched=r.matched;
  el('metrics').replaceChildren(...[['المحلات',r.total],['جاهزة',r.ready],['موقوفة',r.suspended],['اشتراكات نشطة',r.active_subscriptions]].map(([label,value])=>{const d=node('div',label,'metric');d.append(node('strong',String(value)));return d}));
  el('rows').replaceChildren(...r.rows.map(s=>{
   const tr=document.createElement('tr');
   for(const v of [s.name,s.slug,labels[s.state],labels[s.plan_code]||'—',labels[s.subscription_state]||'—',s.valid_until?new Date(s.valid_until).toISOString().slice(0,10):'—'])tr.append(node('td',v));
+  const status=statuses.get(s.id);
+  const licenseLabels={unprovisioned_or_blocked:'غير مهيأ / محظور',expired:'منتهٍ',verification_required:'يتطلب التحقق'};
+  tr.append(node('td',status?.queue==='queued'?'طلب بانتظار التنفيذ':'لا يوجد طلب'),node('td',licenseLabels[status?.license]||'غير مؤكد'));
   const td=document.createElement('td');
   if(!s.provisioned){
    const choices=s.state==='provisioning'?[['trial','تجربة 14 يوماً',14],['suspend','إيقاف',null],['cancel','إغلاق',null]]:s.state==='suspended'?[['reopen','إعادة فتح',null],['cancel','إغلاق',null]]:s.state==='closed'?[['reopen','إعادة فتح',null]]:[];
+   if(s.state==='provisioning'&&status){
+    const queued=status.queue==='queued';
+    const btn=node('button',queued?'إلغاء طلب الإنشاء':'طلب إنشاء قاعدة');btn.type='button';
+    btn.addEventListener('click',()=>{if(confirm(queued?'إلغاء الطلب؟':'تسجيل طلب فقط، دون إنشاء مشروع أو تكاليف؟'))run(async()=>{await api.provisioning(s.id,queued?'cancel':'request');await load();setMessage(queued?'أُلغي الطلب.':'تم تسجيل الطلب؛ لم تُنشأ قاعدة بيانات.')})});
+    td.append(btn);
+   }
    for(const [action,label,days] of choices){const btn=node('button',label);btn.type='button';btn.addEventListener('click',()=>{if(confirm(label+' — '+s.name+'؟'))run(async()=>{await api.manage(s.id,action,days);await load();setMessage('تم تحديث السجل الإداري.')})});td.append(btn)}
   }else td.textContent='يحتاج مسار إدارة إنتاج معتمد';
   tr.append(td);return tr

@@ -38,6 +38,19 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(typeof id!=='string'||!uuid.test(id))throw Error('Unconfirmed registration; refresh before retrying');
    return id;
   },
+  async provisioningStatus(ids){
+   if(!Array.isArray(ids)||ids.length>100||ids.some(id=>typeof id!=='string'||!uuid.test(id)))throw Error('Invalid stores');
+   if(ids.length===0)return [];
+   const r=await rpc('saas_admin_provisioning_status',{p_stores:ids});
+   if(!Array.isArray(r)||r.length!==new Set(ids).size||new Set(r.map(x=>x?.id)).size!==r.length||r.some(x=>!x||!ids.includes(x.id)||!['queued','none'].includes(x.queue)||!['unprovisioned_or_blocked','expired','verification_required'].includes(x.license)))throw Error('Invalid provisioning status');
+   return r;
+  },
+  async provisioning(id,action){
+   if(typeof id!=='string'||!uuid.test(id)||!['request','cancel'].includes(action))throw Error('Invalid provisioning request');
+   const result=await rpc('saas_admin_provisioning',{p_store:id,p_action:action});
+   if(!(action==='cancel'&&result===null)&&(typeof result!=='string'||!uuid.test(result)))throw Error('Unconfirmed provisioning request');
+   return result;
+  },
   async manage(id,action,days=null){
    if(typeof id!=='string'||!uuid.test(id)||!actions.includes(action)||(action==='trial'?(!Number.isInteger(days)||days<1||days>30):days!==null))throw Error('Invalid action');
    await rpc('saas_admin_manage',{p_store:id,p_action:action,p_days:days});
