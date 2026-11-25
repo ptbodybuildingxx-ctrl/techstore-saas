@@ -39,7 +39,7 @@ async function loadCash(before=null,beforeId=null){
  const last=r.movements.at(-1);cashCursor=r.movements.length===50?{time:last.created_at,id:last.id}:null;
  el('cashBalances').replaceChildren(...r.balances.map(x=>{const b=node('div',x.currency);b.className='metric';b.append(node('strong',money(x.balance_minor,x.currency)));return b}));
  if(!cashAttempt){for(const id of ['cashCurrency','cashTarget']){const prev=el(id).value;el(id).replaceChildren(...ctx.currencies.map(c=>{const o=node('option',c);o.value=c;return o}));if(ctx.currencies.includes(prev))el(id).value=prev}}
- const names={sale:'بيع نقدي',funding:'إيداع',expense:'مصروف',exchange:'تحويل عملة',debt_payment:'تحصيل دين / دفعة أولى',return_refund:'استرداد مرتجع',supplier_payment:'دفعة مورد',repair_receipt:'مقبوض صيانة',mixed_receipt:'مقبوض بيع مختلط',supplier_refund:'استرداد نقدي من المورد'};
+ const names={sale:'بيع نقدي',funding:'إيداع',expense:'مصروف',exchange:'تحويل عملة',debt_payment:'تحصيل دين / دفعة أولى',return_refund:'استرداد مرتجع',supplier_payment:'دفعة مورد',repair_receipt:'مقبوض صيانة',mixed_receipt:'مقبوض بيع مختلط',supplier_refund:'استرداد نقدي من المورد',repair_refund:'استرداد فاتورة صيانة'};
  el('cashRows').replaceChildren(...r.movements.map(x=>row([names[x.kind],money(x.amount_minor,x.currency),x.target_currency?money(x.target_amount_minor,x.target_currency):'—',x.note,new Date(x.created_at).toISOString(),x.request_id||x.sale_id])));cashFields();controls();
 }
 async function loadCustomers(after=null){
