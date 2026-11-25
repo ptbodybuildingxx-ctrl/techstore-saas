@@ -5,13 +5,13 @@ const labels={provisioning:'قيد الإعداد',ready:'جاهز',suspended:'�
 const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n};
 let offset=0,limit=25,busy=false;
 function setMessage(text){el('message').textContent=text}
-function loggedOut(){el('billingRows').replaceChildren();el('billingStore').replaceChildren();el('billingMonth').textContent='';el('billingForm').reset();el('backupRows').replaceChildren();el('backupRequests').replaceChildren();el('backupStore').replaceChildren();el('backupRequest').reset();el('releaseRows').replaceChildren();el('releaseTargets').replaceChildren();el('releaseChoice').replaceChildren();el('releaseStore').replaceChildren();el('releaseRegister').reset();el('contact').reset();el('contactStatus').textContent='';el('dashboard').hidden=true;el('logout').hidden=true;el('loginPanel').hidden=false;el('rows').replaceChildren();el('metrics').replaceChildren()}
+function loggedOut(){shardPages=[null];shardNext=null;el('shardRows').replaceChildren();el('placementRows').replaceChildren();el('moveStore').replaceChildren();el('moveDestination').replaceChildren();el('shardForm').reset();el('billingRows').replaceChildren();el('billingStore').replaceChildren();el('billingMonth').textContent='';el('billingForm').reset();el('backupRows').replaceChildren();el('backupRequests').replaceChildren();el('backupStore').replaceChildren();el('backupRequest').reset();el('releaseRows').replaceChildren();el('releaseTargets').replaceChildren();el('releaseChoice').replaceChildren();el('releaseStore').replaceChildren();el('releaseRegister').reset();el('contact').reset();el('contactStatus').textContent='';el('dashboard').hidden=true;el('logout').hidden=true;el('loginPanel').hidden=false;el('rows').replaceChildren();el('metrics').replaceChildren()}
 function loggedIn(){el('loginPanel').hidden=true;el('logout').hidden=false;el('dashboard').hidden=false}
 async function run(fn){
  if(busy)return;busy=true;
  const controls=[...document.querySelectorAll('button')];for(const x of controls)x.disabled=true;
  try{await fn()}catch(e){setMessage(e.status===401||e.status===403?'تم رفض الصلاحية أو انتهت الجلسة.':e.status===409?'المعرّف مستخدم مسبقاً.':'لم يتم تأكيد الطلب. تحقق من الحالة قبل إعادة المحاولة.');if(!api.signedIn())loggedOut()}
- finally{busy=false;for(const x of controls)if(x.id!=='prev'&&x.id!=='next'&&x.id!=='releasePlanButton'&&x.id!=='backupRequestButton'&&x.id!=='billingDraftButton')x.disabled=false;el('prev').disabled=offset===0;el('next').disabled=offset+limit>=lastMatched;el('releasePlanButton').disabled=!el('releaseChoice').options.length||!el('releaseStore').options.length;el('backupRequestButton').disabled=!el('backupStore').options.length;el('billingDraftButton').disabled=!el('billingStore').options.length}
+ finally{busy=false;for(const x of controls)if(x.id!=='prev'&&x.id!=='next'&&x.id!=='releasePlanButton'&&x.id!=='backupRequestButton'&&x.id!=='billingDraftButton'&&x.id!=='moveButton'&&x.id!=='shardPrev'&&x.id!=='shardNext')x.disabled=false;el('prev').disabled=offset===0;el('next').disabled=offset+limit>=lastMatched;el('releasePlanButton').disabled=!el('releaseChoice').options.length||!el('releaseStore').options.length;el('backupRequestButton').disabled=!el('backupStore').options.length;el('billingDraftButton').disabled=!el('billingStore').options.length;el('moveButton').disabled=!el('moveStore').options.length||!el('moveDestination').options.length;el('shardPrev').disabled=shardPages.length<2;el('shardNext').disabled=!shardNext}
 }
 let lastMatched=0;
 async function load(){
@@ -37,7 +37,7 @@ async function load(){
  el('count').textContent=r.matched+' محل';el('page').textContent=(Math.floor(offset/limit)+1)+' / '+Math.max(1,Math.ceil(r.matched/limit));
  el('prev').disabled=offset===0;el('next').disabled=offset+limit>=r.matched;
 }
-el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password);offset=0;await load();await loadContact();await loadBilling();await loadBackups();await loadReleases();loggedIn();setMessage('تم تسجيل الدخول.')})});
+el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password);offset=0;await load();await loadContact();await loadShards();await loadBilling();await loadBackups();await loadReleases();loggedIn();setMessage('تم تسجيل الدخول.')})});
 async function loadContact(){
  const r=await api.contact();el('contact').elements.email.value=r.contact_email||'';
  el('contactStatus').textContent=r.contact_email?'محفوظ كبريد تواصل غير مؤكد':'لم تتم إضافة البريد بعد';
@@ -80,8 +80,24 @@ async function loadBilling(){
 }
 el('billingForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);run(async()=>{if(!billingMonth)throw Error('Missing sandbox month');await api.billingDraft(String(f.get('store')),billingMonth);await loadBilling();setMessage('تم تسجيل مسودة تجريبية؛ لا توجد فاتورة مالية.')})});
 el('billingRefresh').addEventListener('click',()=>run(loadBilling));
+let shardPages=[null],shardNext=null;
+async function loadShards(){
+ const r=await api.shardDirectory(shardPages.at(-1),50);
+ shardNext=r.placements.length===50?r.placements.at(-1).store_id:null;
+ const opt=(x,text)=>{const o=node('option',text);o.value=x;return o};
+ el('shardRows').replaceChildren(...r.shards.map(s=>{const tr=document.createElement('tr');for(const v of [s.code,s.region,s.state==='local'?'محلية نشطة':'مخططة فقط',String(s.tenants)])tr.append(node('td',v));return tr}));
+ el('moveStore').replaceChildren(...r.placements.filter(x=>['provisioning','suspended'].includes(x.store_state)).map(s=>opt(s.store_id,s.name+' / '+s.slug)));
+ el('moveDestination').replaceChildren(...r.shards.filter(x=>x.state==='planned').map(s=>opt(s.code,s.code)));
+ el('placementRows').replaceChildren(...r.placements.map(s=>{const tr=document.createElement('tr');for(const v of [s.name,s.shard_code,String(s.generation),s.planned_destination||'—'])tr.append(node('td',v));const td=document.createElement('td');if(s.planned_destination){const btn=node('button','إلغاء الخطة');btn.type='button';btn.addEventListener('click',()=>{if(confirm('إلغاء خطة النقل؟'))run(async()=>{await api.planMove(s.store_id,s.planned_destination,'cancel');await loadShards();setMessage('تم إلغاء الخطة.')})});td.append(btn)}tr.append(td);return tr}));
+ el('shardPage').textContent=String(shardPages.length);
+}
+el('shardForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);run(async()=>{await api.registerShard(String(f.get('code')),String(f.get('region')));e.target.reset();await loadShards();setMessage('تم تسجيل مجموعة مخططة دون إنشاء قاعدة جديدة.')})});
+el('moveForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);if(confirm('تسجيل خطة نقل فقط، دون نقل البيانات؟'))run(async()=>{await api.planMove(String(f.get('store')),String(f.get('destination')),'plan');await loadShards();setMessage('تم تسجيل خطة فقط؛ لم يتم نقل المحل.')})});
+el('shardRefresh').addEventListener('click',()=>run(async()=>{shardPages=[null];await loadShards()}));
+el('shardPrev').addEventListener('click',()=>run(async()=>{if(shardPages.length>1){shardPages.pop();await loadShards()}}));
+el('shardNext').addEventListener('click',()=>run(async()=>{if(shardNext){shardPages.push(shardNext);await loadShards()}}));
 el('logout').addEventListener('click',()=>run(async()=>{try{await api.signOut();setMessage('تم تسجيل الخروج.')}finally{loggedOut()}}));
-el('register').addEventListener('submit',e=>{e.preventDefault();const form=e.currentTarget,f=new FormData(form);run(async()=>{await api.registerShared({name:String(f.get('name')),slug:String(f.get('slug')),plan:String(f.get('plan')),owner:String(f.get('owner'))});form.reset();offset=0;el('filters').reset();await load();setMessage('تم تسجيل مساحة مشتركة للمحل؛ لا يحتاج مشروع Supabase إضافياً.')})});
+el('register').addEventListener('submit',e=>{e.preventDefault();const form=e.currentTarget,f=new FormData(form);run(async()=>{await api.registerShared({name:String(f.get('name')),slug:String(f.get('slug')),plan:String(f.get('plan')),owner:String(f.get('owner'))});form.reset();offset=0;el('filters').reset();await load();shardPages=[null];await loadShards();setMessage('تم تسجيل مساحة مشتركة للمحل؛ لا يحتاج مشروع Supabase إضافياً.')})});
 el('filters').addEventListener('submit',e=>{e.preventDefault();run(async()=>{offset=0;await load()})});
 el('prev').addEventListener('click',()=>run(async()=>{offset=Math.max(0,offset-limit);await load()}));
 el('next').addEventListener('click',()=>run(async()=>{offset+=limit;await load()}));

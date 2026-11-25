@@ -61,3 +61,10 @@ test('shared store registration binds a verified owner ID and uses shared RPC',a
  const calls=[];const fetcher=async(u,o)=>{calls.push({u,o});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:id}};
  const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.registerShared({name:'Shop',slug:'shop-a',plan:'basic',owner:'king'}));assert.equal(await api.registerShared({name:'Shop',slug:'shop-a',plan:'basic',owner:id}),id);assert.match(calls.at(-1).u,/mt_admin_create_store$/);assert.equal(JSON.parse(calls.at(-1).o.body).p_owner,id);
 });
+
+test('shared shard directory uses bounded cursor pages and planning-only actions',async()=>{
+ const calls=[];const data={shards:[{code:'shared-001',state:'local',region:'eu-north-1',tenants:1}],placements:[{store_id:id,name:'Shop',slug:'shop-a',store_state:'provisioning',shard_code:'shared-001',generation:1,planned_destination:null}]};
+ const fetcher=async(u,o)=>{calls.push({u,o});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:u.includes('mt_admin_shard_overview')?data:u.includes('mt_admin_shard_register')?'future-001':id}};
+ const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await assert.rejects(api.shardDirectory());await api.signIn('a@example.invalid','pass');await assert.rejects(api.shardDirectory(null,101));assert.deepEqual(await api.shardDirectory(id,50),data);assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_after:id,p_limit:50});
+ assert.equal(await api.registerShard('future-001','test-region'),'future-001');await assert.rejects(api.planMove(id,'future-001','execute'));assert.equal(await api.planMove(id,'future-001','plan'),id);
+});

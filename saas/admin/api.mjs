@@ -42,6 +42,23 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    for(const row of r.rows)if(!uuid.test(row.id)||typeof row.name!=='string'||typeof row.slug!=='string'||!states.slice(1).includes(row.state)||typeof row.provisioned!=='boolean'||!(row.plan_code===null||plans.includes(row.plan_code))||!(row.subscription_state===null||['pending','trial','active','past_due','suspended','cancelled'].includes(row.subscription_state))||!(row.valid_until===null||(typeof row.valid_until==='string'&&Number.isFinite(Date.parse(row.valid_until)))))throw Error('Invalid store row');
    return r;
   },
+  async shardDirectory(after=null,limit=50){
+   if(!(after===null||typeof after==='string'&&uuid.test(after))||!Number.isInteger(limit)||limit<1||limit>100)throw Error('Invalid directory page');
+   const r=await rpc('mt_admin_shard_overview',{p_after:after,p_limit:limit});
+   const code=x=>typeof x==='string'&&/^[a-z][a-z0-9-]{2,39}$/.test(x);
+   if(!r||!Array.isArray(r.shards)||r.shards.length>100||!Array.isArray(r.placements)||r.placements.length>limit||r.shards.some(x=>!x||!code(x.code)||!['local','planned'].includes(x.state)||typeof x.region!=='string'||!Number.isSafeInteger(x.tenants)||x.tenants<0)||r.placements.some(x=>!x||typeof x.store_id!=='string'||!uuid.test(x.store_id)||typeof x.name!=='string'||typeof x.slug!=='string'||!states.slice(1).includes(x.store_state)||!code(x.shard_code)||!Number.isSafeInteger(x.generation)||x.generation<1||!(x.planned_destination===null||code(x.planned_destination))))throw Error('Invalid shard directory');
+   return r;
+  },
+  async registerShard(code,region){
+   if(typeof code!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(code)||typeof region!=='string'||!region.trim()||region.trim().length>80)throw Error('Invalid planned group');
+   const result=await rpc('mt_admin_shard_register',{p_code:code,p_region:region.trim()});
+   if(result!==code)throw Error('Unconfirmed planned group');return result;
+  },
+  async planMove(store,destination,action){
+   if(typeof store!=='string'||!uuid.test(store)||typeof destination!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(destination)||!['plan','cancel'].includes(action))throw Error('Invalid move plan');
+   const result=await rpc('mt_admin_move_plan',{p_store:store,p_destination:destination,p_action:action});
+   if(!(action==='cancel'&&result===null)&&(typeof result!=='string'||!uuid.test(result)))throw Error('Unconfirmed move plan');return result;
+  },
   async registerShared({name,slug,plan,owner}){
    if(typeof name!=='string'||name.trim().length<1||name.trim().length>160||typeof slug!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(slug)||!plans.includes(plan)||typeof owner!=='string'||!uuid.test(owner))throw Error('Invalid shared store details');
    const id=await rpc('mt_admin_create_store',{p_name:name.trim(),p_slug:slug,p_plan:plan,p_owner:owner});
