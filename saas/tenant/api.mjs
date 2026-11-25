@@ -173,6 +173,13 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=await rpc('mt_license_status',{p_store:store},store);
    if(!r||!['pending','trial','active','past_due','suspended','cancelled'].includes(r.state)||!['basic','business','pro'].includes(r.plan)||typeof r.write_entitlement!=='boolean'||typeof r.live_billing_enabled!=='boolean')throw Error('Invalid license status');return r;
   },
+  async trialBalance(store,from,to){
+   if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
+   const r=await rpc('mt_trial_balance',{p_store:store,p_from:from,p_to:to},store),accounts=['cash','accounts_receivable','accounts_payable','inventory','sales_revenue','sales_returns','repair_revenue','cost_of_goods_services','expense_unclassified','funding_unclassified','stock_intake_unclassified','stock_adjustment_expense','fx_clearing'];
+   if(!r||r.mode!=='operational_unclassified'||!int(r.unknown_cost_events,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>39||r.rows.some(x=>!x||!currency(x.currency)||!accounts.includes(x.account)||!['opening','debit','credit','closing'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||BigInt(x.debit)<0n||BigInt(x.credit)<0n||BigInt(x.opening)+BigInt(x.debit)-BigInt(x.credit)!==BigInt(x.closing))||new Set(r.rows.map(x=>x.currency+':'+x.account)).size!==r.rows.length)throw Error('Invalid ledger');
+   for(const c of ['USD','EUR','SYP']){const rows=r.rows.filter(x=>x.currency===c);if(rows.reduce((n,x)=>n+BigInt(x.opening),0n)!==0n||rows.reduce((n,x)=>n+BigInt(x.debit)-BigInt(x.credit),0n)!==0n)throw Error('Unbalanced ledger')}
+   return r;
+  },
   async cashReconciliation(store){
    const r=await rpc('mt_cash_reconciliation',{p_store:store},store),integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
    if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['recorded','computed','difference'].every(k=>integer(x[k]))||typeof x.balanced!=='boolean'||BigInt(x.recorded)-BigInt(x.computed)!==BigInt(x.difference)||x.balanced!==(BigInt(x.difference)===0n)))throw Error('Invalid reconciliation');return r;
