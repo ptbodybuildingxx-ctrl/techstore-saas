@@ -119,7 +119,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!validReturn(x,store)))throw Error('Invalid returns');return r;
   },
   async operationsList(store,kind,after=null,limit=50){
-   if(!['suppliers','purchases','purchase_batches','repairs','staff','repair_invoices','warranty_claims','fx_rates','orders'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   if(!['suppliers','purchases','purchase_batches','supplier_returns','repairs','staff','repair_invoices','warranty_claims','fx_rates','orders'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc(kind==='staff'?'mt_staff_list':'mt_list_'+kind,{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
   },
@@ -135,6 +135,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
      const total=x.lines.reduce((n,l)=>n+BigInt(l.units)*BigInt(l.unit_cost_minor),0n);if(total>100000000000000n||!int(x.paid,0,Number(total)))throw Error('Invalid invoice total');
      name='mt_purchase_batch';params={p_supplier:x.supplier,p_currency:x.currency,p_reference:x.reference,p_lines:x.lines.map(({product_id,units,unit_cost_minor})=>({product_id,units,unit_cost_minor})),p_paid:x.paid};break;
     }
+    case 'supplierReturn':if(!isId(x.purchase)||!int(x.units,1,1000000)||!validText(x.reason,300)||typeof x.confirmRefund!=='boolean')throw Error('Invalid supplier return');name='mt_supplier_return';params={p_purchase:x.purchase,p_units:x.units,p_reason:x.reason,p_confirm_refund:x.confirmRefund};break;
     case 'supplierPayment':if(!isId(x.purchase)||!currency(x.currency)||!int(x.amount,1,100000000000000))throw Error('Invalid payment');name='mt_pay_supplier';params={p_purchase:x.purchase,p_currency:x.currency,p_amount:x.amount};break;
     case 'repair':if(!isId(x.customer)||!validText(x.device,160)||!validText(x.fault,300)||!(x.imei===null||typeof x.imei==='string'&&/^\d{15}$/.test(x.imei)))throw Error('Invalid repair');name='mt_add_repair';params={p_customer:x.customer,p_device:x.device,p_imei:x.imei,p_fault:x.fault};break;
     case 'transition':if(!isId(x.repair)||!['diagnosing','repairing','ready','delivered','cancelled'].includes(x.next)||!validText(x.note,300))throw Error('Invalid transition');name='mt_repair_transition';params={p_repair:x.repair,p_next:x.next,p_note:x.note};break;
@@ -179,12 +180,12 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   async cashReport(store,from,to){
    if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
    const r=await rpc('mt_cash_report',{p_store:store,p_from:from,p_to:to},store);
-   if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['incoming','outgoing','net','collections','refunds','supplier_payments','expenses'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||BigInt(x.incoming)-BigInt(x.outgoing)!==BigInt(x.net)))throw Error('Invalid report');return r;
+   if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['incoming','outgoing','net','collections','refunds','supplier_payments','expenses'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||(x.supplier_refunds!==undefined&&(typeof x.supplier_refunds!=='string'||!/^\d+$/.test(x.supplier_refunds)))||BigInt(x.incoming)-BigInt(x.outgoing)!==BigInt(x.net)))throw Error('Invalid report');return r;
   },
   async cashOverview(store,before=null,beforeId=null,limit=50){
    if(!int(limit,1,100)||(before===null)!==(beforeId===null)||(before!==null&&(typeof before!=='string'||!Number.isFinite(Date.parse(before))||!isId(beforeId))))throw Error('Invalid cash page');
    const r=await rpc('mt_cash_overview',{p_store:store,p_before:before,p_before_id:beforeId,p_limit:limit},store);
-   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange','debt_payment','return_refund','supplier_payment','repair_receipt','mixed_receipt'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
+   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange','debt_payment','return_refund','supplier_payment','repair_receipt','mixed_receipt','supplier_refund'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
    return r;
   },
   async recordCash(store,attempt){

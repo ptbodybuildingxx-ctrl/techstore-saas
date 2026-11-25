@@ -35,3 +35,6 @@ Optional versioned site object; legacy design snapshots remain valid. Admin can 
 
 ## Purchase batches (023)
 Atomic multi-line supplier receipts group existing FIFO purchases into one invoice. Initial cash payments allocate deterministically by product UUID; remaining payments use individual purchase lines. No supplier return or tax adjustment. Admin now reads shared entitlement status, not legacy dedicated-project provisioning. Database migration applied; rollback fixture was blocked by tool and remains an open verification gate.
+
+## Supplier returns (025)
+Original intake linkage for each purchase. A return consumes only remaining units of that purchase's layer, reduces outstanding payable first and records cash received for excess only after explicit confirmation; no supplier credit-note or delayed refund receivable. Original purchase/payment values remain unchanged. Batch summaries show net invoice and paid totals. The migration rejects historic unlinked purchases rather than guessing. Rollback tests cover duplicate requests, excess payment, unconfirmed cash refund, specific lot costing, cash reconciliation and tenant isolation. No actual money transferred.
