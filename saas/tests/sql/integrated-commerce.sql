@@ -1,0 +1,39 @@
+-- Synthetic end-to-end SQL fixture. All changes roll back; no real customer records.
+do $t$
+declare op uuid:=gen_random_uuid();a uuid:=gen_random_uuid();buyer uuid:=gen_random_uuid();so uuid:=gen_random_uuid();sa uuid:=gen_random_uuid();sb uuid:=gen_random_uuid();t uuid;other uuid;pr uuid;part uuid;sup uuid;batch uuid;buy uuid;cust uuid;rep uuid;inv uuid;claim uuid;ord uuid;sale uuid;tag text:=substr(replace(gen_random_uuid()::text,'-',''),1,12);v jsonb;today date:=(now() at time zone 'UTC')::date;
+begin begin
+insert into auth.users(id,email,email_confirmed_at) values(op,tag||'-op@example.invalid',now()),(a,tag||'-a@example.invalid',now()),(buyer,tag||'-buyer@example.invalid',now());
+insert into auth.sessions(id,user_id,aal) values(so,op,'aal1'),(sa,a,'aal1'),(sb,buyer,'aal1');
+insert into saas_private.operators(user_id,mfa_required) values(op,false);
+set local role authenticated;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',op,'session_id',so,'aal','aal1','role','authenticated')::text,true);
+t:=public.mt_admin_create_store('Integrated fixture','a-'||tag,'basic',a);other:=public.mt_admin_create_store('Other fixture','b-'||tag,'basic',buyer);perform public.saas_admin_manage(t,'trial',14);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_configure_sales(t,'USD');perform public.mt_configure_sales(t,'EUR');
+perform public.mt_record_cash(t,gen_random_uuid(),'funding','USD',30000,'Opening');
+pr:=public.mt_add_product(t,'DEVICE','Device');part:=public.mt_add_product(t,'PART','Part');sup:=public.mt_add_supplier(t,gen_random_uuid(),'Supplier','');
+batch:=public.mt_purchase_batch(t,gen_random_uuid(),sup,'USD','Invoice fixture',jsonb_build_array(jsonb_build_object('product_id',pr,'units',5,'unit_cost_minor',2000),jsonb_build_object('product_id',part,'units',4,'unit_cost_minor',1000)),14000);
+if (select paid_minor from public.mt_list_purchase_batches(t) where id=batch) is distinct from 14000::bigint then raise exception 'Purchase allocation';end if;
+select id into strict buy from public.mt_purchases where store_id=t and batch_id=batch and product_id=pr;
+perform public.mt_set_currency_price(t,pr,'USD',5000);perform public.mt_set_currency_price(t,part,'USD',3000);
+perform public.mt_storefront_enable(t,true);perform public.mt_storefront_list_product(t,pr,true);perform public.mt_delivery_enable(t,true);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+ord:=public.mt_delivery_order('a-'||tag,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',pr,'units',2,'expected_price_minor',5000)),'Fixture address','000000000');
+if exists(select 1 from public.mt_list_purchase_batches(t)) then raise exception 'Purchase leaked';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_dispatch_delivery(t,ord,'FIXTURE');sale:=public.mt_finish_order(t,ord,'fulfill');
+if (select sum(line_total_minor) from public.mt_sale_receipt_lines(t,sale)) is distinct from 10000::numeric then raise exception 'Receipt mismatch';end if;
+perform public.mt_record_return(t,gen_random_uuid(),sale,pr,1,'Customer return');
+perform public.mt_supplier_return(t,gen_random_uuid(),buy,1,'Supplier return',true);
+cust:=public.mt_add_customer(t,gen_random_uuid(),'Customer','');rep:=public.mt_add_repair(t,gen_random_uuid(),cust,'Device',null,'Fault');
+perform public.mt_repair_transition(t,gen_random_uuid(),rep,'diagnosing','A');perform public.mt_repair_transition(t,gen_random_uuid(),rep,'repairing','B');perform public.mt_repair_transition(t,gen_random_uuid(),rep,'ready','C');
+inv:=public.mt_repair_checkout(t,gen_random_uuid(),rep,'USD',2000,jsonb_build_array(jsonb_build_object('product_id',part,'units',1,'expected_price_minor',3000)),90);
+claim:=public.mt_warranty_open(t,gen_random_uuid(),inv,'Warranty');perform public.mt_warranty_transition(t,gen_random_uuid(),claim,'accepted','Accepted');perform public.mt_warranty_part(t,gen_random_uuid(),claim,part,1,'Replacement');perform public.mt_warranty_transition(t,gen_random_uuid(),claim,'resolved','Resolved');perform public.mt_repair_refund(t,gen_random_uuid(),inv,1000,'Refund',true);
+if (select quantity from public.mt_products where id=pr) is distinct from 3::bigint or (select quantity from public.mt_products where id=part) is distinct from 2::bigint then raise exception 'Stock mismatch';end if;
+v:=public.mt_cash_reconciliation(t);if not exists(select 1 from jsonb_array_elements(v)x where x->>'currency'='USD' and x->>'recorded'='27000' and x->>'balanced'='true') then raise exception 'Cash mismatch %',v;end if;
+v:=public.mt_operating_report(t,today,today);if not exists(select 1 from jsonb_array_elements(v)x where x->>'currency'='USD' and x->>'net_revenue'='9000' and x->>'cost'='4000' and x->>'gross_margin'='5000') then raise exception 'Profit mismatch %',v;end if;
+v:=public.mt_trial_balance(t,today,today);if v->>'unknown_cost_events' is distinct from '0' or exists(select 1 from jsonb_array_elements(v->'rows')x group by x->>'currency' having sum((x->>'closing')::numeric)<>0) then raise exception 'Trial balance mismatch';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if exists(select 1 from public.mt_sale_receipt_lines(t,sale)) or exists(select 1 from public.mt_list_repair_refunds(t)) then raise exception 'Tenant leak';end if;
+reset role;raise exception using errcode='ZX001',message='rollback';
+exception when sqlstate 'ZX001' then raise notice 'Integrated commerce fixture passed; rolled back';end;end $t$;
