@@ -9,6 +9,7 @@ export function saleAttempt(store,lines,c,requestId=crypto.randomUUID()){
  if(new Set(normalized.map(x=>x.product_id)).size!==normalized.length)throw Error('Duplicate product');
  return Object.freeze({store:store.toLowerCase(),requestId:requestId.toLowerCase(),currency:c,lines:Object.freeze(normalized)});
 }
+function validReturn(x,store){return !!x&&x.store_id===store&&isId(x.id)&&isId(x.request_id)&&isId(x.sale_id)&&isId(x.product_id)&&currency(x.currency)&&int(x.units,1,10000)&&int(x.unit_price_minor,1,100000000)&&x.total_minor===x.units*x.unit_price_minor&&int(x.debt_reduction_minor,0,x.total_minor)&&x.refund_minor===x.total_minor-x.debt_reduction_minor&&typeof x.reason==='string'}
 export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now}){
  if(url!==origin||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey))throw Error('Invalid shared project configuration');
  let session=null,allowed=new Set(),epoch=0;
@@ -83,16 +84,31 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   async debtSchedule(store,debt){
    if(!isId(debt))throw Error('Invalid debt');
    const r=await rpc('mt_debt_schedule',{p_store:store,p_debt:debt},store);
-   if(!Array.isArray(r)||r.length>60||r.some(x=>!x||x.store_id!==store||x.debt_id!==debt||!int(x.number,1,60)||typeof x.due_date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.due_date)||!int(x.amount_minor,1,100000000000000)||!int(x.paid_minor,0,x.amount_minor)))throw Error('Invalid installments');return r;
+   if(!Array.isArray(r)||r.length>60||r.some(x=>!x||x.store_id!==store||x.debt_id!==debt||!int(x.number,1,60)||typeof x.due_date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.due_date)||!int(x.amount_minor,1,100000000000000)||!int(x.paid_minor,0,x.amount_minor)||!int(x.waived_minor,0,x.amount_minor-x.paid_minor)))throw Error('Invalid installments');return r;
   },
   async payDebt(store,debt,requestId,c,amount){
    if(!isId(debt)||!isId(requestId)||!currency(c)||!int(amount,1,100000000000000))throw Error('Invalid payment');
    const r=await rpc('mt_pay_debt',{p_store:store,p_debt:debt,p_request:requestId,p_currency:c,p_amount:amount},store);if(!isId(r))throw Error('Payment not confirmed');return r;
   },
+  async returnableLines(store,sale){
+   if(!isId(sale))throw Error('Invalid sale');
+   const r=await rpc('mt_returnable_lines',{p_store:store,p_sale:sale},store);
+   if(!Array.isArray(r)||r.length>100||r.some(x=>!x||!isId(x.product_id)||typeof x.sku!=='string'||typeof x.product_name!=='string'||!int(x.units,1,10000)||!int(x.returned_units,0,x.units)||!int(x.unit_price_minor,1,100000000)||!currency(x.currency)))throw Error('Invalid sale lines');return r;
+  },
+  async recordReturn(store,x){
+   if(!x||!isId(x.requestId)||!isId(x.sale)||!isId(x.product)||!int(x.units,1,10000)||typeof x.reason!=='string'||!x.reason.trim()||x.reason.trim().length>300||!currency(x.currency)||!int(x.price,1,100000000))throw Error('Invalid return');
+   const r=await rpc('mt_record_return',{p_store:store,p_request:x.requestId,p_sale:x.sale,p_product:x.product,p_units:x.units,p_reason:x.reason.trim()},store);
+   if(!validReturn(r,store)||r.request_id!==x.requestId||r.sale_id!==x.sale||r.product_id!==x.product||r.units!==x.units||r.currency!==x.currency||r.unit_price_minor!==x.price||r.reason!==x.reason.trim())throw Error('Return not confirmed');return r;
+  },
+  async returns(store,after=null,limit=50){
+   if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   const r=await rpc('mt_list_returns',{p_store:store,p_after:after,p_limit:limit},store);
+   if(!Array.isArray(r)||r.length>limit||r.some(x=>!validReturn(x,store)))throw Error('Invalid returns');return r;
+  },
   async cashOverview(store,before=null,beforeId=null,limit=50){
    if(!int(limit,1,100)||(before===null)!==(beforeId===null)||(before!==null&&(typeof before!=='string'||!Number.isFinite(Date.parse(before))||!isId(beforeId))))throw Error('Invalid cash page');
    const r=await rpc('mt_cash_overview',{p_store:store,p_before:before,p_before_id:beforeId,p_limit:limit},store);
-   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange','debt_payment'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
+   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange','debt_payment','return_refund'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
    return r;
   },
   async recordCash(store,attempt){
