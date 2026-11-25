@@ -1,0 +1,242 @@
+{
+  "version": "6.3.8",
+  "sourceCommit": "aafd0928ecb8a1746dacdd2519f02ad525767c27",
+  "files": [
+    {
+      "path": "supabase/functions/techstore-ai/index.ts",
+      "gitBlob": "fa31f1569d304790f7f6cdab61a120cd9f930449"
+    },
+    {
+      "path": "supabase/functions/techstore-api/index.ts",
+      "gitBlob": "2e6a4eefa4a6424ace33ff35455c42fc14ac0da0"
+    },
+    {
+      "path": "supabase/functions/techstore-push/index.ts",
+      "gitBlob": "9493c36d777f4e5b6896b65d8be021422b540e8e"
+    },
+    {
+      "path": "supabase/migrations/20261124111621_techstore_secure_workspace.sql",
+      "gitBlob": "17906e499238a0d65d085ebadd3e5fcc9edd2321"
+    },
+    {
+      "path": "supabase/migrations/20261124111637_techstore_profile_email.sql",
+      "gitBlob": "5921150cfe644a0dce196ff0a7ceccd5329d3d06"
+    },
+    {
+      "path": "supabase/migrations/20261124111755_techstore_auth_profile_hardening.sql",
+      "gitBlob": "e79637d9d23eaa27815ff5a5c9c130a394676fe8"
+    },
+    {
+      "path": "supabase/migrations/20261124114740_techstore_personal_account_settings.sql",
+      "gitBlob": "9fc468332ad98986398e8c0e8b094176a8a18763"
+    },
+    {
+      "path": "supabase/migrations/20261124115818_techstore_pro_modules.sql",
+      "gitBlob": "d4bc51515d27d1db6cd32af1f8c69160c2a8893a"
+    },
+    {
+      "path": "supabase/migrations/20261124115844_techstore_pro_audit.sql",
+      "gitBlob": "d94f68357c42524f06c5b6d925a891cc8ff34900"
+    },
+    {
+      "path": "supabase/migrations/20261124120103_techstore_ai_limits.sql",
+      "gitBlob": "fed19453be848df424e3118374ada1b613090900"
+    },
+    {
+      "path": "supabase/migrations/20261124121234_techstore_live_session_enforcement.sql",
+      "gitBlob": "f7ec534eb86169d303d1d53749465f8bb885b51e"
+    },
+    {
+      "path": "supabase/migrations/20261124121313_techstore_guest_request_limits.sql",
+      "gitBlob": "03a327e2ec4aa3cf4c8a862d81d5a74596f3e1e0"
+    },
+    {
+      "path": "supabase/migrations/20261124121425_techstore_review_moderation_sessions.sql",
+      "gitBlob": "e0eb60ae531646802382693342179136accb31bb"
+    },
+    {
+      "path": "supabase/migrations/20261124123310_techstore_branch_stock_journal.sql",
+      "gitBlob": "49812ebb2dc90764c2fa05a5315f592aa39b73ee"
+    },
+    {
+      "path": "supabase/migrations/20261124123344_techstore_repair_evidence.sql",
+      "gitBlob": "59e29a6e9315dea46b202f54ff28f2cb1150da32"
+    },
+    {
+      "path": "supabase/migrations/20261124123414_techstore_in_app_product_alerts.sql",
+      "gitBlob": "e15249c3eb8f818346074cfdaa37e68ba46f8620"
+    },
+    {
+      "path": "supabase/migrations/20261124123629_techstore_guest_request_queue.sql",
+      "gitBlob": "c36e41027d9565ab75d885009cd7875f008a3726"
+    },
+    {
+      "path": "supabase/migrations/20261124123810_techstore_member_checkout_loyalty.sql",
+      "gitBlob": "f02bb0dc5f6c1f1900b0f16730d7dd89174c5ff7"
+    },
+    {
+      "path": "supabase/migrations/20261124124007_techstore_repair_request_safety.sql",
+      "gitBlob": "d8d7ac8cfe21efd5f8444bdb511374ac035290f2"
+    },
+    {
+      "path": "supabase/migrations/20261124125714_techstore_push_outbox.sql",
+      "gitBlob": "5bc29b09b265c03e02c7568b13875bdb1e53c4df"
+    },
+    {
+      "path": "supabase/migrations/20261124125733_techstore_push_delivery_controls.sql",
+      "gitBlob": "14318ea24d7180b2f45cf7f54a4f69ea55e6be2e"
+    },
+    {
+      "path": "supabase/migrations/20261124125840_techstore_offline_transactions.sql",
+      "gitBlob": "d7c3763ec63f666e1b31b6ece3fe5b372ca57858"
+    },
+    {
+      "path": "supabase/migrations/20261124132024_techstore_custom_invoices.sql",
+      "gitBlob": "7633b68a114d988ac969224e111b8b2e0f2dcde0"
+    },
+    {
+      "path": "supabase/migrations/20261124133533_techstore_business_invoice_ledger.sql",
+      "gitBlob": "20df26f6416301f2b29510d494a0905165dec887"
+    },
+    {
+      "path": "supabase/migrations/20261124133613_techstore_business_role_scope.sql",
+      "gitBlob": "41acee6445cd08590c417fd0bc6d55704e54cffd"
+    },
+    {
+      "path": "supabase/migrations/20261124133850_techstore_repair_workflow_history.sql",
+      "gitBlob": "ded06bd6a1109e059770d3e95be48dc510134648"
+    },
+    {
+      "path": "supabase/migrations/20261124133902_techstore_repair_workflow_null_guard.sql",
+      "gitBlob": "1a8e82912a6d0cc33aa5cd1e0e2813a767f0829e"
+    },
+    {
+      "path": "supabase/migrations/20261124134025_techstore_business_cost_summary.sql",
+      "gitBlob": "e848ba0962841b47eef06c747471119a8df5a901"
+    },
+    {
+      "path": "supabase/migrations/20261124134724_techstore_invoice_installments.sql",
+      "gitBlob": "8822fdf6817074696b5674ffe0fe64dd2008defb"
+    },
+    {
+      "path": "supabase/migrations/20261124134759_techstore_full_invoice_refunds.sql",
+      "gitBlob": "26d709125596553656ec5999da555688e4ffa4e3"
+    },
+    {
+      "path": "supabase/migrations/20261124134831_techstore_refunded_warranty_status.sql",
+      "gitBlob": "52736ec0965dd4a46f380dc4fff2f52a09cd68cb"
+    },
+    {
+      "path": "supabase/migrations/20261124140456_techstore_staff_management.sql",
+      "gitBlob": "5598ad04900ae60fce604e8a9815d0df843a163b"
+    },
+    {
+      "path": "supabase/migrations/20261124140630_techstore_identity_product_storage.sql",
+      "gitBlob": "bde9ac1bae87fbddc0a814d8de0fa2f5afa0f5af"
+    },
+    {
+      "path": "supabase/migrations/20261124140701_techstore_supplier_statements.sql",
+      "gitBlob": "5595d2afaf9b119dfd6a1b4ad8d718d8e19d4999"
+    },
+    {
+      "path": "supabase/migrations/20261124140735_techstore_supplier_alias_fix.sql",
+      "gitBlob": "97ee79b24bacb2ea703d7e4b7d6a7e3db215dc2d"
+    },
+    {
+      "path": "supabase/migrations/20261124140757_techstore_public_identity_session_guard.sql",
+      "gitBlob": "2067318b81eb394d27a9f01ced45604612762983"
+    },
+    {
+      "path": "supabase/migrations/20261124141530_techstore_partial_returns_installment_cancellation.sql",
+      "gitBlob": "021fb015a99725edfe90938c469cfcfc3c27dff9"
+    },
+    {
+      "path": "supabase/migrations/20261124141545_techstore_adjustment_public_cost_privacy.sql",
+      "gitBlob": "938b6f3bca8377583bd2dd3cc557082c30e5fae3"
+    },
+    {
+      "path": "supabase/migrations/20261124143455_techstore_integrated_existing_workflows.sql",
+      "gitBlob": "775ad5dffb076d0b195c82dffe5f384e8108b307"
+    },
+    {
+      "path": "supabase/migrations/20261124143710_techstore_delivered_orders_invoice.sql",
+      "gitBlob": "ed4a46db3dc53a383665c9edbdadc7d6428e02cd"
+    },
+    {
+      "path": "supabase/migrations/20261124143741_techstore_order_invoice_service_grants.sql",
+      "gitBlob": "93126c4a87fdfc4fc239478459eac5c1f389224c"
+    },
+    {
+      "path": "supabase/migrations/20261124144352_techstore_operation_confirmation_repair_guard.sql",
+      "gitBlob": "aa8d42223d7f4235114147e3cf1fb9bde302ffd0"
+    },
+    {
+      "path": "supabase/migrations/20261124150818_techstore_integrated_branch_returns.sql",
+      "gitBlob": "0eda3a6ce2a2aefa16c1d3bd09cbc725e8f138ff"
+    },
+    {
+      "path": "supabase/migrations/20261124150849_techstore_legacy_write_permissions.sql",
+      "gitBlob": "d98be7198fc56a274bf613b3dfdde6e4e7168d20"
+    },
+    {
+      "path": "supabase/migrations/20261124150904_techstore_return_loyalty_reconciliation.sql",
+      "gitBlob": "c552e1b6123aa37fe91998b9b8198592ba103084"
+    },
+    {
+      "path": "supabase/migrations/20261124151058_techstore_guest_review_permission.sql",
+      "gitBlob": "90911b131152c608eb3b726c8e384d6ba4025039"
+    },
+    {
+      "path": "supabase/migrations/20261124151748_techstore_optional_owner_mfa_policy.sql",
+      "gitBlob": "6ec6d5159d392283e0a4ec3d76a7dcd21ae4542c"
+    },
+    {
+      "path": "supabase/migrations/20261124151759_techstore_mfa_missing_claim_guard.sql",
+      "gitBlob": "ad800624995bb67fce01e9bdb33cb29a86801c83"
+    },
+    {
+      "path": "supabase/migrations/20261124160005_techstore_branch_history_reconciliation.sql",
+      "gitBlob": "9ce617fc7d8c68bafd588457794c2d524facb552"
+    },
+    {
+      "path": "supabase/migrations/20261124160109_techstore_direct_branch_loyalty.sql",
+      "gitBlob": "78cc9a6ccf03c1b918699c4f88bae1fe0f649e11"
+    },
+    {
+      "path": "supabase/migrations/20261124163452_techstore_workspace_read_permissions.sql",
+      "gitBlob": "295f3956d7ea97279163e5e162eded4f492b8265"
+    },
+    {
+      "path": "supabase/migrations/20261124203847_techstore_integrated_legacy_finance.sql",
+      "gitBlob": "f8cca5be26e528f7a165faa172824f2cf9869a9b"
+    },
+    {
+      "path": "supabase/migrations/20261124203945_techstore_legacy_finance_reconciliation.sql",
+      "gitBlob": "1559c1689e02289a3d21f8a6bae55648e6210856"
+    },
+    {
+      "path": "supabase/migrations/20261124204113_techstore_installment_and_pos_loyalty.sql",
+      "gitBlob": "087a14b50ce04d7a11de80a3f33913e19196a277"
+    },
+    {
+      "path": "supabase/migrations/20261124204134_techstore_branch_loyalty_trigger_compatibility.sql",
+      "gitBlob": "cb1083758cd479b00e56f80f0ed0994c53010cef"
+    },
+    {
+      "path": "supabase/migrations/20261124204323_techstore_specialized_read_permissions.sql",
+      "gitBlob": "4cd5b8edf76ba629135bcf744b3db2d1933e95fd"
+    },
+    {
+      "path": "supabase/migrations/20261124204502_techstore_stock_history_reconciliation.sql",
+      "gitBlob": "cde2ce11066eba3cc41e3d145ccd0904106270df"
+    },
+    {
+      "path": "supabase/migrations/20261124205437_techstore_index_and_grant_policy_maintenance.sql",
+      "gitBlob": "46ee56c10f0073934bd445a6e8b06ec6eebdc12a"
+    },
+    {
+      "path": "supabase/migrations/20261124205516_techstore_legacy_finance_confirmation.sql",
+      "gitBlob": "c2b772c2230c682025c443e4541bfe25dd2e0ca9"
+    }
+  ]
+}
