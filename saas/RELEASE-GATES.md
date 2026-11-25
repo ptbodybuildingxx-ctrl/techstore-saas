@@ -18,3 +18,6 @@ DEVELOPMENT — no commercial authorization.
 - [ ] Verify signup/recovery email delivery, OTP templates, CAPTCHA/rate limits and origin. Client code gated off by default.
 - [ ] High-resolution Storage, freeform editor, verified custom-domain routing, coupon redemption/loyalty, jurisdiction-specific tax and consolidated statutory financial reporting remain incomplete.
 - [ ] Browser print/receipt tests, actual auth, actual recovery and concurrent workload remain unverified.
+
+## Closure-stage evidence
+Integrated rollback SQL fixture: saas/tests/sql/integrated-commerce.sql. Management statements, coupon and media reservation migrations applied to shared development database. Real browser, printer, email delivery, actual Storage object upload/download, public high-resolution serving, private domain DNS/TLS/routing, country-specific tax and statutory accounting remain gates. No commercial authorization or paid service activation.
