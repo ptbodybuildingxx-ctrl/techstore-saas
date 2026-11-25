@@ -3,7 +3,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root=fileURLToPath(new URL('../..',import.meta.url));
 const out=join(root,'dist-pilot');
-const allow=['saas/admin/index.html','saas/admin/admin.css','saas/admin/admin.mjs','saas/admin/api.mjs','saas/admin/config.mjs','saas/tenant/index.html','saas/tenant/tenant.mjs','saas/tenant/api.mjs','saas/tenant/operations.mjs','saas/storefront/index.html','saas/storefront/api.mjs','saas/storefront/storefront.mjs','saas/design/theme.mjs'];
+const allow=['saas/admin/index.html','saas/admin/admin.css','saas/admin/admin.mjs','saas/admin/api.mjs','saas/admin/config.mjs','saas/tenant/index.html','saas/tenant/tenant.mjs','saas/tenant/api.mjs','saas/tenant/operations.mjs','saas/storefront/index.html','saas/storefront/api.mjs','saas/storefront/storefront.mjs','saas/design/theme.mjs','saas/design/site.mjs'];
 const allowedHost='https://mezsyzdieqmqulddcrtg.supabase.co';
 const config=await readFile(join(root,'saas/admin/config.mjs'),'utf8');
 if(!config.includes(allowedHost)||!/publishableKey:"sb_publishable_[A-Za-z0-9_-]{20,200}"/.test(config)||/sb_secret_|service_role\s*[:=]/i.test(config))throw Error('Unexpected pilot config');
