@@ -117,10 +117,36 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=await rpc('mt_list_returns',{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!validReturn(x,store)))throw Error('Invalid returns');return r;
   },
+  async operationsList(store,kind,after=null,limit=50){
+   if(!['suppliers','purchases','repairs','staff'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   const r=await rpc(kind==='staff'?'mt_staff_list':'mt_list_'+kind,{p_store:store,p_after:after,p_limit:limit},store);
+   if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
+  },
+  async operation(store,x){
+   if(!x||!isId(x.requestId))throw Error('Invalid operation');
+   const req={p_store:store,p_request:x.requestId}, validText=(v,max)=>typeof v==='string'&&v.trim().length>0&&v.trim().length<=max;
+   let name,params;
+   switch(x.kind){
+    case 'supplier':if(!validText(x.name,160)||typeof x.contact!=='string'||x.contact.length>160)throw Error('Invalid supplier');name='mt_add_supplier';params={p_name:x.name,p_contact:x.contact};break;
+    case 'purchase':if(!isId(x.supplier)||!isId(x.product)||!currency(x.currency)||!int(x.units,1,1000000)||!int(x.cost,1,100000000)||!int(x.paid,0,x.units*x.cost)||!validText(x.note,300))throw Error('Invalid purchase');name='mt_purchase';params={p_supplier:x.supplier,p_product:x.product,p_currency:x.currency,p_units:x.units,p_cost:x.cost,p_paid:x.paid,p_note:x.note};break;
+    case 'supplierPayment':if(!isId(x.purchase)||!currency(x.currency)||!int(x.amount,1,100000000000000))throw Error('Invalid payment');name='mt_pay_supplier';params={p_purchase:x.purchase,p_currency:x.currency,p_amount:x.amount};break;
+    case 'repair':if(!isId(x.customer)||!validText(x.device,160)||!validText(x.fault,300)||!(x.imei===null||typeof x.imei==='string'&&/^\d{15}$/.test(x.imei)))throw Error('Invalid repair');name='mt_add_repair';params={p_customer:x.customer,p_device:x.device,p_imei:x.imei,p_fault:x.fault};break;
+    case 'transition':if(!isId(x.repair)||!['diagnosing','repairing','ready','delivered','cancelled'].includes(x.next)||!validText(x.note,300))throw Error('Invalid transition');name='mt_repair_transition';params={p_repair:x.repair,p_next:x.next,p_note:x.note};break;
+    case 'staff':if(!isId(x.user)||!['stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean')throw Error('Invalid staff');name='mt_staff_set';params={p_user:x.user,p_role:x.role,p_active:x.active};break;
+    default:throw Error('Invalid operation');
+   }
+   const r=await rpc(name,{...req,...params},store);
+   if(x.kind==='transition'?r!==x.next:!isId(r))throw Error('Operation not confirmed');return r;
+  },
+  async cashReport(store,from,to){
+   if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
+   const r=await rpc('mt_cash_report',{p_store:store,p_from:from,p_to:to},store);
+   if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['incoming','outgoing','net','collections','refunds','supplier_payments','expenses'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||BigInt(x.incoming)-BigInt(x.outgoing)!==BigInt(x.net)))throw Error('Invalid report');return r;
+  },
   async cashOverview(store,before=null,beforeId=null,limit=50){
    if(!int(limit,1,100)||(before===null)!==(beforeId===null)||(before!==null&&(typeof before!=='string'||!Number.isFinite(Date.parse(before))||!isId(beforeId))))throw Error('Invalid cash page');
    const r=await rpc('mt_cash_overview',{p_store:store,p_before:before,p_before_id:beforeId,p_limit:limit},store);
-   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange','debt_payment','return_refund'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
+   if(!r||!Array.isArray(r.balances)||r.balances.length>3||new Set(r.balances.map(x=>x?.currency)).size!==r.balances.length||r.balances.some(x=>!x||!currency(x.currency)||!int(x.balance_minor,0,Number.MAX_SAFE_INTEGER))||!Array.isArray(r.movements)||r.movements.length>limit||r.movements.some(x=>!x||!isId(x.id)||!['sale','funding','expense','exchange','debt_payment','return_refund','supplier_payment'].includes(x.kind)||!currency(x.currency)||!int(x.amount_minor,1,100000000000000)||typeof x.note!=='string'||typeof x.created_at!=='string'||!Number.isFinite(Date.parse(x.created_at))||(x.kind==='sale'?(!isId(x.sale_id)||x.request_id!==null):(!isId(x.request_id)||x.sale_id!==null))||(x.kind==='exchange'?(!currency(x.target_currency)||x.target_currency===x.currency||!int(x.target_amount_minor,1,100000000000000)):(x.target_currency!==null||x.target_amount_minor!==null))))throw Error('Invalid cash overview');
    return r;
   },
   async recordCash(store,attempt){

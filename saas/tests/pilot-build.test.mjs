@@ -6,7 +6,7 @@ import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 const root=fileURLToPath(new URL('../..',import.meta.url));
-const assets=["saas/admin/index.html","saas/admin/admin.css","saas/admin/admin.mjs","saas/admin/api.mjs","saas/admin/config.mjs","saas/tenant/index.html","saas/tenant/tenant.mjs","saas/tenant/api.mjs"];
+const assets=["saas/admin/index.html","saas/admin/admin.css","saas/admin/admin.mjs","saas/admin/api.mjs","saas/admin/config.mjs","saas/tenant/index.html","saas/tenant/tenant.mjs","saas/tenant/api.mjs","saas/tenant/operations.mjs"];
 test('pilot publish build excludes legacy application, SQL and non-allowlisted assets',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'ts-pilot-'));
  try{
