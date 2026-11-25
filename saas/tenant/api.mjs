@@ -152,6 +152,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(x.kind==='mixed'){const total=x.lines.reduce((v,l)=>v+l.units*l.expected_price_minor,0);if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.request_id!==x.requestId||r.currency!==x.currency||r.total_minor!==total)throw Error('Sale not confirmed');return r}
    if(['transition','warrantyTransition'].includes(x.kind)?r!==x.next:!isId(r))throw Error('Operation not confirmed');return r;
   },
+  async receiptLines(store,sale,total){if(!isId(sale)||!int(total,1,100000000000000))throw Error('Invalid receipt');const r=await rpc('mt_sale_receipt_lines',{p_store:store,p_sale:sale},store);if(!Array.isArray(r)||r.length<1||r.length>100||r.some(x=>x.store_id!==store||x.sale_id!==sale||!isId(x.product_id)||typeof x.product_name!=='string'||!int(x.units,1,10000)||!int(x.unit_price_minor,1,100000000)||x.line_total_minor!==x.units*x.unit_price_minor)||r.reduce((n,x)=>n+x.line_total_minor,0)!==total)throw Error('Receipt not confirmed');return r},
   async design(store){return designResponse(await rpc('mt_design_read',{p_store:store,p_editor:false},store))},
   async storefrontStatus(store,after=null,limit=50){
    if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');const r=await rpc('mt_storefront_status',{p_store:store,p_after:after,p_limit:limit},store);
