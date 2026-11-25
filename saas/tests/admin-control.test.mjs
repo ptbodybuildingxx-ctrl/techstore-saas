@@ -56,3 +56,8 @@ test('billing uses sandbox-only RPC and validates event identity',async()=>{
  assert.equal(await api.billingDraft(id,'2026-11-01'),id);assert.equal(await api.billingSimulate(id,'paid',id),id);assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_invoice:id,p_action:'paid',p_request:id});
 });
 test('reject live billing payloads in sandbox console',async()=>{const fetcher=async(u)=>({ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:{mode:'live',month:'2026-11-01',stores:[],invoices:[]}});const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.billing())});
+
+test('shared store registration binds a verified owner ID and uses shared RPC',async()=>{
+ const calls=[];const fetcher=async(u,o)=>{calls.push({u,o});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:id}};
+ const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.registerShared({name:'Shop',slug:'shop-a',plan:'basic',owner:'king'}));assert.equal(await api.registerShared({name:'Shop',slug:'shop-a',plan:'basic',owner:id}),id);assert.match(calls.at(-1).u,/mt_admin_create_store$/);assert.equal(JSON.parse(calls.at(-1).o.body).p_owner,id);
+});

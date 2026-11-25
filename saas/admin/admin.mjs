@@ -25,16 +25,11 @@ async function load(){
   for(const v of [s.name,s.slug,labels[s.state],labels[s.plan_code]||'—',labels[s.subscription_state]||'—',s.valid_until?new Date(s.valid_until).toISOString().slice(0,10):'—'])tr.append(node('td',v));
   const status=statuses.get(s.id);
   const licenseLabels={unprovisioned_or_blocked:'غير مهيأ / محظور',expired:'منتهٍ',verification_required:'يتطلب التحقق'};
-  tr.append(node('td',status?.queue==='queued'?'طلب بانتظار التنفيذ':'لا يوجد طلب'),node('td',licenseLabels[status?.license]||'غير مؤكد'));
+  tr.append(node('td',status?.queue==='queued'?'طلب قديم':'لا يحتاج مشروعاً جديداً'),node('td',licenseLabels[status?.license]||'غير مؤكد'));
   const td=document.createElement('td');
   if(!s.provisioned){
    const choices=s.state==='provisioning'?[['trial','تجربة 14 يوماً',14],['suspend','إيقاف',null],['cancel','إغلاق',null]]:s.state==='suspended'?[['reopen','إعادة فتح',null],['cancel','إغلاق',null]]:s.state==='closed'?[['reopen','إعادة فتح',null]]:[];
-   if(s.state==='provisioning'&&status){
-    const queued=status.queue==='queued';
-    const btn=node('button',queued?'إلغاء طلب الإنشاء':'طلب إنشاء قاعدة');btn.type='button';
-    btn.addEventListener('click',()=>{if(confirm(queued?'إلغاء الطلب؟':'تسجيل طلب فقط، دون إنشاء مشروع أو تكاليف؟'))run(async()=>{await api.provisioning(s.id,queued?'cancel':'request');await load();setMessage(queued?'أُلغي الطلب.':'تم تسجيل الطلب؛ لم تُنشأ قاعدة بيانات.')})});
-    td.append(btn);
-   }
+   // Dedicated-project requests are deliberately disabled in the shared architecture UI.
    for(const [action,label,days] of choices){const btn=node('button',label);btn.type='button';btn.addEventListener('click',()=>{if(confirm(label+' — '+s.name+'؟'))run(async()=>{await api.manage(s.id,action,days);await load();setMessage('تم تحديث السجل الإداري.')})});td.append(btn)}
   }else td.textContent='يحتاج مسار إدارة إنتاج معتمد';
   tr.append(td);return tr
@@ -86,7 +81,7 @@ async function loadBilling(){
 el('billingForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);run(async()=>{if(!billingMonth)throw Error('Missing sandbox month');await api.billingDraft(String(f.get('store')),billingMonth);await loadBilling();setMessage('تم تسجيل مسودة تجريبية؛ لا توجد فاتورة مالية.')})});
 el('billingRefresh').addEventListener('click',()=>run(loadBilling));
 el('logout').addEventListener('click',()=>run(async()=>{try{await api.signOut();setMessage('تم تسجيل الخروج.')}finally{loggedOut()}}));
-el('register').addEventListener('submit',e=>{e.preventDefault();const form=e.currentTarget,f=new FormData(form);run(async()=>{await api.register({name:String(f.get('name')),slug:String(f.get('slug')),plan:String(f.get('plan'))});form.reset();offset=0;el('filters').reset();await load();setMessage('تم تسجيل المحل. لم تُنشأ قاعدة بيانات بعد.')})});
+el('register').addEventListener('submit',e=>{e.preventDefault();const form=e.currentTarget,f=new FormData(form);run(async()=>{await api.registerShared({name:String(f.get('name')),slug:String(f.get('slug')),plan:String(f.get('plan')),owner:String(f.get('owner'))});form.reset();offset=0;el('filters').reset();await load();setMessage('تم تسجيل مساحة مشتركة للمحل؛ لا يحتاج مشروع Supabase إضافياً.')})});
 el('filters').addEventListener('submit',e=>{e.preventDefault();run(async()=>{offset=0;await load()})});
 el('prev').addEventListener('click',()=>run(async()=>{offset=Math.max(0,offset-limit);await load()}));
 el('next').addEventListener('click',()=>run(async()=>{offset+=limit;await load()}));

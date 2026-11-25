@@ -42,6 +42,12 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    for(const row of r.rows)if(!uuid.test(row.id)||typeof row.name!=='string'||typeof row.slug!=='string'||!states.slice(1).includes(row.state)||typeof row.provisioned!=='boolean'||!(row.plan_code===null||plans.includes(row.plan_code))||!(row.subscription_state===null||['pending','trial','active','past_due','suspended','cancelled'].includes(row.subscription_state))||!(row.valid_until===null||(typeof row.valid_until==='string'&&Number.isFinite(Date.parse(row.valid_until)))))throw Error('Invalid store row');
    return r;
   },
+  async registerShared({name,slug,plan,owner}){
+   if(typeof name!=='string'||name.trim().length<1||name.trim().length>160||typeof slug!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(slug)||!plans.includes(plan)||typeof owner!=='string'||!uuid.test(owner))throw Error('Invalid shared store details');
+   const id=await rpc('mt_admin_create_store',{p_name:name.trim(),p_slug:slug,p_plan:plan,p_owner:owner});
+   if(typeof id!=='string'||!uuid.test(id))throw Error('Unconfirmed shared store registration');
+   return id;
+  },
   async register({name,slug,plan}){
    if(typeof name!=='string'||name.trim().length<1||name.trim().length>160||typeof slug!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(slug)||!plans.includes(plan))throw Error('Invalid store details');
    const id=await rpc('saas_admin_register',{p_name:name.trim(),p_slug:slug,p_plan:plan});
