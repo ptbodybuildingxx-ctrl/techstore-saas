@@ -38,3 +38,12 @@ test('central releases use validated immutable manifests and planning RPC only',
  assert.deepEqual(await api.releases(),{releases:[],targets:[],eligible_stores:[]});
 });
 test('release overview rejects malformed server payload',async()=>{const fetcher=async(u)=>({ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:{releases:[{version:'bad'}],targets:[],eligible_stores:[]}});const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.releases())});
+
+test('backup requests and isolated restore drills validate inputs and use only operator RPC',async()=>{
+ const calls=[];const data={stores:[{id,name:'Fixture',slug:'fixture',recent_backup_id:null}],backups:[],requests:[]};
+ const fetcher=async(u,o)=>{calls.push({u,o});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:u.includes('saas_admin_backup_overview')?data:id}};
+ const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await assert.rejects(api.backups());await api.signIn('a@example.invalid','pass');assert.deepEqual(await api.backups(),data);
+ await assert.rejects(api.backupRequest(id,'restore_drill','request'));await assert.rejects(api.backupRequest(id,'backup','request',id));await assert.rejects(api.backupRequest(id,'restore','request',id));
+ assert.equal(await api.backupRequest(id,'restore_drill','request',id),id);assert.deepEqual(JSON.parse(calls.at(-1).o.body),{p_store:id,p_kind:'restore_drill',p_action:'request',p_backup:id});
+});
+test('backup overview rejects fabricated status payloads',async()=>{const fetcher=async(u)=>({ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture-token',expires_in:60}:u.includes('saas_admin_overview')?overview:{stores:[],backups:[{id,store_id:id,store_name:'Fixture',captured_at:'2026-01-01T00:00:00Z',status:'complete'}],requests:[]}});const api=createAdminApi({url,publishableKey:key,fetcher,clock:()=>0});await api.signIn('a@example.invalid','pass');await assert.rejects(api.backups())});

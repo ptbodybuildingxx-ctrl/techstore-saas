@@ -61,6 +61,20 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(!(action==='cancel'&&result===null)&&(typeof result!=='string'||!uuid.test(result)))throw Error('Unconfirmed provisioning request');
    return result;
   },
+  async backups(limit=50){
+   if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('Invalid limit');
+   const r=await rpc('saas_admin_backup_overview',{p_limit:limit});
+   const isId=x=>typeof x==='string'&&uuid.test(x);
+   if(!r||!['stores','backups','requests'].every(k=>Array.isArray(r[k])&&r[k].length<=limit))throw Error('Invalid backup overview');
+   if(r.stores.some(x=>!x||!isId(x.id)||typeof x.name!=='string'||typeof x.slug!=='string'||!(x.recent_backup_id===null||isId(x.recent_backup_id)))||r.backups.some(x=>!x||!isId(x.id)||!isId(x.store_id)||typeof x.store_name!=='string'||typeof x.captured_at!=='string'||!Number.isFinite(Date.parse(x.captured_at))||!['verified','unverified','stale','revoked'].includes(x.status))||r.requests.some(x=>!x||!isId(x.id)||!isId(x.store_id)||typeof x.store_name!=='string'||!['backup','restore_drill'].includes(x.kind)||!['queued','cancelled'].includes(x.state)||!(x.kind==='backup'?x.backup_id===null:isId(x.backup_id))))throw Error('Invalid backup data');
+   return r;
+  },
+  async backupRequest(store,kind,action,backup=null){
+   if(typeof store!=='string'||!uuid.test(store)||!['backup','restore_drill'].includes(kind)||!['request','cancel'].includes(action)||(kind==='backup'||action==='cancel'?backup!==null:typeof backup!=='string'||!uuid.test(backup)))throw Error('Invalid backup request');
+   const id=await rpc('saas_admin_backup_request',{p_store:store,p_kind:kind,p_action:action,p_backup:backup});
+   if(!(action==='cancel'&&id===null)&&(typeof id!=='string'||!uuid.test(id)))throw Error('Unconfirmed backup request');
+   return id;
+  },
   async releases(limit=50){
    if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('Invalid limit');
    const r=await rpc('saas_admin_release_overview',{p_limit:limit});
