@@ -28,6 +28,16 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    const r=await rpc('mt_admin_shared_license_status',{p_stores:ids});
    if(!Array.isArray(r)||r.length>ids.length||new Set(r.map(x=>x?.id)).size!==r.length||r.some(x=>!x||!ids.includes(x.id)||!['pending','trial','active','past_due','suspended','cancelled'].includes(x.state)||!plans.includes(x.plan)||typeof x.write_entitlement!=='boolean'))throw Error('Invalid license page');return r;
   },
+  async sharedRecovery(){
+   const r=await rpc('mt_admin_shared_recovery_overview',{p_limit:50});if(!r||!['requests','backups','plans'].every(k=>Array.isArray(r[k])&&r[k].length<=50&&r[k].every(x=>x&&typeof x.id==='string'&&uuid.test(x.id)&&typeof x.shard_code==='string'))||r.requests.some(x=>!['queued','cancelled'].includes(x.state)||!['project_backup','tenant_export','restore_drill'].includes(x.kind))||r.backups.some(x=>typeof x.eligible!=='boolean')||r.plans.some(x=>typeof x.eligible!=='boolean'||!['planned','cancelled'].includes(x.state)))throw Error('Invalid recovery overview');return r;
+  },
+  async sharedRecoveryChange(x){
+   const id=v=>typeof v==='string'&&uuid.test(v);if(!x||!id(x.request)||typeof x.shard!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(x.shard))throw Error('Invalid request');
+   let r;if(x.kind==='release'){if(!id(x.release)||!id(x.backup))throw Error('Invalid release plan');r=await rpc('mt_admin_shared_release_plan',{p_request:x.request,p_shard:x.shard,p_release:x.release,p_backup:x.backup})}
+   else{if(!['project_backup','tenant_export','restore_drill'].includes(x.kind)||(x.kind==='tenant_export'?!id(x.store):x.store!==null)||(x.kind==='restore_drill'?!id(x.backup):x.backup!==null))throw Error('Invalid recovery request');r=await rpc('mt_admin_shared_recovery_request',{p_request:x.request,p_shard:x.shard,p_kind:x.kind,p_store:x.store,p_backup:x.backup})}
+   if(!id(r))throw Error('Unconfirmed request');return r;
+  },
+  async sharedRecoveryCancel(id,type){if(typeof id!=='string'||!uuid.test(id)||!['recovery','release'].includes(type))throw Error('Invalid cancel');const r=await rpc('mt_admin_shared_recovery_cancel',{p_id:id,p_type:type});if(typeof r!=='boolean')throw Error('Invalid response');return r},
   async planPrices(){
    const r=await rpc('mt_admin_plan_prices',{});if(!r||typeof r.editable!=='boolean'||!Array.isArray(r.plans)||r.plans.length!==3||new Set(r.plans.map(x=>x?.code)).size!==3||r.plans.some(x=>!x||!plans.includes(x.code)||typeof x.name!=='string'||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1)||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!x||!uuid.test(x.id)||!plans.includes(x.plan_code)||!Number.isSafeInteger(x.previous_cents)||!Number.isSafeInteger(x.new_cents)||typeof x.note!=='string'))throw Error('Invalid plans');return r;
   },

@@ -11,7 +11,7 @@ export function createStorefrontApi({url,publishableKey,fetcher=fetch,clock=Date
  async function rpc(name,body,auth=false){if(auth&&(!session||session.expires<=clock()+5000)){clear();throw Error('Sign in again')}const e=epoch;try{const r=await request('/rest/v1/rpc/'+name,body,auth?session.token:null);if(e!==epoch)throw Error('Session changed');return r}catch(err){if(auth&&e===epoch&&[401,403].includes(err.status))clear();throw err}}
  const emailValue=x=>{if(typeof x!=='string'||x.trim().length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(x.trim()))throw Error('Invalid email');return x.trim()};
  const passwordValue=x=>{if(typeof x!=='string'||x.length<12||x.length>128)throw Error('Invalid password');return x};
- const authGate=()=>{if(customerAuthEnabled!==true)throw Error('Customer email flows disabled');if(session)throw Error('Sign out first')};
+ const authGate=()=>{if(customerAuthEnabled!==true)throw Error('Customer email flows disabled');if(session&&session.expires<=clock()+5000)clear();if(session)throw Error('Sign out first')};
  return {
  customerAuthEnabled(){return customerAuthEnabled===true},
  async signUp(email,password){authGate();const r=await request('/auth/v1/signup',{email:emailValue(email),password:passwordValue(password)});if(r?.access_token){await request('/auth/v1/logout?scope=local',undefined,r.access_token);throw Error('Email confirmation must be enabled')}return true},

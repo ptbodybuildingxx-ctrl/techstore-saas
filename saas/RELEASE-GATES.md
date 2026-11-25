@@ -10,3 +10,11 @@ DEVELOPMENT — no commercial authorization.
 - [ ] Capture actual database/Storage/config, restore and independently reconcile in isolated environment; configure automated backups, deployment and rollback worker.
 - [ ] Concurrent end-to-end workload tests with representative stores/operations, monitoring, security review, resource/cost limits, privacy/legal/support.
 - [ ] Activate king securely; separate authorized commercial hosting and launch approval. GitHub Pages remains offline showcase only.
+
+## Closure batch — 2026-11-25
+- [x] Integrated SQL rollback fixture (purchase batch, stock, online delivery, customer/supplier return, receipt lines, repair invoice, warranty replacement, refund, cash, gross margin and trial balance), stored at `saas/tests/sql/integrated-commerce.sql`.
+- [x] Audited plan price administration; changes are blocked when live billing or any provider binding exists.
+- [x] Shared recovery planning UI uses shared-shard endpoints, not a backup executor.
+- [ ] Verify signup/recovery email delivery, OTP templates, CAPTCHA/rate limits and origin. Client code gated off by default.
+- [ ] High-resolution Storage, freeform editor, verified custom-domain routing, coupon redemption/loyalty, jurisdiction-specific tax and consolidated statutory financial reporting remain incomplete.
+- [ ] Browser print/receipt tests, actual auth, actual recovery and concurrent workload remain unverified.
