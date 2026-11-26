@@ -1,3 +1,4 @@
+import {mountWorkspaceAccount} from './workspace-account.mjs';
 import {membershipLabel} from '../design/membership.mjs';
 import {prepareOfflineCatalog,prepareShell,forgetOfflineCatalog,collectOfflineCatalog,collectOfflineCounts} from './offline-device.mjs';
 import {initLocale,tr,currentLanguage} from '../design/i18n.mjs';
@@ -22,6 +23,7 @@ if(location.hostname.endsWith('.github.io')){
  throw Error('GitHub Pages is preview-only');
 }
 const api=createTenantApi(configuration),el=id=>document.getElementById(id);
+mountWorkspaceAccount(el('workspaceAccount'),configuration);
 const workspace=createWorkspace(el('dashboard'),el('workspaceNav'));
 const roleLabels={owner:'مالك المحل',cashier:'كاشير',stock:'موظف مخزون',tech:'فني صيانة'};
 const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n};
