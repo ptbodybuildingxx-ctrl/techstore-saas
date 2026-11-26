@@ -184,6 +184,7 @@ declare vr uuid:=gen_random_uuid();voucher uuid;begin
 voucher:=public.mt_branch_voucher(t,vr,branch,'salary','USD',100,'Employee','Salary fixture');
 if public.mt_branch_voucher(t,vr,branch,'salary','USD',100,'Employee','Salary fixture') is distinct from voucher then raise exception 'Voucher replay';end if;
 if not exists(select 1 from public.mt_accounting_adjustments where store_id=t and source_request=vr and kind='expense_payroll' and amount_minor=100) then raise exception 'Payroll not classified';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_branch_operating_result(t,today-1,today+1)) x where x->>'branch'=branch::text and x->>'expenses'='100' and (x->>'unknown')::int>0 and x->>'result' is null) then raise exception 'Branch cost uncertainty not preserved';end if;
 end;
 end;
 begin perform public.mt_branch_overview(other,null);raise exception 'Branch leak';exception when insufficient_privilege then null;end;

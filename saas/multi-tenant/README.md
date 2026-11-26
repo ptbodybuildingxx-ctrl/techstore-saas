@@ -86,3 +86,6 @@ Owner-only branch purchases (single/batch), credit/mixed sales, and repair intak
 
 ## Branch cashier scopes and vouchers (051)
 Optional single-branch restriction for active cashiers, enforced at sale insertion and branch selection. Unassigned cashiers retain existing store access; stock and technician branch scopes are not implemented. Paid salary, commission, bonus and documented operating expense vouchers post to the existing cash ledger and classification exactly once. Receipt vouchers are explicitly unclassified funding; debt and supplier collections remain in their own flows. No payroll accrual or automatic bank payment.
+
+## Branch management result (052)
+Attributed sales, repairs, returns, repair refunds, historical FIFO/FX cost postings, and paid branch operating vouchers by Damascus calendar period and currency. Unknown costs suppress cost and result. Store-wide FIFO, unallocated overhead and tax remain outside branch result; not a statutory branch net profit or separate treasury.
