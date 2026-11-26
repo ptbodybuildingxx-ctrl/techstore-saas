@@ -209,3 +209,6 @@ Add supplier contact fields, archival, idempotent profile/receipt/due requests, 
 
 ## Sale invoice metadata (094)
 Cash and credit POS invoice issue wrapper snapshots title, customer identity, warranty terms and line serial text/months with issue date. Existing sales remain unchanged. Current warranty-covered quantity is derived from canonical returns; serial-level return attribution is not implied. No tests run.
+
+## Mixed invoice and warranty register (095)
+Extend invoice issue wrapper to mixed tender terms with existing financial engine and add paged warranty register with return-aware coverage. Include invoice details in business export. No tests run.

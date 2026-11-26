@@ -1,5 +1,12 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+ "سجل كفالات المبيعات":"Sales warranty register",
+ "صلاحية المدة والكمية لا تعني قبول المطالبة ضمن شروط الكفالة.":"Date and quantity coverage do not establish claim eligibility.",
+ "بحث برقم الفاتورة أو التسلسلي أو العميل":"Search by invoice, serial or customer",
+ "عرض الكفالات":"View warranties",
+ "ساري زمنياً":"Within warranty period",
+ "لا توجد سجلات مطابقة":"No matching records",
+ "تحفظ البيانات مشفرة محلياً مع مسودة البيع.":"Details are encrypted locally with the sale draft.",
  "بيانات الفاتورة والضمان":"Invoice and warranty details",
  "البيانات اختيارية. للبيع الآجل يُحفظ اسم وهاتف العميل من الحساب المختار. لا يمكن تغيير مستند صادر.":"Optional details. Credit sales use the selected customer's name and phone. Issued documents cannot be modified.",
  "عنوان الفاتورة":"Invoice title",
