@@ -92,3 +92,6 @@ Attributed sales, repairs, returns, repair refunds, historical FIFO/FX cost post
 
 ## Customer library (053)
 Account/store-scoped favorites and up to 20 saved builds with server-validated snapshot prices and specs. Verified fulfilled online-order customers can submit one review per product; owner moderation is required before public publication. Saved builds are informational snapshots, not reservations. No guest review submissions.
+
+## Marketing and trade-in (054)
+Draft/published/completed store campaigns render only during the configured Damascus-calendar dates. Trade-in estimates retain device, condition, accepted value and branch, and can link an actual matching single-unit purchase and sale after acceptance. Linking is documentary, not automatic net settlement or an inventory adjustment. No external campaign delivery.

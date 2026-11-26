@@ -168,6 +168,16 @@ if public.mt_quote_create(t,quote_request,'Fixture customer','USD',(now() at tim
 if public.mt_quote_read(t,quote_id)->>'total_minor' is distinct from '4000' or (select quantity from public.mt_products where store_id=t and id=pr) is distinct from q_before then raise exception 'Quote changed stock or amount';end if;
 begin perform public.mt_quote_read(other,quote_id);raise exception 'Quote leaked';exception when insufficient_privilege then null;end;
 end;
+declare campaign uuid;estimate uuid;d date:=(now() at time zone 'Asia/Damascus')::date;begin
+campaign:=public.mt_campaign_create(t,gen_random_uuid(),'Fixture campaign','Fixture content',d,d+1);
+if jsonb_array_length(public.mt_public_campaigns('a-'||tag))<>0 then raise exception 'Draft campaign leaked';end if;
+perform public.mt_campaign_state(t,campaign,'published');
+if jsonb_array_length(public.mt_public_campaigns('a-'||tag))<>1 then raise exception 'Campaign missing';end if;
+estimate:=public.mt_tradein_create(t,gen_random_uuid(),null,cust,'Used device','SERIAL','Working','USD',2000);
+perform public.mt_tradein_state(t,estimate,'offered');perform public.mt_tradein_state(t,estimate,'accepted');
+if not exists(select 1 from jsonb_array_elements(public.mt_tradein_list(t,null)) x where x->>'id'=estimate::text and x->>'state'='accepted') then raise exception 'Trade-in state missing';end if;
+begin perform public.mt_tradein_settle(t,estimate,buy,sale);raise exception 'Old unrelated documents accepted';exception when sqlstate '22023' then null;end;
+end;
 -- Branch transfers, cash sale, return and cross-tenant denial.
 declare branch uuid;branch_product uuid;branch_request uuid:=gen_random_uuid();branch_sale uuid;branch_move uuid:=gen_random_uuid();begin
 branch:=public.mt_branch_create(t,'Fixture branch');branch_product:=public.mt_add_product(t,'BRANCH-FIXTURE','Branch fixture');

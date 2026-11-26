@@ -384,3 +384,5 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;line
 .storefront-page .buyer-watch{width:100%;margin-top:5px}#inboxPanel button{margin:4px}
 
 #reviewDialog{width:min(650px,94vw);max-height:85dvh;overflow:auto;border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--design-surface,var(--panel));color:var(--design-text,var(--aurora-ink))}#reviewDialog::backdrop{background:#101a3577}#reviewDialog textarea{width:100%;min-height:110px;resize:vertical}.buyer-library-action,#libraryPanel button{margin:4px 0}
+
+.campaign-banner{background:var(--design-surface,var(--panel));border:1px solid var(--line);border-inline-start:4px solid var(--design-accent,var(--aurora-blue));border-radius:14px;padding:16px;margin:12px 0}.campaign-banner h3{margin:0 0 8px}.campaign-banner p{white-space:pre-wrap;margin:0}
