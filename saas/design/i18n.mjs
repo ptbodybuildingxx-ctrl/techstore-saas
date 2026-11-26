@@ -1,5 +1,16 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "تغيير السعر بنسبة مئوية":"Change prices by percentage",
+  "تنزيل قالب CSV":"Download CSV template",
+  "تصدير المنتجات المعروضة CSV":"Export displayed products CSV",
+  "استعمال مواصفات موديل موجود":"Reuse existing model specifications",
+  "معاينة قبل الحفظ":"Preview before saving",
+  "أدخل الموديل أولاً":"Enter the model first",
+  "لا يوجد موديل مطابق في نتائج البحث":"No matching model in the search results",
+  "استبدال المواصفات الحالية بالمواصفات المحددة؟":"Replace current specifications with selected specifications?",
+  "السعر لم يتغير":"Price unchanged",
+  "مسودة مخفية":"Hidden draft",
+  "أدخل نسبة أكبر من -100 وحتى 1000":"Enter a percentage greater than -100 and up to 1000",
   "قراءة الباركود بالكاميرا": "Scan barcode with camera",
   "إيقاف الكاميرا": "Stop camera",
   "قراءة الباركود بالكاميرا غير مدعومة؛ استخدم الماسح أو أدخل الرمز.": "Camera scanning is unsupported; use a scanner or enter the code.",

@@ -29,3 +29,6 @@ Workspace assistant: bilingual static operational guidance for all 17 existing r
 ## Source parity additions
 
 Adapted original `modules/pro.js` camera barcode scanning and safe CSV export into the tenant workspace. Camera capture is one-shot, permission-scoped to the tenant page, local-only, and stopped on logout, store change, page hide or timeout. POS uses its existing authenticated scan and cart flow. Owner CSV export is restricted to the current authorized operational list page, excludes interactive columns, and neutralizes spreadsheet formulas. No tests run by request. Camera requires a compatible browser; CSV is not a full database backup. This does not close the remaining parity register above.
+
+## Inventory/catalog section continuation
+Added CSV template, authorized visible-product CSV export, product preview, device type suggestions, matching-model spec reuse and transactional percentage price adjustment (089). Remaining inventory parity includes a complete physical stock-count workflow and remaining product variant/storefront display comparison, and the original's higher CSV import limit. The current import stays limited to 100 rows for safe bounded atomic processing. No tests run by request.

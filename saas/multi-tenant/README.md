@@ -194,3 +194,6 @@ Owner-only, licensed and serialized management redistribution of classified cent
 
 ## Branch opening evidence (088)
 Owner-only point-in-time reconciliation and explicit physical-count confirmation. The immutable evidence row is saved only when known location balances match projected journal balances, cash and FIFO are activated/reconciled, unknown costs are absent, and consolidated reconciliation passes. No historical or statutory accounting certification; no fictional balances or automatic balancing entries.
+
+## Catalog percentage prices (089)
+Owner-only percentage adjustments on up to 50 products in a single currency. Existing request replay, tenant scope and license checks remain; all selected prices must exist and remain within supported positive minor-unit bounds. The store row lock serializes price changes. No tests run by request.
