@@ -65,3 +65,6 @@ Operator-only control-plane summary counts actual shared entitlement, trial/paid
 
 ## Catalog search and stock history (043)
 Server-side literal search by name/SKU across all rows with keyset pagination; public projection includes only listed in-stock products with prices and public string specifications. Owners and stock staff can edit specs under existing write entitlements. Low-stock filter uses a fixed five-unit threshold. Stock history is read-only for owner/stock roles. Deploy migration 043 to the dedicated SaaS database before deploying the matching UI. No branch inventory allocation or external notification delivery is implemented by this migration.
+
+## Receipt snapshots and work alerts (044–045)
+Owner receipt settings capture identity, logo, address, phone, titles, format and footer at issuance through insert triggers; original historical lines remain the financial authority. Pre-migration receipts have no invented historical identity. Work alerts are role-scoped derived counts (refresh on load or manually), not push delivery or durable notifications. PC builder uses public specification keys type (cpu/board/ram/gpu/storage/psu/case), socket, ram, form and watts, and reports unknown data rather than guaranteeing compatibility.

@@ -29,7 +29,13 @@ perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_
 ord:=public.mt_delivery_order('a-'||tag,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',pr,'units',2,'expected_price_minor',5000)),'Fixture address','000000000');
 if exists(select 1 from public.mt_list_purchase_batches(t)) then raise exception 'Purchase leaked';end if;
 perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_receipt_config(t,jsonb_build_object('brand','Original identity','phone','123','address','Fixture','sale_title','Sale','repair_title','Repair','footer','Thanks','format','thermal','logo',''));
 perform public.mt_dispatch_delivery(t,ord,'FIXTURE');sale:=public.mt_finish_order(t,ord,'fulfill');
+if public.mt_receipt_snapshot(t,'sale',sale)->>'brand' is distinct from 'Original identity' then raise exception 'Receipt snapshot missing';end if;
+perform public.mt_receipt_config(t,jsonb_build_object('brand','New identity','phone','','address','','sale_title','Sale','repair_title','Repair','footer','','format','a4','logo',''));
+if public.mt_receipt_snapshot(t,'sale',sale)->>'brand' is distinct from 'Original identity' then raise exception 'Historical identity changed';end if;
+if (public.mt_work_alerts(t)->>'low_stock')::int<1 then raise exception 'Low stock alert missing';end if;
+
 if (select sum(line_total_minor) from public.mt_sale_receipt_lines(t,sale)) is distinct from 10000::numeric then raise exception 'Receipt mismatch';end if;
 perform public.mt_record_return(t,gen_random_uuid(),sale,pr,1,'Customer return');
 perform public.mt_supplier_return(t,gen_random_uuid(),buy,1,'Supplier return',true);

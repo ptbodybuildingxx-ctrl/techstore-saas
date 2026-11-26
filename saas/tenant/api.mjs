@@ -1,4 +1,4 @@
-import {designResponse,validateSpecs} from '../design/theme.mjs';
+import {designResponse,validateSpecs,validateReceiptSettings} from '../design/theme.mjs';
 const origin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const isId=x=>typeof x==='string'&&uuid.test(x);
@@ -179,6 +179,9 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(x.kind==='mixed'){const total=x.lines.reduce((v,l)=>v+l.units*l.expected_price_minor,0);if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.request_id!==x.requestId||r.currency!==x.currency||r.total_minor!==total)throw Error('Sale not confirmed');return r}
    if(['transition','warrantyTransition'].includes(x.kind)?r!==x.next:!isId(r))throw Error('Operation not confirmed');return r;
   },
+  async receiptConfig(store,settings=null){if(settings!==null)validateReceiptSettings(settings);return validateReceiptSettings(await rpc('mt_receipt_config',{p_store:store,p_settings:settings},store))},
+  async receiptSnapshot(store,kind,document){if(!['sale','repair'].includes(kind)||!isId(document))throw Error('Invalid receipt');const r=await rpc('mt_receipt_snapshot',{p_store:store,p_kind:kind,p_document:document},store);return r===null?null:validateReceiptSettings(r)},
+  async workAlerts(store){const r=await rpc('mt_work_alerts',{p_store:store},store);if(!r||typeof r!=='object'||Array.isArray(r)||Object.entries(r).some(([k,v])=>!['low_stock','repairs_ready','repairs_received','orders_pending','installments_overdue'].includes(k)||!int(v,0,Number.MAX_SAFE_INTEGER)))throw Error('Invalid alerts');return r},
   async receiptLines(store,sale,total){if(!isId(sale)||!int(total,1,100000000000000))throw Error('Invalid receipt');const r=await rpc('mt_sale_receipt_lines',{p_store:store,p_sale:sale},store);if(!Array.isArray(r)||r.length<1||r.length>100||r.some(x=>x.store_id!==store||x.sale_id!==sale||!isId(x.product_id)||typeof x.product_name!=='string'||!int(x.units,1,10000)||!int(x.unit_price_minor,1,100000000)||x.line_total_minor!==x.units*x.unit_price_minor)||r.reduce((n,x)=>n+x.line_total_minor,0)!==total)throw Error('Receipt not confirmed');return r},
   async design(store){return designResponse(await rpc('mt_design_read',{p_store:store,p_editor:false},store))},
   async storefrontStatus(store,after=null,limit=50){
