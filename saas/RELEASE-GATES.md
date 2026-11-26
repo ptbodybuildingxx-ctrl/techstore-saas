@@ -43,3 +43,6 @@ Integrated rollback SQL fixture: saas/tests/sql/integrated-commerce.sql. Managem
 - Migrations 040–042 applied to dedicated development database: bounded responsive grid positions, current subledger reconciliation, and source-linked documented tax-inclusive output assessments, return reversals and settlement. Client tests pass. No input VAT deduction, jurisdiction-specific tax filings or statutory profit certification.
 - Authenticated artifact extraction and synthetic PostgreSQL restore drill (rows, RLS, archive and configuration) passed in CI. No real SaaS project backup or operational restore evidence exists.
 - Added fresh-schema SQL integration workflow using disposable PostgreSQL and minimal synthetic Auth/Storage schema; no real sessions, hosting, accounts or commercial activation. Treat as verified only when CI passes on the relevant commit.
+
+## Visual design follow-up
+- Editor-only visual grid placement with click/keyboard and drag target, independent device positions, collision rejection and bounded 20-step local page-edit undo/redo. Template application clears page-edit history because palette changes are outside this history. No arbitrary overlapping pixel positions. Verify on Chromium and SQL CI before approval.

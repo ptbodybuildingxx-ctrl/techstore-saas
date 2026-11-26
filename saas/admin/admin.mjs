@@ -16,9 +16,9 @@ function loggedOut(){el('operationalMetrics').replaceChildren();el('operationalD
 function loggedIn(){el('loginPanel').hidden=true;el('logout').hidden=false;el('dashboard').hidden=false}
 async function run(fn){
  if(busy)return;busy=true;
- const controls=[...document.querySelectorAll('button')];for(const x of controls)x.disabled=true;
+ const controls=[...document.querySelectorAll('button')].map(x=>[x,x.disabled]);for(const [x] of controls)x.disabled=true;
  try{await fn()}catch(e){setMessage(e.status===401||e.status===403?'تم رفض الصلاحية أو انتهت الجلسة.':e.status===409?'المعرّف مستخدم مسبقاً.':'لم يتم تأكيد الطلب. تحقق من الحالة قبل إعادة المحاولة.');if(!api.signedIn())loggedOut()}
- finally{busy=false;for(const x of controls)if(x.id!=='prev'&&x.id!=='next'&&x.id!=='releasePlanButton'&&x.id!=='backupRequestButton'&&x.id!=='billingDraftButton'&&x.id!=='moveButton'&&x.id!=='shardPrev'&&x.id!=='shardNext')x.disabled=false;el('prev').disabled=offset===0;el('next').disabled=offset+limit>=lastMatched;el('releasePlanButton').disabled=!el('releaseChoice').options.length||!el('releaseStore').options.length;el('backupRequestButton').disabled=!el('backupStore').options.length;el('billingDraftButton').disabled=!el('billingStore').options.length;el('moveButton').disabled=!el('moveStore').options.length||!el('moveDestination').options.length;el('shardPrev').disabled=shardPages.length<2;el('shardNext').disabled=!shardNext}
+ finally{busy=false;for(const [x,disabled] of controls)if(x.id!=='prev'&&x.id!=='next'&&x.id!=='releasePlanButton'&&x.id!=='backupRequestButton'&&x.id!=='billingDraftButton'&&x.id!=='moveButton'&&x.id!=='shardPrev'&&x.id!=='shardNext')x.disabled=disabled;el('prev').disabled=offset===0;el('next').disabled=offset+limit>=lastMatched;el('releasePlanButton').disabled=!el('releaseChoice').options.length||!el('releaseStore').options.length;el('backupRequestButton').disabled=!el('backupStore').options.length;el('billingDraftButton').disabled=!el('billingStore').options.length;el('moveButton').disabled=!el('moveStore').options.length||!el('moveDestination').options.length;el('shardPrev').disabled=shardPages.length<2;el('shardNext').disabled=!shardNext}
 }
 let lastMatched=0;
 async function load(){
