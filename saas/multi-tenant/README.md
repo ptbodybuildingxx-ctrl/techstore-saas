@@ -215,3 +215,6 @@ Extend invoice issue wrapper to mixed tender terms with existing financial engin
 
 ## Channel invoice snapshots (096)
 Online, guest and atomic trade-in sales use the canonical settlement functions and snapshot invoice metadata inside the same transaction. Legacy entry points issue a minimal snapshot with no implied warranty. New metadata cannot be attached to a previously completed sale. No tests run.
+
+## Buyer invoices and product claims (097)
+Authenticated buyers can read invoices only for their own fulfilled orders. Product warranty claims reserve active covered quantities, recheck returns at acceptance, and preserve transition history. Claims are not financial documents. No tests run.
