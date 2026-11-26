@@ -168,7 +168,7 @@ begin
  if action in ('grant','renew','trial') then
   if not (params ? 'days') or (select count(*) from jsonb_object_keys(params))<>1 or coalesce(params->>'days','') !~ '^[0-9]{1,3}$' then raise exception 'Invalid duration';end if;
   days:=(params->>'days')::integer;
-  if days not between 1 and case when action='trial' then 30 else 365 end then raise exception 'Invalid duration';end if;
+  if days<1 or days>365 or (action='trial' and days>30) then raise exception 'Invalid duration';end if;
  elsif action='plan' then
   if (select count(*) from jsonb_object_keys(params))<>1 or coalesce(params->>'plan','') not in ('basic','business','pro') then raise exception 'Invalid plan';end if;
   plan:=params->>'plan';
