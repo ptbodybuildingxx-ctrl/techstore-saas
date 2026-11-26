@@ -143,3 +143,6 @@ Owner-approved per-buyer percentage terms with minimum basket quantity, limited 
 
 ## Product high-resolution images (069)
 Owner-scoped private storage reservations and uploads, up to four 1600px JPEG files per product, 2 MB/file, bounded reservations. Explicit publication, shop visibility check and existing byte-validating storefront media gateway. Public gallery uses the existing `publicMediaEnabled` feature flag; deployment/configuration of the gateway is still required. Retired or abandoned reserved files require a controlled cleanup procedure. No change to the original repository.
+
+## Staff TOTP and sessions (070)
+Staff account enroll/challenge/verify/remove using Supabase Auth REST, in-memory tokens only, optional TOTP enrollment with mandatory AAL2 tenant access once verified; membership RPCs reject AAL1 staff sessions. List own active sessions and user-agent descriptions when available; sign out other sessions through Auth. Not an individual-device revoke interface or buyer/admin MFA flow; no live enrollment/auth validation performed. Requires Supabase TOTP enrollment and verification enabled. Verify all staff logins, recovery and session revocation before rollout.

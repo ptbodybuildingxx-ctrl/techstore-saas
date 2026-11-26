@@ -14,6 +14,10 @@ function validReturn(x,store){return !!x&&x.store_id===store&&isId(x.id)&&isId(x
 export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now}){
  if(url!==origin||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey))throw Error('Invalid shared project configuration');
  let session=null,allowed=new Set(),epoch=0;
+ function setAuth(r){if(typeof r?.access_token!=='string'||!r.access_token||!Number.isFinite(r.expires_in)||r.expires_in<=0)throw Error('Invalid auth response');session={token:r.access_token,expires:clock()+r.expires_in*1000}}
+ function liveToken(){if(!session||session.expires<=clock()+5000)throw Error('Sign in again');return session.token}
+ async function factors(){const u=await request('/auth/v1/user',undefined,liveToken(),'GET'),r=u?.factors??[];if(!Array.isArray(r)||r.some(x=>!isId(x.id)||typeof x.status!=='string'||typeof x.factor_type!=='string'))throw Error('Invalid factors');return r.filter(x=>x.factor_type==='totp').map(x=>({id:x.id,status:x.status,name:typeof x.friendly_name==='string'?x.friendly_name:''}))}
+ async function verifyFactor(id,code){if(!isId(id)||typeof code!=='string'||!/^\d{6}$/.test(code))throw Error('Invalid TOTP');const token=liveToken(),e=epoch,c=await request('/auth/v1/factors/'+id+'/challenge',{},token);if(!isId(c?.id))throw Error('Invalid challenge');const r=await request('/auth/v1/factors/'+id+'/verify',{challenge_id:c.id,code},token);if(e!==epoch)throw Error('Session changed');setAuth(r)}
  function clear(){session=null;allowed=new Set();epoch++}
  async function request(path,body,token,method='POST'){
   const r=await fetcher(url+path,{method,headers:{apikey:publishableKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',redirect:'error',credentials:'omit'});
@@ -28,13 +32,13 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   catch(err){if(e===epoch&&(err.status===401||err.status===403))clear();throw err}
  }
  return {
-  async signIn(email,password){
+  async signIn(email,password,codeProvider=null){
    clear();const e=epoch;
    if(typeof email!=='string'||!email.trim()||typeof password!=='string'||!password)throw Error('Email and password required');
    const r=await request('/auth/v1/token?grant_type=password',{email:email.trim(),password});
    if(e!==epoch||typeof r?.access_token!=='string'||!r.access_token||!Number.isFinite(r.expires_in)||r.expires_in<=0)throw Error('Invalid login');
-   session={token:r.access_token,expires:clock()+r.expires_in*1000};
-   try{const stores=await this.stores();if(!stores.length)throw Error('No tenant membership');return stores}catch(err){if(e===epoch)clear();throw err}
+   setAuth(r);
+   try{const list=await factors(),verified=list.filter(x=>x.status==='verified');if(verified.length){if(typeof codeProvider!=='function')throw Error('TOTP required');const chosen=await codeProvider(verified);if(!chosen||!verified.some(x=>x.id===chosen.id))throw Error('TOTP cancelled');await verifyFactor(chosen.id,chosen.code)}const stores=await this.stores();if(!stores.length)throw Error('No tenant membership');return stores}catch(err){if(e===epoch)clear();throw err}
   },
   signedIn(){return !!session&&session.expires>clock()+5000},
   async signOut(){const s=session;clear();if(s)await request('/auth/v1/logout?scope=local',undefined,s.token)},
@@ -63,6 +67,12 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   async buyerPriceSet(store,x){if(!isId(x.buyer)||!['member','wholesale'].includes(x.tier)||!int(x.bps,100,5000)||!int(x.min,1,5000)||typeof x.enabled!=='boolean')throw Error('Invalid pricing');if(await rpc('mt_buyer_price_set',{p_store:store,p_buyer:x.buyer,p_tier:x.tier,p_bps:x.bps,p_min:x.min,p_enabled:x.enabled},store)!==x.enabled)throw Error('Pricing not confirmed')},
   async staffPermissions(store,user=null){if(user!==null&&!isId(user))throw Error('Invalid employee');const r=await rpc('mt_staff_permissions',{p_store:store,p_user:user},store);if(!Array.isArray(r)||r.some(x=>!['sell','stock_adjust','stock_transfer','product_create','repair_transition','repair_evidence','attendance'].includes(x)))throw Error('Invalid permissions');return r},
   async staffPermissionSet(store,user,action,allowed){if(!isId(user)||!['sell','stock_adjust','stock_transfer','product_create','repair_transition','repair_evidence','attendance'].includes(action)||typeof allowed!=='boolean')throw Error('Invalid permission');if(await rpc('mt_staff_permission_set',{p_store:store,p_user:user,p_action:action,p_allowed:allowed},store)!==allowed)throw Error('Permission unconfirmed')},
+  async mfaFactors(){return factors()},
+  async mfaEnroll(){const r=await request('/auth/v1/factors',{factor_type:'totp',friendly_name:'TechStore SaaS'},liveToken());if(!isId(r?.id)||typeof r.totp?.secret!=='string'||! /^[A-Z2-7]{16,128}$/i.test(r.totp.secret))throw Error('Invalid enrollment');return {id:r.id,secret:r.totp.secret}},
+  async mfaVerify(id,code){await verifyFactor(id,code);return true},
+  async mfaRemove(id){if(!isId(id))throw Error('Invalid factor');await request('/auth/v1/factors/'+id,undefined,liveToken(),'DELETE')},
+  async sessions(store){const r=await rpc('mt_my_staff_sessions',{p_store:store},store);if(!Array.isArray(r)||r.length>50||r.some(x=>!isId(x.id)||typeof x.current!=='boolean'||typeof x.device!=='string'))throw Error('Invalid sessions');return r},
+  async signOutOthers(){await request('/auth/v1/logout?scope=others',undefined,liveToken())},
   async staffSelf(store){const r=await rpc('mt_staff_self',{p_store:store},store);if(!r||!isId(r.id)||!['owner','cashier','stock','tech'].includes(r.role)||typeof r.display_name!=='string'||typeof r.photo!=='string'||r.photo.length>32000)throw Error('Invalid staff identity');return r},
   async setProfile(store,name,photo){if(typeof name!=='string'||!name.trim()||name.length>120||typeof photo!=='string'||photo.length>32000)throw Error('Invalid profile');const r=await rpc('mt_staff_profile_set',{p_store:store,p_name:name.trim(),p_photo:photo},store);if(!r||!isId(r.id)||r.display_name!==name.trim()||r.photo!==photo)throw Error('Profile unconfirmed');return r},
   async changePassword(password){if(typeof password!=='string'||password.length<12||password.length>128||!session||session.expires<=clock()+5000)throw Error('Invalid password or session');const r=await request('/auth/v1/user',{password},session.token,'PUT');if(!isId(r?.id))throw Error('Password not confirmed');return true},
