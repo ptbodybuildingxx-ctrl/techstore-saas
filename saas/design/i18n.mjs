@@ -1,5 +1,18 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "مطابقة الأرصدة الحالية": "Reconcile current balances",
+  "آخر اعتماد للأرصدة": "Latest balance confirmation",
+  "الأرصدة قابلة للاعتماد": "Balances eligible for confirmation",
+  "توجد فروق أو شروط غير محققة": "Differences or unmet requirements",
+  "تكلفة مجهولة": "Unknown cost",
+  "الرصيد المسجل": "Recorded balance",
+  "رصيد القيود": "Journal balance",
+  "لم تعتمد أرصدة بعد": "No balance confirmation yet",
+  "توثيق اعتماد أرصدة الفروع": "Branch balance confirmation evidence",
+  "اعتماد لحظي بعد الجرد والمطابقة، لا يعد تدقيقاً قانونياً ولا يغير الأرصدة التاريخية.": "Point-in-time confirmation after count and reconciliation; not a statutory audit and does not alter historical balances.",
+  "مرجع الجرد والمطابقة": "Count and reconciliation reference",
+  "اعتماد الأرصدة المطابقة": "Confirm reconciled balances",
+  "أؤكد الجرد الفعلي ومطابقة النقد والذمم مع المستندات.": "I confirm the physical count and reconciliation of cash and balances to documents.",
   "مساعد القسم": "Section assistant",
   "شرح محلي ذكي": "Local intelligent explanation",
   "شرح توليدي؛ راجع البيانات الأصلية.": "Generated explanation; verify original records.",

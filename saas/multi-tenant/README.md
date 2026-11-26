@@ -191,3 +191,6 @@ Independent denials for customer creation, debt payments excluding original sale
 
 ## Central expense allocation (084)
 Owner-only, licensed and serialized management redistribution of classified central expenses and recorded income-tax expense to a named branch. Each allocation creates offsetting branch/central reporting pairs through interbranch clearing; consolidated accounting and actual cash/tax liability do not change. Positive net expense in the open Damascus reporting month caps allocation; existing UTC closure is conservatively respected. Reversals are immutable, full and posted at current time. Historical central versus main attribution remains unresolved, and no opening balance or legal tax is certified. Not applied or tested against a database.
+
+## Branch opening evidence (088)
+Owner-only point-in-time reconciliation and explicit physical-count confirmation. The immutable evidence row is saved only when known location balances match projected journal balances, cash and FIFO are activated/reconciled, unknown costs are absent, and consolidated reconciliation passes. No historical or statutory accounting certification; no fictional balances or automatic balancing entries.

@@ -298,6 +298,10 @@ perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',
 perform public.mt_staff_set(t,gen_random_uuid(),buyer,'stock',false);
 end;
 begin perform public.mt_branch_overview(other,null);raise exception 'Branch leak';exception when insufficient_privilege then null;end;
+if public.mt_branch_opening_review(t)->>'ready' is distinct from 'false' then raise exception 'Unreconciled historical branch opening accepted';end if;
+begin perform public.mt_branch_opening_confirm(t,gen_random_uuid(),'Fixture opening',true);raise exception 'Unreconciled opening saved';exception when invalid_parameter_value then null;end;
+if public.mt_branch_opening_latest(t) is not null then raise exception 'Rejected opening persisted';end if;
+begin perform public.mt_branch_opening_review(other);raise exception 'Opening evidence cross-tenant leak';exception when insufficient_privilege then null;end;
 end;
 reset role;raise exception using errcode='ZX001',message='rollback';
 exception when sqlstate 'ZX001' then raise notice 'Integrated commerce fixture passed; rolled back';end;end $t$;
