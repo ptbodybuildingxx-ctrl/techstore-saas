@@ -210,6 +210,34 @@ if not exists(select 1 from public.mt_accounting_adjustments where store_id=t an
 if not exists(select 1 from jsonb_array_elements(public.mt_branch_operating_result(t,today-1,today+1)) x where x->>'branch'=branch::text and x->>'expenses'='100' and (x->>'unknown')::int>0 and x->>'result' is null) then raise exception 'Branch cost uncertainty not preserved';end if;
 end;
 end;
+-- Assign existing synthetic buyer as employee of this store (their other-store ownership remains independent).
+declare other_branch uuid;tech_repair uuid;begin
+other_branch:=public.mt_branch_create(t,'Second fixture branch');
+perform public.mt_staff_set(t,gen_random_uuid(),buyer,'cashier',true);
+perform public.mt_staff_scope_set(t,buyer,branch);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if (select quantity from public.mt_search_products(t,'USD','BRANCH-FIXTURE')) is distinct from 2::bigint or exists(select 1 from public.mt_products where store_id=t) then raise exception 'Scoped stock leaked';end if;
+begin perform public.mt_record_currency_sale(t,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)));raise exception 'Main cashier sale bypass';exception when insufficient_privilege then null;end;
+begin perform public.mt_branch_cash_sale(t,other_branch,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)));raise exception 'Other branch sale bypass';exception when insufficient_privilege then null;end;
+perform public.mt_branch_cash_sale(t,branch,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)));
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_staff_set(t,gen_random_uuid(),buyer,'tech',true);
+perform public.mt_staff_scope_set(t,buyer,branch);
+tech_repair:=public.mt_branch_add_repair(t,branch,gen_random_uuid(),cust,'Tech fixture',null,'Fault');
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if exists(select 1 from public.mt_repairs where store_id=t and id=rep) or not exists(select 1 from public.mt_repairs where store_id=t and id=tech_repair) then raise exception 'Repair scope leak';end if;
+begin perform public.mt_repair_transition(t,gen_random_uuid(),rep,'repairing','Denied');raise exception 'Repair branch bypass';exception when insufficient_privilege then null;end;
+perform public.mt_repair_transition(t,gen_random_uuid(),tech_repair,'diagnosing','Allowed');
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_staff_set(t,gen_random_uuid(),buyer,'stock',true);
+perform public.mt_staff_scope_set(t,buyer,branch);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+begin perform public.mt_adjust_stock(t,branch_product,1,gen_random_uuid());raise exception 'Stock adjustment bypass';exception when insufficient_privilege then null;end;
+perform public.mt_branch_transfer(t,gen_random_uuid(),branch,null,branch_product,1);
+if public.mt_branch_overview(t,branch_product)->>'main' is not null then raise exception 'Main stock disclosed';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_staff_set(t,gen_random_uuid(),buyer,'stock',false);
+end;
 begin perform public.mt_branch_overview(other,null);raise exception 'Branch leak';exception when insufficient_privilege then null;end;
 end;
 reset role;raise exception using errcode='ZX001',message='rollback';
