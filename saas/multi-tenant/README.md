@@ -149,3 +149,6 @@ Staff account enroll/challenge/verify/remove using Supabase Auth REST, in-memory
 
 ## Encrypted business export (071)
 AAL2 owner-only consistent SQL read of a fixed allowlist of tenant business records, bounded to 20,000 rows and 8 MB approximate JSON, then browser AES-GCM encryption under an independent passphrase. The file includes sensitive business/customer records, not Auth tokens or database credentials. Local inspection authenticates ciphertext and checks store identity, but does not restore or validate business invariants. Full server capture, Storage archive, infrastructure configuration, controlled restoration and recovery evidence remain separate and mandatory.
+
+## Repair assignment and consent (072)
+Owner assigns an active technician within branch scope and creates a bounded task list. Assigned tickets restrict technician access; tasks have completion/cancellation history. New tracked tickets require approval of the latest estimate for repair/ready/delivery, no pending tasks before readiness, and exact approved total/currency at checkout. Older untracked tickets remain legacy. Bearer tracking is not identity-verified customer consent. Existing test fixtures need updated consent flow; tests deferred.
