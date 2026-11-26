@@ -152,3 +152,6 @@ AAL2 owner-only consistent SQL read of a fixed allowlist of tenant business reco
 
 ## Repair assignment and consent (072)
 Owner assigns an active technician within branch scope and creates a bounded task list. Assigned tickets restrict technician access; tasks have completion/cancellation history. New tracked tickets require approval of the latest estimate for repair/ready/delivery, no pending tasks before readiness, and exact approved total/currency at checkout. Older untracked tickets remain legacy. Bearer tracking is not identity-verified customer consent. Existing test fixtures need updated consent flow; tests deferred.
+
+## Opt-in branch cash subdivision (073)
+Initialize at explicit cutover: existing consolidated cash assigned to main, then allocate actual branch cash with internal transfers, per currency. New sale, collection, supplier payment/refund, repair payment/refund and voucher cash movements are attributed after all source mappings exist in the transaction; other operations use main. Branch balances reject overdrafts and reconcile to the existing consolidated ledger. No historical branch balance inferred. This is not separate bank accounts, independent branch FIFO or a branch general ledger. Activation requires opening cash counts and final integration tests; never enable automatically.
