@@ -197,3 +197,6 @@ Owner-only point-in-time reconciliation and explicit physical-count confirmation
 
 ## Catalog percentage prices (089)
 Owner-only percentage adjustments on up to 50 products in a single currency. Existing request replay, tenant scope and license checks remain; all selected prices must exist and remain within supported positive minor-unit bounds. The store row lock serializes price changes. No tests run by request.
+
+## Physical stock count (090)
+Atomic count documents, exact-location stock events, historical count lookup, stock reservation and expected-balance conflict checks. Branch counting requires enabled FIFO; positive discrepancies have unknown cost until resolved through the established financial workflow. Count lines are included in business export and stock adjustment expense attribution. CSV import supports up to 500 new drafts and a 2 MB serialized payload. No tests run.

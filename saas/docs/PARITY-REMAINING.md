@@ -32,3 +32,5 @@ Adapted original `modules/pro.js` camera barcode scanning and safe CSV export in
 
 ## Inventory/catalog section continuation
 Added CSV template, authorized visible-product CSV export, product preview, device type suggestions, matching-model spec reuse and transactional percentage price adjustment (089). Remaining inventory parity includes a complete physical stock-count workflow and remaining product variant/storefront display comparison, and the original's higher CSV import limit. The current import stays limited to 100 rows for safe bounded atomic processing. No tests run by request.
+
+090: location-aware physical count documents, count snapshots, atomic adjustment of selected products, immutable history, owner/stock permission checks, branch FIFO and journal attribution, reservation and stale balance guards. 500-row CSV import and storefront model grouping on the current catalog page. Branch adjustments require activated branch FIFO. Positive unknown-cost differences are not fictitiously valued. Full offline count/replay, cross-page model grouping and operational validation remain open. No tests run by request.
