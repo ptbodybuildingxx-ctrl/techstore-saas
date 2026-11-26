@@ -1,5 +1,10 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "البحث عن عميل": "Find a customer",
+  "الاسم أو الهاتف": "Name or phone",
+  "إلغاء البحث": "Clear search",
+  "تعديل بيانات العميل": "Edit customer profile",
+  "تأكيد تعديل بيانات العميل؟": "Confirm customer profile update?",
   "سجل الذمم والأقساط": "Receivables & installments register",
   "الأرصدة حسب العملة لكل نتائج البحث دون تصفية الحالة؛ السجل يعرض 50 حركة في الصفحة.": "Balances by currency for all matching records before status filtering; 50 records per page.",
   "البحث بالاسم أو الهاتف أو رقم الفاتورة": "Search name, phone or invoice number",

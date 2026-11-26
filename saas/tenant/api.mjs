@@ -143,9 +143,13 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!isId(requestId)||typeof name!=='string'||!name.trim()||name.trim().length>160||typeof phone!=='string'||phone.trim().length>60)throw Error('Invalid customer');
    const r=await rpc('mt_add_customer',{p_store:store,p_request:requestId,p_name:name.trim(),p_phone:phone.trim()},store);if(!isId(r))throw Error('Customer not confirmed');return r;
   },
-  async customers(store,after=null,limit=50){
-   if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
-   const r=await rpc('mt_list_customers',{p_store:store,p_after:after,p_limit:limit},store);
+  async editCustomer(store,requestId,x){
+   if(!isId(requestId)||!x||!isId(x.customer)||typeof x.oldName!=='string'||typeof x.oldPhone!=='string'||typeof x.name!=='string'||!x.name.trim()||x.name.trim().length>160||typeof x.phone!=='string'||x.phone.trim().length>60)throw Error('Invalid customer edit');
+   const r=await rpc('mt_edit_customer',{p_store:store,p_request:requestId,p_customer:x.customer,p_old_name:x.oldName,p_old_phone:x.oldPhone,p_name:x.name.trim(),p_phone:x.phone.trim()},store);if(r!==x.customer)throw Error('Customer edit not confirmed');return r;
+  },
+  async customers(store,after=null,limit=50,query=''){
+   if(!(after===null||isId(after))||!int(limit,1,100)||typeof query!=='string'||query.length>160)throw Error('Invalid page');
+   const r=await rpc(query?'mt_search_customers':'mt_list_customers',{p_store:store,p_after:after,p_limit:limit,...(query?{p_query:query}:{})},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||typeof x.name!=='string'||typeof x.phone!=='string'))throw Error('Invalid customers');return r;
   },
   async recordCredit(attempt,terms){
