@@ -1,5 +1,6 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "إنشاء حساب جديد غير متاح حالياً. يمكنك تعيين حساب موظف مؤكد موجود مسبقاً.": "New account creation is currently unavailable. You can assign an existing confirmed employee account.",
   "قراءة عروض الأسعار": "Read quotes",
   "قراءة وطباعة الإيصالات": "Read and print receipts",
   "قراءة سجل الكفالات": "Read warranty register",
