@@ -137,3 +137,6 @@ Statement creation posts salary expense against payroll payable on issuance date
 
 ## Staff operation restrictions (067)
 Owner-managed per-user denials layered over existing roles, licenses and branch scopes, enforced by transaction triggers on sales, stock changes/transfers, product creation, repair transitions/evidence and attendance. UI exposes restrictions and disables several affected controls. Existing permissions are not broadened. No fine-grained read restriction or comprehensive screen/operation matrix yet; replay of a previously confirmed request may still return its original result.
+
+## Member/wholesale buyer pricing (068)
+Owner-approved per-buyer percentage terms with minimum basket quantity, limited to buyers with prior orders in the same shop. Explicit application at checkout, exclusive of coupons and points; server recomputes and snapshots the discount before the existing discounted fulfillment engine posts sales and inventory. No separate per-product wholesale price lists or paid membership billing.
