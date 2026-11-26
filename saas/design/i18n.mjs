@@ -1,5 +1,16 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "البيع الآجل يسجل الدفعة الأولى في الصندوق والباقي كدين بعملة الفاتورة. الأقساط شهرية دون فوائد. صلاحيات الكاشير مفوضة من المالك ومقيدة بالفرع.": "Credit sales post the deposit to cash and the rest as debt in invoice currency. Interest-free monthly installments. Cashier access is delegated by the owner and branch-scoped.",
+  "تفويض صلاحيات العملاء والديون": "Delegate customer and debt permissions",
+  "تفويض القراءة يتيح دليل أسماء وهواتف العملاء المشترك داخل المحل، والسجلات المالية في فرع الموظف فقط. تغيير الفرع يتطلب إعادة اعتماد التفويض.": "Read access shares customer names and phones within the store, but financial records only within the employee's branch. Changing branches requires a new grant.",
+  "عرض الصلاحيات الحالية": "View current permissions",
+  "صلاحيات الكاشير المفوضة": "Delegated cashier permissions",
+  "قراءة العملاء والذمم": "Read customers and receivables",
+  "عرض وإدارة الديون علينا": "View and manage payables",
+  "حفظ التفويض": "Save delegation",
+  "فرع التفويض": "Delegated branch",
+  "تأكيد تفويض هذه الصلاحيات؟": "Confirm delegation of these permissions?",
+  "تم حفظ التفويض": "Delegation saved",
   "محفوظ محلياً بانتظار المزامنة": "Saved locally, awaiting synchronization",
   "تحصيل دفعة دين فاتورة": "Collect invoice debt payment",
   "الاسم السابق": "Previous name",

@@ -12,6 +12,9 @@ export function saleAttempt(store,lines,c,requestId=crypto.randomUUID()){
 }
 export function saleInvoiceMetadata(v,lines){if(!v||!['title','customer','phone','terms'].every((k,i)=>typeof v[k]==='string'&&v[k].length<=[100,160,100,1000][i])||!Array.isArray(v.lines)||v.lines.length!==lines.length||v.lines.some(x=>!isId(x.product_id)||!int(x.months,0,120)||typeof x.serial!=='string'||x.serial.length>150||!lines.some(l=>l.product_id.toLowerCase()===x.product_id.toLowerCase()))||new Set(v.lines.map(x=>x.product_id.toLowerCase())).size!==v.lines.length)throw Error('Invalid invoice metadata');return Object.freeze({title:v.title.trim(),customer:v.customer.trim(),phone:v.phone.trim(),terms:v.terms.trim(),lines:Object.freeze(v.lines.map(x=>Object.freeze({product_id:x.product_id.toLowerCase(),months:x.months,serial:x.serial.trim()})).sort((a,b)=>a.product_id.localeCompare(b.product_id)))})}
 function validReturn(x,store){return !!x&&x.store_id===store&&isId(x.id)&&isId(x.request_id)&&isId(x.sale_id)&&isId(x.product_id)&&currency(x.currency)&&int(x.units,1,10000)&&int(x.unit_price_minor,1,100000000)&&x.total_minor===x.units*x.unit_price_minor&&int(x.debt_reduction_minor,0,x.total_minor)&&x.refund_minor===x.total_minor-x.debt_reduction_minor&&typeof x.reason==='string'}
+export const receivableActions=Object.freeze(["read","customer_create","customer_edit","credit_sale","debt_payment","standalone_open","standalone_payment","payable_manage"]);
+function validReceivableActions(a){return Array.isArray(a)&&a.length<=receivableActions.length&&new Set(a).size===a.length&&a.every(k=>receivableActions.includes(k))}
+function validateReceivableGrants(r,user){if(!r||!isId(r.user)||(user!==null&&r.user!==user)||!(r.branch===null||isId(r.branch))||!validReceivableActions(r.granted)||!validReceivableActions(r.effective)||r.effective.some(a=>!r.granted.includes(a)))throw Error('Invalid receivable grants');return r}
 function validStandaloneDebt(d,store){return !!d&&d.store_id===store&&isId(d.id)&&(d.customer_id===null||isId(d.customer_id))&&(d.branch_id===null||isId(d.branch_id))&&['receivable','payable'].includes(d.direction)&&typeof d.party==='string'&&typeof d.phone==='string'&&currency(d.currency)&&int(d.principal_minor,1,100000000000000)&&int(d.remaining_minor,0,d.principal_minor)&&int(d.installment_count,1,120)&&typeof d.first_due==='string'&&typeof d.notes==='string'}
 export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now}){
  if(url!==origin||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey))throw Error('Invalid shared project configuration');
@@ -164,6 +167,16 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc('mt_list_debts',{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.sale_id)||!isId(x.customer_id)||!currency(x.currency)||!int(x.principal_minor,1,100000000000000)||!int(x.deposit_minor,0,x.principal_minor-1)||!int(x.remaining_minor,0,x.principal_minor-x.deposit_minor)||!int(x.installment_count,1,60)))throw Error('Invalid debts');return r;
+  },
+  async receivableGrants(store,user=null){
+   if(user!==null&&!isId(user))throw Error('Invalid employee');
+   const r=await rpc('mt_receivable_grants',{p_store:store,p_user:user},store);
+   return validateReceivableGrants(r,user);
+  },
+  async setReceivableGrants(store,user,actions){
+   if(!isId(user)||!validReceivableActions(actions)||(actions.length&&!actions.includes('read')))throw Error('Invalid grants');
+   const r=validateReceivableGrants(await rpc('mt_receivable_grant_set',{p_store:store,p_user:user,p_actions:actions},store),user);
+   if([...r.granted].sort().join(',')!==[...actions].sort().join(','))throw Error('Grant not confirmed');return r;
   },
   async receivableOperation(store,x){
    if(!x||x.store!==store||!isId(x.requestId))throw Error('Invalid receivable operation');

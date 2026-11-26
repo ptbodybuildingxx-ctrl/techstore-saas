@@ -154,9 +154,7 @@ CREATE OR REPLACE FUNCTION tenant_private.add_customer(p_store uuid, p_request u
 AS $function$
 declare c public.mt_customers%rowtype;original_name text;original_phone text;
 begin
- if not tenant_private.receivable_allowed(p_store,'customer_create') then raise exception 'Customer creation denied' using errcode='42501';end if;
- perform 1 from public.saas_stores where id=p_store for update;
- if not coalesce(tenant_private.can_sell(p_store),false) then raise exception 'Trial write denied' using errcode='42501';end if;
+ perform tenant_private.receivable_write(p_store,'customer_create');
  if p_request is null or p_name is null or length(btrim(p_name)) not between 1 and 160 or p_phone is null or length(btrim(p_phone))>60 then raise exception 'Invalid customer' using errcode='22023';end if;
  select * into c from public.mt_customers where store_id=p_store and request_id=p_request;
  if found then
@@ -199,9 +197,7 @@ CREATE OR REPLACE FUNCTION tenant_private.pay_debt(p_store uuid, p_debt uuid, p_
 AS $function$
 declare d public.mt_debts%rowtype; p public.mt_debt_payments%rowtype; i public.mt_installments%rowtype; left_amount bigint; applied bigint;
 begin
- if not tenant_private.receivable_allowed(p_store,'debt_payment') then raise exception 'Debt collection denied' using errcode='42501';end if;
- perform 1 from public.saas_stores where id=p_store for update;
- if not coalesce(tenant_private.can_sell(p_store),false) then raise exception 'Trial write denied' using errcode='42501';end if;
+ perform tenant_private.receivable_write(p_store,'debt_payment');
  if p_request is null or p_debt is null or p_currency is null or p_amount is null or p_amount not between 1 and 100000000000000 then raise exception 'Invalid payment' using errcode='22023';end if;
  select * into d from public.mt_debts where store_id=p_store and id=p_debt for update;
  if not found or d.currency<>p_currency then raise exception 'Debt or currency mismatch' using errcode='22023';end if;
