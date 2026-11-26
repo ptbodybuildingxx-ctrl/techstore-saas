@@ -6,7 +6,7 @@ import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 const root=fileURLToPath(new URL('../..',import.meta.url));
-const assets=['saas/admin/admin.css','saas/admin/config.mjs','saas/storefront/api.mjs','saas/storefront/storefront.mjs','saas/design/theme.mjs','saas/design/site.mjs'];
+const assets=['saas/admin/admin.css','saas/admin/config.mjs','saas/storefront/api.mjs','saas/storefront/storefront.mjs','saas/storefront/push.mjs','saas/design/theme.mjs','saas/design/site.mjs'];
 test('dedicated custom-domain build includes only storefront assets and requires verified host routing',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'ts-domain-build-'));
  try{

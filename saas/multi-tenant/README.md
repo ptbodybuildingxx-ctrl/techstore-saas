@@ -98,3 +98,6 @@ Draft/published/completed store campaigns render only during the configured Dama
 
 ## Branch staff assignments (055)
 Optional single-branch assignment for active cashiers, stock workers and technicians. Assigned cashier/stock catalog reads use own branch balances, direct aggregate product/stock-event access is denied; scoped technicians read/transition own repair tickets. Scoped stock workers may release stock from their assigned branch to main, not allocate from main or modify global products/stock. Owners allocate and adjust. Unassigned staff retain existing store-level roles. Role changes/deactivation clear assignments.
+
+## External delivery (056–057)
+Opt-in email and per-shop Web Push queues; retry leases, explicit unsubscribe, private service-only claims. The worker sends only generic account update messages. Setup and scheduling are intentionally disabled; see saas/notifications/README.md.

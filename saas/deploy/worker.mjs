@@ -11,6 +11,7 @@ export function createWorker(files,commit){
   if(Object.hasOwn(aliases,p))return redirect(aliases[p]);
   const legacy=['/storefront','/storefront/','/saas/storefront','/saas/storefront/','/saas/storefront/index.html'].includes(p);
   if(legacy){const s=u.searchParams.get('shop');if(valid(s)){u.searchParams.delete('shop');return redirect('/shop/'+s+'/');}p='/404.html';}
+  if(/^\/shop\/[a-z][a-z0-9-]{2,39}\/push-sw\.mjs$/.test(p))return new Response(request.method==='HEAD'?null:files['/saas/storefront/push-sw.mjs'],{headers:{...headers,'Content-Type':types.mjs}});
   const match=/^\/shop\/([a-z][a-z0-9-]{2,39})(\/?)$/.exec(p);
   if(match){if(!match[2])return redirect(p+'/');const html=files['/saas/storefront/index.html'].replace('href="../admin/admin.css"','href="/saas/admin/admin.css"').replace('src="storefront.mjs"','src="/saas/storefront/storefront.mjs"');return new Response(request.method==='HEAD'?null:html,{headers:{...headers,'Content-Type':types.html}});}
   if(p.endsWith('/'))p+='index.html';let status=200;if(!Object.hasOwn(files,p)||p==='/404.html'){p='/404.html';status=404;}
