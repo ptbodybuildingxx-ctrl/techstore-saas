@@ -308,3 +308,64 @@ a{color:#8cc3ff;text-underline-offset:3px}
 @media(max-width:850px){.workspace-shell{display:block}.workspace-nav{position:static;max-height:none;flex-direction:row;overflow-x:auto;gap:6px;margin-bottom:18px;padding:8px}.workspace-nav::before{display:none}.workspace-nav button{width:auto;white-space:nowrap;flex:0 0 auto}.workspace-shell .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.portal-choices{grid-template-columns:1fr}.portal-page main{padding-top:20px}.workspace-shell form label{min-width:100%}.workspace-shell form button{min-height:44px}}
 @media print{.workspace-nav,.platform-nav{display:none!important}}
+
+
+/* Aurora parity — adapted from TechStore workspace.css (f0b680ca).
+   Platform defaults only; published tenant tokens and responsive layouts remain authoritative. */
+:root{--aurora-accent:#3859d6;--aurora-header:#101a35;--aurora-bg:#f3f5fb;--aurora-ink:#19263c;--aurora-muted:#586983;--aurora-line:#dfe5f0;--aurora-shadow:0 6px 24px #2439690b}
+:root:not([data-design=on]){color-scheme:light;color:var(--aurora-ink);background:var(--aurora-bg);--blue:var(--aurora-accent);--panel:#fff;--line:var(--aurora-line);--workspace-accent:var(--aurora-accent);--workspace-muted:var(--aurora-muted);--workspace-border:var(--aurora-line)}
+body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;line-height:1.55}
+:root:not([data-design=on]) body{background:var(--aurora-bg);color:var(--aurora-ink)}
+:root:not([data-design=on]) header{background:linear-gradient(110deg,#101a35,#29376b);color:white;min-height:74px;padding:13px clamp(14px,3vw,30px);box-shadow:0 6px 24px #101a3520;border:0}
+:root:not([data-design=on]) header small{color:#c0cde8;letter-spacing:0}
+:root:not([data-design=on]) header button{background:#ffffff14;color:#fff;border:1px solid #ffffff2c}
+:root:not([data-design=on]) .panel,:root:not([data-design=on]) .metric{background:#fff;border-color:var(--line);box-shadow:var(--aurora-shadow)}
+:root:not([data-design=on]) .panel p,:root:not([data-design=on]) .notice,:root:not([data-design=on]) #message,:root:not([data-design=on]) th,:root:not([data-design=on]) small{color:var(--aurora-muted)}
+:root:not([data-design=on]) .notice{background:#fff8e9;border:1px solid #ecd9af;border-radius:12px;padding:12px;color:#754a13}
+:root:not([data-design=on]) input,:root:not([data-design=on]) select,:root:not([data-design=on]) textarea{background:#fff;color:var(--aurora-ink);border:1px solid #c9d5e4}
+:root:not([data-design=on]) button{background:#e9edfb;color:#263d99;border-color:#dfe5f0;font-weight:600}
+:root:not([data-design=on]) form button,:root:not([data-design=on]) button.primary,:root:not([data-design=on]) #order,:root:not([data-design=on]) #sell,:root:not([data-design=on]) #loginPanel form button{background:var(--aurora-accent);color:white;border-color:var(--aurora-accent)}
+:root:not([data-design=on]) a{color:#2948bb}
+:root:not([data-design=on]) th,:root:not([data-design=on]) .workspace-shell th{background:#f4f7fb}
+:root:not([data-design=on]) .workspace-nav{background:white;border-color:var(--line);box-shadow:var(--aurora-shadow)}
+:root:not([data-design=on]) .workspace-nav::before{color:var(--aurora-muted)}
+:root:not([data-design=on]) .workspace-nav button{background:transparent;color:var(--aurora-ink);border-color:transparent}
+:root:not([data-design=on]) .workspace-nav button:hover{background:#f0f3fd}
+:root:not([data-design=on]) .workspace-nav button[aria-pressed=true]{background:#e7edff;border-color:#dce5ff;color:#2948bb;box-shadow:inset -3px 0 var(--aurora-accent)}
+:root:not([data-design=on]) .platform-nav{background:#fff;color:var(--aurora-ink);border-color:var(--line)}
+:root:not([data-design=on]) .platform-nav a{background:#fff;color:#2948bb!important;border-color:var(--line)}
+:root:not([data-design=on]) .platform-nav a[aria-current=page]{background:#e7edff;color:#2948bb!important;border-color:#dce5ff}
+:root:not([data-design=on]) .portal-choice{background:#f7f9fe;border-color:var(--line);color:var(--aurora-muted)}
+:root:not([data-design=on]) .portal-choice strong{color:var(--aurora-ink)}
+:root:not([data-design=on]) .portal-choice:hover,:root:not([data-design=on]) .portal-choice:focus-visible{background:#e7edff;border-color:var(--aurora-accent)}
+:root:not([data-design=on]) .portal-choice .portal-action{color:#2948bb}
+:root:not([data-design=on]) .site-block:not(.accent){background:#fff;color:var(--aurora-ink)}
+:root[data-design=on] body{background:var(--design-bg);color:var(--design-text)}
+:root[data-design=on] .workspace-nav{background:var(--design-surface);border-color:color-mix(in srgb,var(--design-text) 24%,transparent)}
+:root[data-design=on] .workspace-nav::before,:root[data-design=on] .workspace-nav button{color:var(--design-text)}
+:root[data-design=on] .workspace-nav button[aria-pressed=true]{color:var(--design-accent-text);background:var(--design-accent);border-color:var(--design-accent);box-shadow:none}
+:root[data-design=on] .workspace-shell th{background:var(--design-surface)}
+:root[data-design=on] .notice,:root[data-design=on] #message{color:var(--design-text)}
+:root[data-design=on] .platform-nav{background:var(--design-surface);border-color:color-mix(in srgb,var(--design-text) 24%,transparent)}
+:root[data-design=on] .platform-nav a{background:var(--design-surface);color:var(--design-text)!important;border-color:color-mix(in srgb,var(--design-text) 24%,transparent)}
+:root[data-design=on] .platform-nav a[aria-current=page]{background:var(--design-accent);color:var(--design-accent-text)!important;border-color:var(--design-accent)}
+/* Public shop: Aurora product cards by default, not a management table.
+   Explicit published desktop/mobile layout settings take precedence. */
+.storefront-page main{max-width:1250px}
+.storefront-page #shopName{font-size:clamp(1.4rem,3vw,2rem);margin:16px 0}
+.storefront-page #catalog{align-items:end}
+.storefront-page #catalog input,.storefront-page #catalog select{width:100%}
+:root:not([data-design=on]) .storefront-page #products{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:16px}
+:root:not([data-design=on]) .storefront-page table:has(>#products){display:block;white-space:normal}
+:root:not([data-design=on]) .storefront-page table:has(>#products)>thead{display:none}
+:root:not([data-design=on]) .storefront-page #products>tr{display:flex;flex-direction:column;padding:16px;border:1px solid var(--line);border-radius:16px;box-shadow:var(--aurora-shadow)}
+:root:not([data-design=on]) .storefront-page #products>tr>td{display:block;padding:5px;border:0}
+.storefront-page .shop-product-name{font-weight:700;overflow-wrap:anywhere}
+.storefront-page .shop-product-name .site-image{width:100%;max-width:none;height:165px;aspect-ratio:auto;object-fit:contain;background:#f3f5fb}
+.storefront-page .shop-product-code{font-size:.82rem;opacity:.8}
+.storefront-page .shop-product-price{font-weight:750;font-variant-numeric:tabular-nums}
+.storefront-page .shop-add{min-height:44px;width:100%}
+.storefront-page .shop-quantity{display:flex;gap:6px;align-items:center}
+.storefront-page .shop-quantity button{min-width:40px;min-height:40px}
+.storefront-page #cart td{vertical-align:middle}
+@media(max-width:540px){.storefront-page #catalog label{min-width:100%}.storefront-page #catalog button{width:100%}.storefront-page .panel{padding:14px}}

@@ -6,6 +6,7 @@ export const defaults=Object.freeze({...baseDefaults,...extras,site:emptySite()}
 export const presets=Object.freeze({
  dark:{...defaults},
  light:{...defaults,mode:'light',accent:'#125caa',background:'#f1f5f9',surface:'#ffffff',text:'#172235'},
+ aurora:{...defaults,mode:'light',accent:'#3859d6',background:'#f3f5fb',surface:'#ffffff',text:'#19263c'},
  gold:{...defaults,accent:'#e1bd76',background:'#171513',surface:'#28231d',text:'#fff5df',font:'serif',radius:'square'},
  ocean:{...defaults,accent:'#7dd3fc',background:'#071d30',surface:'#112c43',text:'#e6f6ff',radius:'round'}
 });
