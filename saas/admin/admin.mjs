@@ -1,4 +1,5 @@
 import {defaults,createDesignEditor} from '../design/theme.mjs';
+import {shopPath} from '../storefront/api.mjs';
 import {configuration} from './config.mjs';
 import {createAdminApi} from './api.mjs';
 // Hosted GitHub Pages is a static showcase only, never accept credentials there.
@@ -38,6 +39,7 @@ async function load(){
   const licenseLabels={unprovisioned_or_blocked:'غير مهيأ / محظور',expired:'منتهٍ',verification_required:'يتطلب التحقق'};
   tr.append(node('td',status?'قاعدة مشتركة':'مسار قديم'),node('td',status?.write_entitlement?'صلاحية تشغيل سارية':status?'غير نشط':'غير مؤكد'));
   const td=document.createElement('td');
+  if(/^[a-z][a-z0-9-]{2,39}$/.test(s.slug)){const link=node('a','فتح متجر المحل');link.href=shopPath(s.slug);link.target='_blank';link.rel='noopener noreferrer';td.append(link,document.createTextNode(' '));}
   if(!s.provisioned){
    const choices=s.state==='provisioning'?[...(['pending','trial'].includes(s.subscription_state)?[['trial','تجربة 14 يوماً',14]]:[]),['suspend','إيقاف',null],['cancel','إغلاق',null]]:s.state==='suspended'?[['reopen','إعادة فتح',null],['cancel','إغلاق',null]]:s.state==='closed'?[['reopen','إعادة فتح',null]]:[];
    // Dedicated-project requests are deliberately disabled in the shared architecture UI.

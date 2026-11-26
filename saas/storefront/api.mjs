@@ -2,6 +2,8 @@ import {validateTheme} from '../design/theme.mjs';
 const validId=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 const currency=x=>['SYP','USD','EUR'].includes(x);
 const slug=x=>typeof x==='string'&&/^[a-z][a-z0-9-]{2,39}$/.test(x);
+export const shopPath=s=>{if(!slug(s))throw Error('Invalid shop');return '/shop/'+s+'/'};
+export const shopSlugFromPath=p=>typeof p==='string'?(/^\/shop\/([a-z][a-z0-9-]{2,39})\/$/.exec(p)?.[1]??null):null;
 const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
 export function createStorefrontApi({url,publishableKey,fetcher=fetch,clock=Date.now,customerAuthEnabled=false}){
  if(url!=='https://mezsyzdieqmqulddcrtg.supabase.co'||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey))throw Error('Invalid backend');
