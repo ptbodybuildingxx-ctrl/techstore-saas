@@ -148,6 +148,13 @@ perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_
 if not exists(select 1 from jsonb_array_elements(public.mt_buyer_inbox('a-'||tag)) x where x->>'kind'='price_drop') then raise exception 'Price notification missing';end if;
 perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
 if jsonb_array_length(public.mt_buyer_inbox('a-'||tag))<>0 then raise exception 'Buyer inbox leaked';end if;
+declare quote_id uuid;quote_request uuid:=gen_random_uuid();q_before bigint;q_lines jsonb:=jsonb_build_array(jsonb_build_object('product_id',pr,'units',1,'expected_price_minor',4000));begin
+select quantity into q_before from public.mt_products where store_id=t and id=pr;
+quote_id:=public.mt_quote_create(t,quote_request,'Fixture customer','USD',(now() at time zone 'Asia/Damascus')::date+7,q_lines);
+if public.mt_quote_create(t,quote_request,'Fixture customer','USD',(now() at time zone 'Asia/Damascus')::date+7,q_lines) is distinct from quote_id then raise exception 'Quote replay';end if;
+if public.mt_quote_read(t,quote_id)->>'total_minor' is distinct from '4000' or (select quantity from public.mt_products where store_id=t and id=pr) is distinct from q_before then raise exception 'Quote changed stock or amount';end if;
+begin perform public.mt_quote_read(other,quote_id);raise exception 'Quote leaked';exception when insufficient_privilege then null;end;
+end;
 -- Branch transfers, cash sale, return and cross-tenant denial.
 declare branch uuid;branch_product uuid;branch_request uuid:=gen_random_uuid();branch_sale uuid;branch_move uuid:=gen_random_uuid();begin
 branch:=public.mt_branch_create(t,'Fixture branch');branch_product:=public.mt_add_product(t,'BRANCH-FIXTURE','Branch fixture');

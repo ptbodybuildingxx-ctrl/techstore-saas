@@ -77,3 +77,6 @@ Owner-only, original sale and return records aggregated by branch/currency and D
 
 ## Buyer in-app notifications (048)
 Live-account scoped inbox records order state transitions and one-shot price-drop/restock watches for listed products, with read state and bounded pages. Watch caps: 30 per buyer/store and 1000 per store. No email, SMS or push transport, no real-time websocket delivery; refresh reads the persisted inbox. Old orders are not backfilled.
+
+## Price quotations (049)
+Owner/cashier can save immutable current-price quotes from the POS, valid up to 90 Damascus-calendar days. Server checks product prices, captures receipt identity and retries, and does not post stock or cash. Owner sees all quotes; cashiers see their own. A quote is not a reservation or an issued sale.
