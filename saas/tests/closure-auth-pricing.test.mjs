@@ -18,3 +18,12 @@ test('failed email operation releases guard without opening a session',async()=>
  const api=createStorefrontApi({...config,customerAuthEnabled:true,fetcher:async(u)=>u.endsWith('/recover')?{ok:false,status:429}:{ok:true,status:200,json:async()=>({access_token:'shopping',expires_in:60})}});
  await assert.rejects(api.requestRecovery('fixture@example.invalid'));assert.equal(api.signedIn(),false);await api.signIn('fixture@example.invalid','password');assert.equal(api.signedIn(),true);
 });
+
+
+test('pending sign-in prevents a reverse-order recovery race and unlocks on failure',async()=>{
+ let release,entered;const gate=new Promise(resolve=>{release=resolve});const pending=new Promise(resolve=>{entered=resolve});const calls=[];
+ const api=createStorefrontApi({...config,customerAuthEnabled:true,fetcher:async u=>{calls.push(u);if(u.includes('grant_type=password')){entered();await gate;return {ok:false,status:401}}return {ok:true,status:200,json:async()=>({})}}});
+ const login=api.signIn('fixture@example.invalid','password');const rejected=assert.rejects(login);await pending;
+ await assert.rejects(api.requestRecovery('fixture@example.invalid'),/in progress/);await assert.rejects(api.signIn('fixture@example.invalid','password'),/in progress/);assert.equal(calls.length,1);
+ release();await rejected;assert.equal(api.signedIn(),false);assert.equal(await api.requestRecovery('fixture@example.invalid'),true);assert.equal(calls.length,2);
+});
