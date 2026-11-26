@@ -119,3 +119,6 @@ New repair tickets capture receipt identity and a random bearer tracking code. S
 
 ## Staff attendance and payroll (062)
 Server-timestamped clock-in/out, one open shift per employee/store, self-service attendance and statements, owner terms, completed-month net cash sales commission calculated in the configured currency, immutable monthly statement and one-time actual payment through branch voucher classification. Statement creation does not accrue accounting liability; later returns do not automatically amend the snapshot. Employee salary/commission is not an independent banking payment. No automatic payroll scheduler.
+
+## Manual bank ledger (063)
+Bank accounts start at zero; verified same-currency cash deposits and withdrawals update cash and bank balances atomically, with request replay, insufficient funds checks and period locks. Transfers map to bank/cash in the journal, not operating expenses/revenue; bank appears in management assets and reconciliation. Existing raw cash movement records retain funding/expense types with Bank transfer reference. No external bank access, bank fees, direct bank-to-bank movement, or payment gateway.
