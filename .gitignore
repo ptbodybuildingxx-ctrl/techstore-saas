@@ -26,3 +26,7 @@ coverage/
 *.key
 supabase/.temp/
 supabase/.branches/
+
+# Generated SaaS storefront build
+/dist-storefront/
+/dist-pilot/

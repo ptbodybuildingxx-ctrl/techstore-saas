@@ -119,7 +119,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!validReturn(x,store)))throw Error('Invalid returns');return r;
   },
   async operationsList(store,kind,after=null,limit=50){
-   if(!['suppliers','purchases','purchase_batches','period_closes','supplier_returns','repairs','staff','repair_invoices','warranty_claims','warranty_parts','repair_refunds','fx_rates','orders','coupons'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
+   if(!['suppliers','purchases','purchase_batches','accounting_adjustments','indirect_tax_entries','period_closes','supplier_returns','repairs','staff','repair_invoices','warranty_claims','warranty_parts','repair_refunds','fx_rates','orders','coupons'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc(kind==='staff'?'mt_staff_list':'mt_list_'+kind,{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
   },
@@ -135,6 +135,8 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
      const total=x.lines.reduce((n,l)=>n+BigInt(l.units)*BigInt(l.unit_cost_minor),0n);if(total>100000000000000n||!int(x.paid,0,Number(total)))throw Error('Invalid invoice total');
      name='mt_purchase_batch';params={p_supplier:x.supplier,p_currency:x.currency,p_reference:x.reference,p_lines:x.lines.map(({product_id,units,unit_cost_minor})=>({product_id,units,unit_cost_minor})),p_paid:x.paid};break;
     }
+    case 'indirectTax':if(!['sale','repair','sale_return','repair_refund'].includes(x.taxKind)||!isId(x.source)||(['sale','repair'].includes(x.taxKind)?!int(x.rate,0,10000):x.rate!==null)||!int(x.expected,0,100000000000000)||!validText(x.reference,160)||!validText(x.note,300))throw Error('Invalid tax entry');name='mt_record_indirect_tax';params={p_kind:x.taxKind,p_source:x.source,p_rate:x.rate,p_expected:x.expected,p_reference:x.reference,p_note:x.note};break;
+    case 'accountingAdjust':if(!["funding_equity","funding_loan","stock_equity","expense_rent","expense_payroll","expense_utilities","expense_other","expense_tax_payment","expense_indirect_tax_payment","expense_loan_payment","expense_capital_withdrawal","income_tax_accrual","income_tax_reverse"].includes(x.adjustment)||!currency(x.currency)||!int(x.amount,1,100000000000000)||!validText(x.reference,160)||!validText(x.note,300)||(['income_tax_accrual','income_tax_reverse'].includes(x.adjustment)?x.source!==null:!isId(x.source)))throw Error('Invalid accounting entry');name='mt_accounting_adjust';params={p_kind:x.adjustment,p_source:x.source,p_currency:x.currency,p_amount:x.amount,p_reference:x.reference,p_note:x.note};break;
     case 'closePeriod':{
      if(![x.from,x.to].every(v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v)))||Date.parse(x.to)<Date.parse(x.from)||Date.parse(x.to)-Date.parse(x.from)>365*86400000||!validText(x.note,300)||x.confirm!==true)throw Error('Invalid period close');
      name='mt_close_period';params={p_from:x.from,p_to:x.to,p_note:x.note,p_confirm:true};break;
@@ -156,6 +158,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
      name='mt_record_mixed_sale';params={p_currency:x.currency,p_lines:sale.lines,p_tenders:x.tenders,p_refund_policy:x.refundPolicy};break;
     }
     case 'coupon':if(typeof x.code!=='string'||!/^[A-Z0-9-]{3,24}$/.test(x.code)||!int(x.bps,100,5000)||!int(x.min,0,100)||!int(x.max,1,10000)||typeof x.expires!=='string'||!Number.isFinite(Date.parse(x.expires)))throw Error('Invalid coupon');name='mt_add_coupon';params={p_code:x.code,p_bps:x.bps,p_min:x.min,p_max:x.max,p_expires:x.expires};break;
+    case 'loyaltySettings':if(typeof x.enabled!=='boolean'||!int(x.points,2,100)||!int(x.bps,100,5000))throw Error('Invalid loyalty settings');{const v=await rpc('mt_set_loyalty',{p_store:store,p_enabled:x.enabled,p_points:x.points,p_bps:x.bps},store);if(v?.enabled!==x.enabled||v.points_required!==x.points||v.basis_points!==x.bps)throw Error('Loyalty change not confirmed');return v}
     case 'couponEnable':if(!isId(x.coupon)||typeof x.enabled!=='boolean')throw Error('Invalid coupon setting');{const v=await rpc('mt_coupon_enable',{p_store:store,p_coupon:x.coupon,p_enabled:x.enabled},store);if(v!==x.enabled)throw Error('Coupon change unconfirmed');return v}
     case 'deliveryEnable':if(typeof x.enabled!=='boolean')throw Error('Invalid flag');{const v=await rpc('mt_delivery_enable',{p_store:store,p_enabled:x.enabled},store);if(v!==x.enabled)throw Error('Flag not confirmed');return v}
     case 'dispatchDelivery':if(!isId(x.order)||!validText(x.tracking,100))throw Error('Invalid dispatch');{const v=await rpc('mt_dispatch_delivery',{p_store:store,p_order:x.order,p_tracking:x.tracking},store);if(v!=='dispatched')throw Error('Dispatch not confirmed');return v}
@@ -186,19 +189,49 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   },
   async periodSnapshot(store,close){
    if(!isId(close))throw Error('Invalid period');const r=await rpc('mt_period_snapshot',{p_store:store,p_close:close},store);
-   if(!r||typeof r.period_from!=='string'||typeof r.period_to!=='string'||!Array.isArray(r.trial_balance?.rows)||r.trial_balance.rows.length>39||!Array.isArray(r.operating_report)||r.operating_report.length>3||!Array.isArray(r.cash_report)||r.cash_report.length>3)throw Error('Invalid snapshot');return r;
+   if(!r||typeof r.period_from!=='string'||typeof r.period_to!=='string'||!Array.isArray(r.trial_balance?.rows)||r.trial_balance.rows.length>66||!Array.isArray(r.operating_report)||r.operating_report.length>3||!Array.isArray(r.cash_report)||r.cash_report.length>3)throw Error('Invalid snapshot');return r;
   },
   async managementStatements(store,from,to,c){
    if(!currency(c)||![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid report range');
-   const r=await rpc('mt_management_statements',{p_store:store,p_from:from,p_to:to,p_currency:c},store),keys=['cash','inventory','receivable','assets','payable','cumulative_result','unresolved_balance','revenue','cost','expenses','result_before_tax'],valid=x=>x&&keys.every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k])),sum=x=>BigInt(x.cash)+BigInt(x.inventory)+BigInt(x.receivable)===BigInt(x.assets)&&BigInt(x.assets)===BigInt(x.payable)+BigInt(x.cumulative_result)+BigInt(x.unresolved_balance)&&BigInt(x.revenue)-BigInt(x.cost)-BigInt(x.expenses)===BigInt(x.result_before_tax);
-   if(!r||r.mode!=='management_closing_rate'||r.currency!==c||r.tax_status!=='not_calculated'||r.final_profit!==null||!int(r.missing_rates,0,3)||!int(r.unknown_cost_events,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>3||r.rows.some(x=>!currency(x.currency)||!valid(x)||!sum(x))||new Set(r.rows.map(x=>x.currency)).size!==r.rows.length||!Array.isArray(r.rates)||r.rates.length>3||((r.missing_rates||r.unknown_cost_events)?r.translated!==null:!valid(r.translated)))throw Error('Invalid management statement');
+   const r=await rpc('mt_management_statements',{p_store:store,p_from:from,p_to:to,p_currency:c},store),keys=['cash','inventory','receivable','assets','payable','cumulative_result','unresolved_balance','revenue','cost','expenses','result_before_tax'],extra=['capital','loan_payable','tax_payable','income_tax','result_after_recorded_tax'],num=x=>typeof x==='string'&&/^-?\d+$/.test(x),hasExtra=x=>extra.some(k=>Object.hasOwn(x,k)),valid=x=>x&&keys.every(k=>num(x[k]))&&(!hasExtra(x)||extra.every(k=>num(x[k]))),sum=x=>BigInt(x.cash)+BigInt(x.inventory)+BigInt(x.receivable)===BigInt(x.assets)&&BigInt(x.assets)===BigInt(x.payable)+BigInt(x.cumulative_result)+BigInt(x.unresolved_balance)+BigInt(x.capital??0)+BigInt(x.loan_payable??0)+BigInt(x.tax_payable??0)&&BigInt(x.revenue)-BigInt(x.cost)-BigInt(x.expenses)===BigInt(x.result_before_tax)&&(!hasExtra(x)||BigInt(x.result_before_tax)-BigInt(x.income_tax)===BigInt(x.result_after_recorded_tax));
+   if(!r||r.mode!=='management_closing_rate'||r.currency!==c||!['not_calculated','manual_recorded'].includes(r.tax_status)||r.final_profit!==null||!int(r.missing_rates,0,3)||!int(r.unknown_cost_events,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>3||r.rows.some(x=>!currency(x.currency)||!valid(x)||!sum(x))||new Set(r.rows.map(x=>x.currency)).size!==r.rows.length||!Array.isArray(r.rates)||r.rates.length>3||((r.missing_rates||r.unknown_cost_events)?r.translated!==null:!valid(r.translated)))throw Error('Invalid management statement');
+   if(r.translated){
+    const t=r.translated,all=[...keys,...(hasExtra(t)?extra:[])];
+    if(r.rows.some(x=>hasExtra(x)!==hasExtra(t)))throw Error('Inconsistent accounting schema');
+    // Recompute each translated field using exact rational rates, with PostgreSQL half-away-from-zero rounding.
+    const used=r.rows.filter(x=>all.some(k=>BigInt(x[k])!==0n)),quotes=new Map();
+    for(const q of r.rates){
+     if(!q||!currency(q.currency)||quotes.has(q.currency)||!used.some(x=>x.currency===q.currency)||!int(q.numerator,1,1000000000000)||!int(q.denominator,1,1000000000000)|| (q.currency===c?(q.numerator!==1||q.denominator!==1):(!isId(q.rate_id)||typeof q.quoted_at!=='string'||!Number.isFinite(Date.parse(q.quoted_at)))))throw Error('Invalid FX evidence');
+     quotes.set(q.currency,[BigInt(q.numerator),BigInt(q.denominator)]);
+    }
+    for(const row of used)if(row.currency!==c&&!quotes.has(row.currency))throw Error('Missing FX evidence');
+    for(const k of all){
+     let n=0n,d=1n;
+     for(const row of used){const [a,b]=quotes.get(row.currency)??[1n,1n];n=n*b+BigInt(row[k])*a*d;d*=b}
+     const sign=n<0n?-1n:1n,abs=n*sign,rounded=sign*((2n*abs+d)/(2n*d));
+     if(BigInt(t[k])!==rounded)throw Error('Translated amount differs from FX evidence');
+    }
+   }
    return r;
   },
+  async loyaltySettings(store){const r=await rpc('mt_loyalty_settings',{p_store:store},store);if(!r||typeof r.enabled!=='boolean'||!int(r.points_required,2,100)||!int(r.basis_points,100,5000))throw Error('Invalid loyalty settings');return r},
   async trialBalance(store,from,to){
    if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
-   const r=await rpc('mt_trial_balance',{p_store:store,p_from:from,p_to:to},store),accounts=['cash','accounts_receivable','accounts_payable','inventory','sales_revenue','sales_returns','repair_revenue','cost_of_goods_services','expense_unclassified','funding_unclassified','stock_intake_unclassified','stock_adjustment_expense','fx_clearing'];
-   if(!r||r.mode!=='operational_unclassified'||!int(r.unknown_cost_events,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>39||r.rows.some(x=>!x||!currency(x.currency)||!accounts.includes(x.account)||!['opening','debit','credit','closing'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||BigInt(x.debit)<0n||BigInt(x.credit)<0n||BigInt(x.opening)+BigInt(x.debit)-BigInt(x.credit)!==BigInt(x.closing))||new Set(r.rows.map(x=>x.currency+':'+x.account)).size!==r.rows.length)throw Error('Invalid ledger');
+   const r=await rpc('mt_trial_balance',{p_store:store,p_from:from,p_to:to},store),accounts=['cash','accounts_receivable','accounts_payable','inventory','sales_revenue','sales_returns','repair_revenue','cost_of_goods_services','expense_unclassified','funding_unclassified','stock_intake_unclassified','stock_adjustment_expense','fx_clearing','capital','loan_payable','income_tax_payable','indirect_tax_payable','rent_expense','payroll_expense','utilities_expense','other_operating_expense','income_tax_expense'];
+   if(!r||r.mode!=='operational_unclassified'||!int(r.unknown_cost_events,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>66||r.rows.some(x=>!x||!currency(x.currency)||!accounts.includes(x.account)||!['opening','debit','credit','closing'].every(k=>typeof x[k]==='string'&&/^-?\d+$/.test(x[k]))||BigInt(x.debit)<0n||BigInt(x.credit)<0n||BigInt(x.opening)+BigInt(x.debit)-BigInt(x.credit)!==BigInt(x.closing))||new Set(r.rows.map(x=>x.currency+':'+x.account)).size!==r.rows.length)throw Error('Invalid ledger');
    for(const c of ['USD','EUR','SYP']){const rows=r.rows.filter(x=>x.currency===c);if(rows.reduce((n,x)=>n+BigInt(x.opening),0n)!==0n||rows.reduce((n,x)=>n+BigInt(x.debit)-BigInt(x.credit),0n)!==0n)throw Error('Unbalanced ledger')}
+   return r;
+  },
+  async indirectTaxSummary(store){const r=await rpc('mt_indirect_tax_summary',{p_store:store},store),num=x=>typeof x==='string'&&/^-?\d+$/.test(x);if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['assessed','reversed','paid','balance'].every(k=>num(x[k]))||['assessed','reversed','paid'].some(k=>BigInt(x[k])<0n)||BigInt(x.assessed)-BigInt(x.reversed)-BigInt(x.paid)!==BigInt(x.balance)||!int(x.unclassified_documents,0,Number.MAX_SAFE_INTEGER)))throw Error('Invalid tax summary');return r},
+  async indirectTaxQuote(store,kind,source,rate){
+   if(!['sale','repair','sale_return','repair_refund'].includes(kind)||!isId(source)||(['sale','repair'].includes(kind)?!int(rate,0,10000):rate!==null))throw Error('Invalid tax quote');
+   const r=await rpc('mt_indirect_tax_quote',{p_store:store,p_kind:kind,p_source:source,p_rate:rate},store);
+   if(!r||r.kind!==kind||r.source_id!==source||!isId(r.invoice_id)||!currency(r.currency)||!int(r.gross_minor,0,100000000000000)||!int(r.rate_bps,0,10000)||!int(r.tax_minor,0,r.gross_minor)||(rate!==null&&(r.rate_bps!==rate||r.invoice_id!==source||BigInt(r.tax_minor)!==(2n*BigInt(r.gross_minor)*BigInt(rate)+BigInt(10000+rate))/(2n*BigInt(10000+rate)))))throw Error('Invalid tax quote response');
+   return r;
+  },
+  async financialReconciliation(store){
+   const r=await rpc('mt_financial_reconciliation',{p_store:store},store),accounts=['cash','inventory','accounts_receivable','accounts_payable','income_tax_payable','indirect_tax_payable'],integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
+   if(!r||r.mode!=='current_subledger_reconciliation'||!int(r.stock_quantity_mismatches,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>18||new Set(r.rows.map(x=>x?.currency+':'+x?.account)).size!==r.rows.length||r.rows.some(x=>!x||!currency(x.currency)||!accounts.includes(x.account)||!['journal','recorded','difference'].every(k=>integer(x[k]))||BigInt(x.recorded)-BigInt(x.journal)!==BigInt(x.difference)||x.balanced!==(BigInt(x.difference)===0n))||new Set(r.rows.map(x=>x.currency)).size*accounts.length!==r.rows.length||r.balanced!==(r.stock_quantity_mismatches===0&&r.rows.every(x=>x.balanced)))throw Error('Invalid financial reconciliation');
    return r;
   },
   async cashReconciliation(store){
