@@ -33,7 +33,7 @@ $$;
 create function tenant_private.effective_buyer_terms(s uuid,u uuid) returns tenant_private.buyer_price_terms language plpgsql stable security definer set search_path='' as $$
 declare v tenant_private.buyer_price_terms%rowtype;
 begin
- if not tenant_private.known_membership_buyer(s,u) then return null;end if;
+ if s is null or u is null or not tenant_private.known_membership_buyer(s,u) then return null;end if;
  select * into v from tenant_private.buyer_price_terms where store_id=s and buyer=u;
  if not found then v.store_id:=s;v.buyer:=u;v.tier:='standard';v.enabled:=true;v.use_default:=true;end if;
  if not v.enabled then return null;end if;
