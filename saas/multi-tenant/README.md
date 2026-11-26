@@ -116,3 +116,6 @@ Listed, priced products remain visible when unavailable; boolean availability su
 
 ## Repair customer tracking (061)
 New repair tickets capture receipt identity and a random bearer tracking code. Staff can print intake receipt, record bounded private before/after JPEG evidence and technical activity notes, and issue versioned cost offers. Public shop tracking reveals device description, state, and latest cost offer only to a holder of the code; approval/rejection is recorded but does not itself change repair state or block checkout. No historical branding is fabricated, no public evidence photos, no legal digital signature. Historical tickets do not automatically get tracking codes.
+
+## Staff attendance and payroll (062)
+Server-timestamped clock-in/out, one open shift per employee/store, self-service attendance and statements, owner terms, completed-month net cash sales commission calculated in the configured currency, immutable monthly statement and one-time actual payment through branch voucher classification. Statement creation does not accrue accounting liability; later returns do not automatically amend the snapshot. Employee salary/commission is not an independent banking payment. No automatic payroll scheduler.
