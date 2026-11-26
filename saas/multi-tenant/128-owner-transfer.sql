@@ -99,4 +99,14 @@ revoke all on function tenant_private.transfer_self_decide(uuid,boolean),public.
 grant execute on function tenant_private.transfer_self_decide(uuid,boolean),public.mt_transfer_self_decide(uuid,boolean) to authenticated;
 revoke all on function tenant_private.transfer_finalize(uuid,uuid,boolean),public.mt_transfer_finalize(uuid,uuid,boolean) from public,anon,authenticated;
 grant execute on function tenant_private.transfer_finalize(uuid,uuid,boolean),public.mt_transfer_finalize(uuid,uuid,boolean) to authenticated;
+
+create function tenant_private.self_verified_identity() returns uuid language plpgsql stable security definer set search_path='' as $$
+begin
+ if not coalesce(saas_private.live_session(),false) then raise exception 'Verified account required' using errcode='42501';end if;
+ return auth.uid();
+end $$;
+create function public.mt_self_verified_identity() returns uuid language sql stable set search_path='' as $$select tenant_private.self_verified_identity()$$;
+revoke all on function tenant_private.self_verified_identity(),public.mt_self_verified_identity() from public,anon,authenticated;
+grant execute on function tenant_private.self_verified_identity(),public.mt_self_verified_identity() to authenticated;
+
 commit;
