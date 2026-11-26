@@ -382,3 +382,5 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;line
 #workAlerts .metric{text-align:start;width:100%}#workAlerts h3{margin:12px 0}#receiptConfig input[type=checkbox]{width:auto}#buildPanel{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:12px}#buildPanel li{margin:6px 0}.storefront-page .shop-add~button{width:100%;margin-top:5px}
 
 .storefront-page .buyer-watch{width:100%;margin-top:5px}#inboxPanel button{margin:4px}
+
+#reviewDialog{width:min(650px,94vw);max-height:85dvh;overflow:auto;border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--design-surface,var(--panel));color:var(--design-text,var(--aurora-ink))}#reviewDialog::backdrop{background:#101a3577}#reviewDialog textarea{width:100%;min-height:110px;resize:vertical}.buyer-library-action,#libraryPanel button{margin:4px 0}

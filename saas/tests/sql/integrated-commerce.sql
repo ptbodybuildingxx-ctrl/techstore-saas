@@ -146,6 +146,19 @@ begin perform public.mt_domain_request(t,gen_random_uuid(),'another.example.com'
 perform public.mt_set_currency_price(t,pr,'USD',4000);
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
 if not exists(select 1 from jsonb_array_elements(public.mt_buyer_inbox('a-'||tag)) x where x->>'kind'='price_drop') then raise exception 'Price notification missing';end if;
+declare review_id uuid;build_id uuid:=gen_random_uuid();begin
+perform public.mt_favorite_set('a-'||tag,pr,true);perform public.mt_build_save('a-'||tag,build_id,'Fixture build','USD',array[pr]);
+if jsonb_array_length(public.mt_buyer_library('a-'||tag)->'favorites')<>1 or jsonb_array_length(public.mt_buyer_library('a-'||tag)->'builds')<>1 then raise exception 'Buyer library missing';end if;
+review_id:=public.mt_review_submit('a-'||tag,pr,5,'Fixture review');
+if jsonb_array_length(public.mt_public_reviews('a-'||tag,pr))<>0 then raise exception 'Pending review leaked';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+if jsonb_array_length(public.mt_buyer_library('a-'||tag)->'favorites')<>0 then raise exception 'Favorite leaked';end if;
+perform public.mt_review_moderate(t,review_id,'published');
+if jsonb_array_length(public.mt_public_reviews('a-'||tag,pr))<>1 then raise exception 'Published review missing';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_build_delete('a-'||tag,build_id);
+end;
+
 perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
 if jsonb_array_length(public.mt_buyer_inbox('a-'||tag))<>0 then raise exception 'Buyer inbox leaked';end if;
 declare quote_id uuid;quote_request uuid:=gen_random_uuid();q_before bigint;q_lines jsonb:=jsonb_build_array(jsonb_build_object('product_id',pr,'units',1,'expected_price_minor',4000));begin

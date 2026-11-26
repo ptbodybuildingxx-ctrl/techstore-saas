@@ -89,3 +89,6 @@ Optional single-branch restriction for active cashiers, enforced at sale inserti
 
 ## Branch management result (052)
 Attributed sales, repairs, returns, repair refunds, historical FIFO/FX cost postings, and paid branch operating vouchers by Damascus calendar period and currency. Unknown costs suppress cost and result. Store-wide FIFO, unallocated overhead and tax remain outside branch result; not a statutory branch net profit or separate treasury.
+
+## Customer library (053)
+Account/store-scoped favorites and up to 20 saved builds with server-validated snapshot prices and specs. Verified fulfilled online-order customers can submit one review per product; owner moderation is required before public publication. Saved builds are informational snapshots, not reservations. No guest review submissions.
