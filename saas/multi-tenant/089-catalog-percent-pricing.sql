@@ -11,7 +11,11 @@ begin
  if (select count(*) from public.mt_products where store_id=p_store and id=any(p_products))<>cardinality(p_products) then raise exception 'Unknown product' using errcode='22023';end if;
  if p_action='price' then if p_value !~ '^[0-9]{1,9}$' then raise exception 'Invalid price' using errcode='22023';end if;price:=p_value::bigint;end if;
  if p_action='percent' then
-  if p_currency is null or p_value !~ '^-?[0-9]{1,4}([.][0-9]{1,2})?
+  if p_currency is null or p_value !~ '^-?[0-9]{1,4}([.][0-9]{1,2})?$' then raise exception 'Invalid percentage' using errcode='22023';end if;
+  percentage:=p_value::numeric;
+  if percentage<=-100 or percentage>1000 then raise exception 'Invalid percentage' using errcode='22023';end if;
+ end if;
+ foreach v in array p_products loop
  if p_action in ('show','hide') then perform tenant_private.storefront_list_product(p_store,v,p_action='show');
  elsif p_action='price' then perform tenant_private.set_currency_price(p_store,v,p_currency,price);
  elsif p_action='percent' then
@@ -19,16 +23,6 @@ begin
   if not found then raise exception 'Selected product has no price in this currency' using errcode='22023';end if;
   price:=round(price::numeric*(100+percentage)/100)::bigint;
   perform tenant_private.set_currency_price(p_store,v,p_currency,price);
- else update public.mt_products set catalog=jsonb_set(catalog,array[p_action],to_jsonb(btrim(p_value))) where store_id=p_store and id=v;end if;
- end loop;
- r:=jsonb_build_object('count',cardinality(p_products));insert into tenant_private.catalog_requests values(p_store,p_request,auth.uid(),payload,r,now());return r;
-end $$; then raise exception 'Invalid percentage' using errcode='22023';end if;
-  percentage:=p_value::numeric;
-  if percentage<=-100 or percentage>1000 then raise exception 'Invalid percentage' using errcode='22023';end if;
- end if;
- foreach v in array p_products loop
- if p_action in ('show','hide') then perform tenant_private.storefront_list_product(p_store,v,p_action='show');
- elsif p_action='price' then perform tenant_private.set_currency_price(p_store,v,p_currency,price);
  else update public.mt_products set catalog=jsonb_set(catalog,array[p_action],to_jsonb(btrim(p_value))) where store_id=p_store and id=v;end if;
  end loop;
  r:=jsonb_build_object('count',cardinality(p_products));insert into tenant_private.catalog_requests values(p_store,p_request,auth.uid(),payload,r,now());return r;
