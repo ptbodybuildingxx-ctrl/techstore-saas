@@ -81,7 +81,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const x=saleAttempt(attempt.store,attempt.lines,attempt.currency,attempt.requestId);
    const total=x.lines.reduce((s,l)=>s+l.units*l.expected_price_minor,0);
    if(!terms||!isId(terms.customer)||!int(terms.deposit,0,total-1)||!int(terms.count,1,60)||total-terms.deposit<terms.count||typeof terms.due!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(terms.due)||!Number.isFinite(Date.parse(terms.due)))throw Error('Invalid credit terms');
-   const r=await rpc('mt_record_credit_sale',{p_store:x.store,p_request:x.requestId,p_currency:x.currency,p_lines:x.lines,p_customer:terms.customer,p_deposit:terms.deposit,p_count:terms.count,p_due:terms.due},x.store);
+   const branch=attempt.branch??null;if(branch!==null&&!isId(branch))throw Error('Invalid branch');const r=await rpc(branch?'mt_branch_credit_sale':'mt_record_credit_sale',{p_store:x.store,p_request:x.requestId,p_currency:x.currency,p_lines:x.lines,p_customer:terms.customer,p_deposit:terms.deposit,p_count:terms.count,p_due:terms.due,...(branch?{p_branch:branch}:{})},x.store);
    if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.currency!==x.currency||r.request_id!==x.requestId||r.total_minor!==total)throw Error('Credit sale not confirmed');return r;
   },
   async debts(store,after=null,limit=50){
@@ -175,7 +175,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
     case 'finishOrder':if(!isId(x.order)||!['cancel','fulfill'].includes(x.action))throw Error('Invalid order action');{const v=await rpc('mt_finish_order',{p_store:store,p_order:x.order,p_action:x.action},store);if(x.action==='cancel'?v!==null:!isId(v))throw Error('Order not confirmed');return v}
     default:throw Error('Invalid operation');
    }
-   const r=await rpc(name,{...req,...params},store);
+   if(x.branch!=null){if(!isId(x.branch)||!['purchase','purchaseBatch','repair','mixed'].includes(x.kind))throw Error('Invalid branch operation');name='mt_branch_'+({purchase:'purchase',purchaseBatch:'purchase_batch',repair:'add_repair',mixed:'mixed_sale'})[x.kind];params.p_branch=x.branch}const r=await rpc(name,{...req,...params},store);
    if(x.kind==='mixed'){const total=x.lines.reduce((v,l)=>v+l.units*l.expected_price_minor,0);if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.request_id!==x.requestId||r.currency!==x.currency||r.total_minor!==total)throw Error('Sale not confirmed');return r}
    if(['transition','warrantyTransition'].includes(x.kind)?r!==x.next:!isId(r))throw Error('Operation not confirmed');return r;
   },

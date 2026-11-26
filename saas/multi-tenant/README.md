@@ -80,3 +80,6 @@ Live-account scoped inbox records order state transitions and one-shot price-dro
 
 ## Price quotations (049)
 Owner/cashier can save immutable current-price quotes from the POS, valid up to 90 Damascus-calendar days. Server checks product prices, captures receipt identity and retries, and does not post stock or cash. Owner sees all quotes; cashiers see their own. A quote is not a reservation or an issued sale.
+
+## Branch operations (050)
+Owner-only branch purchases (single/batch), credit/mixed sales, and repair intake with stock-aware checkout. Supplier returns draw from the original purchase branch. Underlying finance and FIFO engines remain store-wide; online orders and warranty replacement parts still use main stock. No per-branch stock cost valuation.

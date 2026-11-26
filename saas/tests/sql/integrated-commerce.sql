@@ -170,6 +170,17 @@ perform public.mt_record_return(t,gen_random_uuid(),branch_sale,branch_product,1
 if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '3' then raise exception 'Branch return mismatch';end if;
 if not exists(select 1 from jsonb_array_elements(public.mt_branch_sales_report(t,today-1,today+1)) x where x->>'branch'=branch::text and x->>'gross'='1000' and x->>'returns'='1000' and x->>'net'='0') then raise exception 'Branch accounting report mismatch';end if;
 if (select sum(units*unit_price_minor) from public.mt_repair_receipt_lines(t,inv)) is distinct from 3000::numeric then raise exception 'Repair receipt lines mismatch';end if;
+declare bp uuid;rr uuid;ri uuid;rq uuid:=gen_random_uuid();begin
+bp:=public.mt_branch_purchase(t,branch,rq,sup,branch_product,'USD',2,500,0,'Branch purchase');
+if public.mt_branch_purchase(t,branch,rq,sup,branch_product,'USD',2,500,0,'Branch purchase') is distinct from bp then raise exception 'Branch purchase replay';end if;
+perform public.mt_supplier_return(t,gen_random_uuid(),bp,1,'Branch supplier return',false);
+rr:=public.mt_branch_add_repair(t,branch,gen_random_uuid(),cust,'Branch device',null,'Fault');
+perform public.mt_repair_transition(t,gen_random_uuid(),rr,'diagnosing','A');perform public.mt_repair_transition(t,gen_random_uuid(),rr,'repairing','B');perform public.mt_repair_transition(t,gen_random_uuid(),rr,'ready','C');
+ri:=public.mt_repair_checkout(t,gen_random_uuid(),rr,'USD',100,jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)),90);
+if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '3' then raise exception 'Branch operation balances';end if;
+v:=public.mt_branch_credit_sale(t,branch,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)),cust,0,2,today+10);
+if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '2' then raise exception 'Branch credit balance';end if;
+end;
 begin perform public.mt_branch_overview(other,null);raise exception 'Branch leak';exception when insufficient_privilege then null;end;
 end;
 reset role;raise exception using errcode='ZX001',message='rollback';
