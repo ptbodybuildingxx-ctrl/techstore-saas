@@ -28,14 +28,22 @@ export const draftForms=Object.freeze({
  voucher:{label:'تسجيل سند',fields:[field('voucherKind','نوع السند','select',[['salary','راتب'],['commission','عمولة'],['bonus','مكافأة'],['rent','إيجار'],['utilities','خدمات'],['other','أخرى'],['receipt','قبض']]),field('party','الطرف أو الموظف'),field('reference','مرجع السند'),field('amount','المبلغ')]},
  campaign:{label:'حفظ مسودة حملة',fields:[field('title','عنوان الحملة'),field('body','نص العرض'),field('from','من','date'),field('to','إلى','date')]}
 });
+const receivableDraftActions=Object.freeze({customer:'customer_create',customerEdit:'customer_edit',pay:'debt_payment',standaloneOpen:'standalone_open',standalonePay:'standalone_payment',credit:'credit_sale'});
+export function coldDraftAllowed(snapshot,kind){
+ if(!snapshot)return false;
+ if(kind==='stockCount')return ['owner','stock'].includes(snapshot.role)&&!!snapshot.countProducts?.length;
+ if(snapshot.role==='owner')return true;
+ return snapshot.role==='cashier'&&Array.isArray(snapshot.receivableActions)&&snapshot.receivableActions.includes('read')&&Object.hasOwn(receivableDraftActions,kind)&&snapshot.receivableActions.includes(receivableDraftActions[kind]);
+}
+export function coldPayablesAllowed(snapshot){return snapshot?.role==='owner'||(snapshot?.role==='cashier'&&snapshot.receivableActions?.includes('payable_manage'))}
 export function createColdDraft(snapshot,kind,v,requestId=crypto.randomUUID()){
- if((snapshot?.role!=='owner'&&!(snapshot?.role==='stock'&&kind==='stockCount'))||!uuid(snapshot.store)||!uuid(requestId)||!Object.hasOwn(draftForms,kind)||!['SYP','USD','EUR'].includes(snapshot.currency)||!(snapshot.branch===null||uuid(snapshot.branch)))throw Error('Invalid draft scope');
+ if(!coldDraftAllowed(snapshot,kind)||!uuid(snapshot.store)||!uuid(requestId)||!Object.hasOwn(draftForms,kind)||!['SYP','USD','EUR'].includes(snapshot.currency)||!(snapshot.branch===null||uuid(snapshot.branch)))throw Error('Invalid draft scope');
  const base={kind,store:snapshot.store,requestId},c=snapshot.currency,b=snapshot.branch;
  switch(kind){
  case 'customer':return {...base,name:text(v.name,160),phone:text(v.phone,60,true)};
  case 'customerEdit':return {...base,customer:id(v.customer),oldName:text(v.oldName,160),oldPhone:text(v.oldPhone,60,true),name:text(v.name,160),phone:text(v.phone,60,true)};
  case 'pay':return {...base,debt:id(v.debt),currency:select(v.currency,['SYP','USD','EUR']),amount:money(v.amount)};
- case 'standaloneOpen':{const direction=select(v.direction,['receivable','payable']),count=units(v.count),amount=money(v.amount),due=text(v.due,10);if(count>120||count>amount||direction==='payable'&&count!==1||!/^\d{4}-\d{2}-\d{2}$/.test(due)||!Number.isFinite(Date.parse(due))||due<'1900-01-01'||due>'2200-01-01')throw Error('Invalid standalone terms');return {...base,payload:{customer:v.customer?id(v.customer):null,branch:b,direction,party:text(v.party,160),phone:text(v.phone,60,true),currency:select(v.currency,['SYP','USD','EUR']),amount,count,due,notes:text(v.notes,300,true)}}}
+ case 'standaloneOpen':{const direction=select(v.direction,['receivable','payable']),count=units(v.count),amount=money(v.amount),due=text(v.due,10);if(count>120||count>amount||direction==='payable'&&(!coldPayablesAllowed(snapshot)||count!==1)||!/^\d{4}-\d{2}-\d{2}$/.test(due)||!Number.isFinite(Date.parse(due))||due<'1900-01-01'||due>'2200-01-01')throw Error('Invalid standalone terms');return {...base,payload:{customer:v.customer?id(v.customer):null,branch:b,direction,party:text(v.party,160),phone:text(v.phone,60,true),currency:select(v.currency,['SYP','USD','EUR']),amount,count,due,notes:text(v.notes,300,true)}}}
  case 'standalonePay':return {...base,payload:{debt:id(v.debt),amount:money(v.amount),memo:text(v.memo,300,true)}};
 
  case 'stockCount':{const product=id(v.product),p=snapshot.countProducts?.find(x=>x.id===product);if(!p||typeof v.actual!=='string'||!/^\d{1,10}$/.test(v.actual)||Number(v.actual)>1000000000)throw Error('Invalid count');return {...base,branch:b,reason:text(v.reason,160),items:[{id:product,event:crypto.randomUUID(),expected:p.expected,actual:Number(v.actual)}]}}

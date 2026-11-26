@@ -1,5 +1,6 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "حفظ نسخة محلية مشفرة لمدة 24 ساعة؟ استخدم جهازاً خاصاً. لا تُخزن بيانات العملاء في الكتالوج.": "Save an encrypted local snapshot for 24 hours? Use a private device. Customer records are not stored in the catalog.",
   "البيع الآجل يسجل الدفعة الأولى في الصندوق والباقي كدين بعملة الفاتورة. الأقساط شهرية دون فوائد. صلاحيات الكاشير مفوضة من المالك ومقيدة بالفرع.": "Credit sales post the deposit to cash and the rest as debt in invoice currency. Interest-free monthly installments. Cashier access is delegated by the owner and branch-scoped.",
   "تفويض صلاحيات العملاء والديون": "Delegate customer and debt permissions",
   "تفويض القراءة يتيح دليل أسماء وهواتف العملاء المشترك داخل المحل، والسجلات المالية في فرع الموظف فقط. تغيير الفرع يتطلب إعادة اعتماد التفويض.": "Read access shares customer names and phones within the store, but financial records only within the employee's branch. Changing branches requires a new grant.",
