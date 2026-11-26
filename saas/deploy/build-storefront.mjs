@@ -2,7 +2,7 @@ import {mkdir,readFile,writeFile,lstat,realpath} from 'node:fs/promises';
 import {join,resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../..',import.meta.url)),out=join(root,'dist-storefront');
-const assets=['saas/admin/admin.css','saas/admin/config.mjs','saas/storefront/api.mjs','saas/storefront/storefront.mjs','saas/storefront/push.mjs','saas/design/theme.mjs','saas/design/site.mjs'];
+const assets=['saas/admin/admin.css','saas/admin/config.mjs','saas/storefront/api.mjs','saas/storefront/storefront.mjs','saas/storefront/push.mjs','saas/design/theme.mjs','saas/design/build-suggestions.mjs','saas/design/site.mjs'];
 async function source(path){const src=resolve(root,path);if(!(await lstat(src)).isFile()||await realpath(src)!==src)throw Error('Unexpected source '+path);const c=await readFile(src,'utf8');if(/sb_secret_[A-Za-z0-9_-]+|jtjnbeywpfdtgohffanl|pdnbwoutesojophnrgbb/.test(c))throw Error('Protected configuration');return c}
 const config=await source('saas/admin/config.mjs');
 if(!config.includes('https://mezsyzdieqmqulddcrtg.supabase.co')||!/publishableKey:"sb_publishable_[A-Za-z0-9_-]{20,200}"/.test(config)||/customDomainRouting|customerAuthEnabled|service_role\s*[:=]/.test(config))throw Error('Unexpected configuration; review build');

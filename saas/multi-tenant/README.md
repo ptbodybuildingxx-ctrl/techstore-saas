@@ -107,3 +107,45 @@ Atomic accepted-estimate settlement uses the existing credit sale and costed pur
 
 ## Visual verification
 The actual allowlisted portal, admin/tenant sign-in pages and shop route are exercised in Chromium on desktop/mobile with a synthetic catalog transport. This is not a pixel-by-pixel visual match of all authenticated pages, nor a live login or delivery test. Original TechStore remains read-only.
+
+## Product catalog parity (059)
+Owner-only create/edit/duplicate metadata, public name/English name/category/brand/model/variant/description/video, up to four compressed JPEG thumbnails, visibility and optional currency price. SKU changes do not rewrite historical sales or stock. Existing design image mappings are SKU-based and may need reassignment after SKU edits. Bulk selected product visibility/brand/category/fixed price; atomic CSV import of new draft products, 100 per file, no stock or cost changes. Public search matches metadata; product detail returns only listed in-stock products and public fields. Photos are bounded thumbnails, not full-resolution storage. Type-specific compatibility still uses existing specs keys. Dedicated migration 059 required before publishing the new UI.
+
+## Storefront and POS availability (060)
+Listed, priced products remain visible when unavailable; boolean availability subtracts branch allocations and delivery reservations, without exposing quantities. Category choices populate from the public catalog and submit the existing search (not an exact category filter). Exact POS SKU scanning supports keyboard-wedge readers and validates branch availability. Existing order/sale engines still validate on submission; a catalog display is not a stock reservation. No camera scanning or label printing yet.
+
+## Repair customer tracking (061)
+New repair tickets capture receipt identity and a random bearer tracking code. Staff can print intake receipt, record bounded private before/after JPEG evidence and technical activity notes, and issue versioned cost offers. Public shop tracking reveals device description, state, and latest cost offer only to a holder of the code; approval/rejection is recorded but does not itself change repair state or block checkout. No historical branding is fabricated, no public evidence photos, no legal digital signature. Historical tickets do not automatically get tracking codes.
+
+## Staff attendance and payroll (062)
+Server-timestamped clock-in/out, one open shift per employee/store, self-service attendance and statements, owner terms, completed-month net cash sales commission calculated in the configured currency, immutable monthly statement and one-time actual payment through branch voucher classification. Statement creation does not accrue accounting liability; later returns do not automatically amend the snapshot. Employee salary/commission is not an independent banking payment. No automatic payroll scheduler.
+
+## Manual bank ledger (063)
+Bank accounts start at zero; verified same-currency cash deposits and withdrawals update cash and bank balances atomically, with request replay, insufficient funds checks and period locks. Transfers map to bank/cash in the journal, not operating expenses/revenue; bank appears in management assets and reconciliation. Existing raw cash movement records retain funding/expense types with Bank transfer reference. No external bank access, bank fees, direct bank-to-bank movement, or payment gateway.
+
+## Staff self-service and pending offline sale (064)
+Per-store profile display name and compressed avatar, authenticated password change. Code 39 printable labels for compatible exact uppercase SKU values (up to 30 characters), no camera or scanner hardware validation. A single encrypted cash-sale request per actor/store can be saved in browser storage from an already open workspace, using PBKDF2/AES-GCM with a user-supplied independent passphrase. Explicit sync reuses its exact request ID under the same signed-in account and server-side validation; no offline stock or accounting authority, no offline login or offline reload. Browser data loss/passphrase loss makes the local envelope unrecoverable. Other operations and full offline catalog caching remain unimplemented.
+
+## Guest pickup checkout (065)
+Owner opt-in (off by default), bounded guest order queue with random tracking codes, private name/contact and order lines, live price/availability validation, manual cancellation or actual pickup fulfillment through the existing cash sale engine. No stock reservation, delivery, membership or points for guests. Per-store/per-phone limits reduce abuse but are not bot protection; production enablement requires abuse testing and an appropriate rate-limit/CAPTCHA boundary. No external messages sent.
+
+## Build suggestions and storefront polish
+Bounded deterministic suggestions over up to 250 currently listed products and five least-expensive options per required part type, constrained by budget and existing compatibility rules. Does not claim exhaustive optimization or performance/BIOS validation. Added responsive public navigation and card/evidence/editor styling. Dedicated authenticated-page visual parity, full bilingual UI and device tests remain pending.
+
+## Payroll accrual (066)
+Statement creation posts salary expense against payroll payable on issuance date, without backdating into a closed period. Payment uses the existing cash/voucher flow and reclassifies its adjustment to settle the payable rather than duplicate the expense. Liability is included in the trial balance, management statements, reconciliation and attributed branch result. No automatic retroactive commission adjustments.
+
+## Staff operation restrictions (067)
+Owner-managed per-user denials layered over existing roles, licenses and branch scopes, enforced by transaction triggers on sales, stock changes/transfers, product creation, repair transitions/evidence and attendance. UI exposes restrictions and disables several affected controls. Existing permissions are not broadened. No fine-grained read restriction or comprehensive screen/operation matrix yet; replay of a previously confirmed request may still return its original result.
+
+## Member/wholesale buyer pricing (068)
+Owner-approved per-buyer percentage terms with minimum basket quantity, limited to buyers with prior orders in the same shop. Explicit application at checkout, exclusive of coupons and points; server recomputes and snapshots the discount before the existing discounted fulfillment engine posts sales and inventory. No separate per-product wholesale price lists or paid membership billing.
+
+## Product high-resolution images (069)
+Owner-scoped private storage reservations and uploads, up to four 1600px JPEG files per product, 2 MB/file, bounded reservations. Explicit publication, shop visibility check and existing byte-validating storefront media gateway. Public gallery uses the existing `publicMediaEnabled` feature flag; deployment/configuration of the gateway is still required. Retired or abandoned reserved files require a controlled cleanup procedure. No change to the original repository.
+
+## Staff TOTP and sessions (070)
+Staff account enroll/challenge/verify/remove using Supabase Auth REST, in-memory tokens only, optional TOTP enrollment with mandatory AAL2 tenant access once verified; membership RPCs reject AAL1 staff sessions. List own active sessions and user-agent descriptions when available; sign out other sessions through Auth. Not an individual-device revoke interface or buyer/admin MFA flow; no live enrollment/auth validation performed. Requires Supabase TOTP enrollment and verification enabled. Verify all staff logins, recovery and session revocation before rollout.
+
+## Encrypted business export (071)
+AAL2 owner-only consistent SQL read of a fixed allowlist of tenant business records, bounded to 20,000 rows and 8 MB approximate JSON, then browser AES-GCM encryption under an independent passphrase. The file includes sensitive business/customer records, not Auth tokens or database credentials. Local inspection authenticates ciphertext and checks store identity, but does not restore or validate business invariants. Full server capture, Storage archive, infrastructure configuration, controlled restoration and recovery evidence remain separate and mandatory.
