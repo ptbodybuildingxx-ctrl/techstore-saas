@@ -1,5 +1,9 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "للبيع المتصل. رمز العضوية يدعم النقدي والآجل والأقساط والمختلط، أما مكافأة النقاط فتبقى نقدية فقط. اترك الحقل فارغاً للبيع العادي.": "Connected sales: membership codes support cash, credit, installments and mixed tenders. Points rewards remain cash-only. Leave empty for regular pricing.",
+  "اعتماد الأسعار الخاصة لهذه الفاتورة؟": "Confirm the special prices for this invoice?",
+  "تأكيد البيع الآجل": "Confirm credit sale",
+  "تأكد أن حساب رمز العضوية يخص العميل المختار للدين.": "Verify the membership code account belongs to the selected debtor.",
   "ربط حساب الزبون والعضوية ونقاط الولاء": "Link customer account, membership and loyalty points",
   "للبيع النقدي المتصل فقط. اطلب من الزبون إصدار رمز للمبلغ والعملة واختيار العضوية أو مكافأة النقاط. اترك الحقل فارغاً للبيع العادي.": "Online cash sales only. Ask the customer for a code for the amount and currency, selecting membership pricing or a points reward. Leave empty for a regular sale.",
   "طريقة التسعير": "Pricing method",
