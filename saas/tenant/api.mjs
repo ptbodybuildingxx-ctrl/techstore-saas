@@ -160,6 +160,11 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=await rpc('mt_list_debts',{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.sale_id)||!isId(x.customer_id)||!currency(x.currency)||!int(x.principal_minor,1,100000000000000)||!int(x.deposit_minor,0,x.principal_minor-1)||!int(x.remaining_minor,0,x.principal_minor-x.deposit_minor)||!int(x.installment_count,1,60)))throw Error('Invalid debts');return r;
   },
+  async receivableRegister(store,x,offset=0){
+   if(!x||!['debts','schedule','payments'].includes(x.mode)||typeof x.query!=='string'||x.query.length>160||!(x.customer===null||isId(x.customer))||!(x.currency===null||currency(x.currency))||!['all','open','overdue','settled'].includes(x.status)||!int(offset,0,100000))throw Error('Invalid register filters');
+   const r=await rpc('mt_receivable_register',{p_store:store,p_mode:x.mode,p_query:x.query,p_customer:x.customer,p_currency:x.currency,p_status:x.status,p_offset:offset},store),amt=v=>typeof v==='string'&&/^\d+$/.test(v);
+   if(!r||r.store_id!==store||r.mode!==x.mode||!Array.isArray(r.totals)||r.totals.length>3||r.totals.some(t=>!currency(t.currency)||!['principal','deposit','remaining'].every(k=>amt(t[k])))||!Array.isArray(r.rows)||r.rows.length>51||r.rows.some(t=>!isId(t.debt_id)||!isId(t.customer_id)||!isId(t.item_id)||!currency(t.currency)||!int(t.invoice_number,1,Number.MAX_SAFE_INTEGER)||typeof t.name!=='string'||typeof t.phone!=='string'||!['amount_minor','paid_minor','waived_minor','remaining_minor'].every(k=>int(t[k],0,100000000000000))||!['open','overdue','settled','recorded'].includes(t.status)||typeof t.is_deposit!=='boolean'||(x.mode==='payments'&&(typeof t.method!=='string'||!Number.isFinite(Date.parse(t.recorded_at))))))throw Error('Invalid receivable register');return r;
+  },
   async debtSchedule(store,debt){
    if(!isId(debt))throw Error('Invalid debt');
    const r=await rpc('mt_debt_schedule',{p_store:store,p_debt:debt},store);
