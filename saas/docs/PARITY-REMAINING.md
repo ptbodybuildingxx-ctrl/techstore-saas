@@ -1,6 +1,6 @@
 # Remaining implementation and release register
 
-Main includes 059–082 after merged PR #10; production release held. Development branch saas/closure-after-082 adds client-side administrator last-factor protection and safe tail-only unsent draft removal (online and offline workbench). The protection is an application guard, not an Auth provider-wide policy. No live migration or release authorized. Do not treat a committed function as operational validation.
+Main includes 059–084 after merged PR #11; production release held. Development branch saas/closure-after-084 adds client-side administrator last-factor protection and safe tail-only unsent draft removal (online and offline workbench). The protection is an application guard, not an Auth provider-wide policy. No live migration or release authorized. Do not treat a committed function as operational validation.
 
 | Requested area | Implemented in development | Open work |
 |---|---|---|
@@ -17,3 +17,5 @@ Main includes 059–082 after merged PR #10; production release held. Developmen
 | Professional tools | Existing rules-based build advisor, browser-local bilingual intent assistant integrated into existing storefront build tool, uses only public catalog and current build; no prompt logging or provider | Optional native on-device generative explanation adapter implemented for an already-installed English browser model (no download or cloud fallback); Arabic generative and workspace-wide assistant remain open, no model tested |
 
 Final gates: correct existing CI SQL/UI failures and migration compatibility, implement all remaining features, test cross-store and branch isolation, finance consistency, retries/concurrency and recovery; do not apply live migrations until a verified backup and explicit approval. Never modify the original TechStore repository or enable paid providers without approval.
+
+CI repair: corrected malformed dollar-quote in 069 (not approved for live installation), aligned synthetic Auth fixtures with MFA user/challenge/verify requests, included locale in browser fixtures and added security failure tests. Run integration again; no production Auth bypass or gate change.
