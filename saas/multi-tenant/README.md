@@ -83,3 +83,6 @@ Owner/cashier can save immutable current-price quotes from the POS, valid up to 
 
 ## Branch operations (050)
 Owner-only branch purchases (single/batch), credit/mixed sales, and repair intake with stock-aware checkout. Supplier returns draw from the original purchase branch. Underlying finance and FIFO engines remain store-wide; online orders and warranty replacement parts still use main stock. No per-branch stock cost valuation.
+
+## Branch cashier scopes and vouchers (051)
+Optional single-branch restriction for active cashiers, enforced at sale insertion and branch selection. Unassigned cashiers retain existing store access; stock and technician branch scopes are not implemented. Paid salary, commission, bonus and documented operating expense vouchers post to the existing cash ledger and classification exactly once. Receipt vouchers are explicitly unclassified funding; debt and supplier collections remain in their own flows. No payroll accrual or automatic bank payment.

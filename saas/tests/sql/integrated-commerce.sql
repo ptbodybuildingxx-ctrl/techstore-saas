@@ -180,6 +180,11 @@ ri:=public.mt_repair_checkout(t,gen_random_uuid(),rr,'USD',100,jsonb_build_array
 if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '3' then raise exception 'Branch operation balances';end if;
 v:=public.mt_branch_credit_sale(t,branch,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)),cust,0,2,today+10);
 if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '2' then raise exception 'Branch credit balance';end if;
+declare vr uuid:=gen_random_uuid();voucher uuid;begin
+voucher:=public.mt_branch_voucher(t,vr,branch,'salary','USD',100,'Employee','Salary fixture');
+if public.mt_branch_voucher(t,vr,branch,'salary','USD',100,'Employee','Salary fixture') is distinct from voucher then raise exception 'Voucher replay';end if;
+if not exists(select 1 from public.mt_accounting_adjustments where store_id=t and source_request=vr and kind='expense_payroll' and amount_minor=100) then raise exception 'Payroll not classified';end if;
+end;
 end;
 begin perform public.mt_branch_overview(other,null);raise exception 'Branch leak';exception when insufficient_privilege then null;end;
 end;
