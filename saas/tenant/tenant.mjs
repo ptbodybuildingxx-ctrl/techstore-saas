@@ -86,10 +86,11 @@ async function prepareOfflineWorkspace(includeLedger){
  const branch=current.role==='cashier'?(ledger?.branch??(receivableCan('read')?receivableAccess.branch:staffBranch?.branch_id||null)):el('saleBranch').value||null;
  // A branch change during capture requires a new snapshot; do not combine catalog and newly scoped ledger.
  if(ledger&&current.role==='cashier'&&ledger.branch!==(receivableAccess?.branch??null))throw Error('Branch changed; reload first');
+ const mixedRates=current.role==='owner'&&products.length&&offlineCatalogAllowed()?await api.offlineMixedRates(scope.store,scope.actor,c):null;
  const localPrices=ledger&&products.length&&offlineCatalogAllowed()?await api.localMembershipSnapshot(scope.store,scope.actor,branch,c):null;
  const receivableActions=(ledger?.actions||receivableAccess?.effective||[]).filter(a=>ctx?.can_sell||['read','payable_manage'].includes(a));
  await prepareShell();
- await prepareOfflineCatalog({version:2,...scope,role:current.role,branch,currency:c,name:current.name,capturedAt:ledger?.capturedAt||new Date().toISOString(),products,receivableActions,...(ledger?{ledger}: {}),...(localPrices?{localPrices}:{})},pass);
+ await prepareOfflineCatalog({version:2,...scope,role:current.role,branch,currency:c,name:current.name,capturedAt:ledger?.capturedAt||new Date().toISOString(),products,receivableActions,...(ledger?{ledger}: {}),...(localPrices?{localPrices}:{}),...(mixedRates?{mixedRates}:{})},pass);
  message(includeLedger?tr('تم تجهيز السجل المحلي المشفر. الأرصدة للقراءة فقط حتى المزامنة.'):tr('تم تجهيز مسودات البيع المحلية المشفرة. لا تعد أسعارها أو كمياتها مؤكدة عند انقطاع الاتصال.'));
 }
 el('offlinePrepare').onclick=()=>run(()=>prepareOfflineWorkspace(false),true);

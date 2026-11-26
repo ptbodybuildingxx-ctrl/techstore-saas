@@ -23,7 +23,7 @@ export async function resolveAttemptedCount({store,actor,pass,cancel,approve}){c
 export async function resolveAttemptedReceivable({store,actor,pass,resolve}){
  const scope=key(store,actor);return locked(scope,async()=>{
   const entries=await read(scope,pass,store,actor),head=entries[0];
-  if(!head||!head.attemptedAt||(!['customer','customerEdit','pay','credit','standaloneOpen','standalonePay'].includes(head.operation.kind)&&!(['cashSale','mixed'].includes(head.operation.kind)&&head.operation.localPricing)))throw Error('No attempted receivable at queue head');
+  if(!head||!head.attemptedAt||(!['customer','customerEdit','pay','credit','standaloneOpen','standalonePay'].includes(head.operation.kind)&&!((head.operation.kind==='cashSale'&&head.operation.localPricing)||(head.operation.kind==='mixed'&&head.operation.invoice))))throw Error('No attempted receivable at queue head');
   const result=await resolve(structuredClone(head.operation));if(result===null)return null;
   if(!['confirmed','cancelled','conflict_acknowledged'].includes(result))throw Error('Receivable still unresolved');
   await write(scope,pass,store,actor,entries.slice(1));return result;

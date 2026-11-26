@@ -1,5 +1,13 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "دفع مختلط": "Mixed tender",
+  "الدفع المختلط دون اتصال": "Offline mixed tender",
+  "يُحسب المكافئ من سعر الصرف المحفوظ. يجب أن يطابق مجموع الدفعات صافي الفاتورة. سيعاد التحقق من صلاحية السعر عند المزامنة.": "Equivalent amounts use the saved exchange rate. Total tenders must match the net invoice; rate validity is checked again on synchronization.",
+  "وافق العميل على رد المرتجع بعملة الفاتورة": "Customer approved refunds in invoice currency",
+  "سعر الصرف المحفوظ": "Saved exchange rate",
+  "عملة الفاتورة": "Invoice currency",
+  "المجموع مطابق": "Total matches",
+  "أدخل مبالغ عملتين أو ثلاث تساوي صافي الفاتورة، ضمن صلاحية أسعار الصرف.": "Enter two or three currencies that match the net invoice using unexpired rates.",
   "مكافأة النقاط السابقة": "Legacy points reward",
   "العضوية واستبدال النقاط حسب القيمة": "Membership and spend-value points",
   "الحد الأقصى للنقاط المراد استبدالها": "Maximum points to redeem",
