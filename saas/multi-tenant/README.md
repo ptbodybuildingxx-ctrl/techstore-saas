@@ -104,3 +104,6 @@ Opt-in email and per-shop Web Push queues; retry leases, explicit unsubscribe, p
 
 ## Trade-in net settlement (058)
 Atomic accepted-estimate settlement uses the existing credit sale and costed purchase engines; an explicit noncash offset balances payable and receivable, and only the confirmed difference posts actual cash. The used device uses a separate product; customer-to-supplier mapping is tenant scoped. Retrying the same request cannot duplicate the sale. Separate returns follow existing return rules (cash refunds may require funds; they do not undo the other leg). Legacy documentary links remain available.
+
+## Visual verification
+The actual allowlisted portal, admin/tenant sign-in pages and shop route are exercised in Chromium on desktop/mobile with a synthetic catalog transport. This is not a pixel-by-pixel visual match of all authenticated pages, nor a live login or delivery test. Original TechStore remains read-only.

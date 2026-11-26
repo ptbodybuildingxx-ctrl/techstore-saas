@@ -26,8 +26,28 @@ if not exists(select 1 from public.mt_stock_history(t,pr) where delta=5 and bala
 begin perform public.mt_set_product_specs(other,pr,'{}');raise exception 'Cross tenant mutation accepted';exception when insufficient_privilege then null;end;
 
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if public.mt_email_enabled('a-'||tag) then raise exception 'Email default not off';end if;
+perform public.mt_email_preference('a-'||tag,true);
+perform public.mt_push_register('a-'||tag,'https://fcm.googleapis.com/fcm/send/fixture-'||tag,repeat('A',87),repeat('B',22),true);
+begin perform public.mt_email_claim(gen_random_uuid());raise exception 'Buyer read delivery queue';exception when insufficient_privilege then null;end;
+begin perform public.mt_push_claim(gen_random_uuid());raise exception 'Buyer read push queue';exception when insufficient_privilege then null;end;
 ord:=public.mt_delivery_order('a-'||tag,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',pr,'units',2,'expected_price_minor',5000)),'Fixture address','000000000');
 if not exists(select 1 from jsonb_array_elements(public.mt_buyer_inbox('a-'||tag)) x where x->>'kind'='order' and x->>'reference'=ord::text and x->>'detail'='requested') then raise exception 'Delivery request notification missing';end if;
+declare lease_id uuid:=gen_random_uuid();emails jsonb;pushes jsonb;job jsonb;begin
+reset role;set local role service_role;
+emails:=public.mt_email_claim(lease_id);pushes:=public.mt_push_claim(lease_id);
+if not exists(select 1 from jsonb_array_elements(emails) x where x->>'store'=t::text and x->>'buyer'=buyer::text) or not exists(select 1 from jsonb_array_elements(pushes) x where x->>'store'=t::text and x->>'buyer'=buyer::text) then raise exception 'External queue missing';end if;
+job:=emails->0;
+if not public.mt_delivery_still_allowed('email',lease_id,t,buyer,(job->>'id')::uuid,null) then raise exception 'Email lease not allowed';end if;
+reset role;set local role authenticated;
+perform public.mt_email_preference('a-'||tag,false);
+perform public.mt_push_register('a-'||tag,'https://fcm.googleapis.com/fcm/send/fixture-'||tag,'','',false);
+reset role;set local role service_role;
+if public.mt_delivery_still_allowed('email',lease_id,t,buyer,(job->>'id')::uuid,null) then raise exception 'Email optout ignored';end if;
+job:=pushes->0;
+if public.mt_delivery_still_allowed('push',lease_id,t,buyer,(job->>'id')::uuid,(job->>'device')::uuid) then raise exception 'Push optout ignored';end if;
+reset role;set local role authenticated;
+end;
 if not public.mt_watch_product('a-'||tag,pr,'USD','price_drop',true) then raise exception 'Watch failed';end if;
 if not public.mt_buyer_read('a-'||tag,(public.mt_buyer_inbox('a-'||tag)->0->>'id')::uuid) then raise exception 'Read state failed';end if;
 
@@ -185,7 +205,8 @@ perform public.mt_tradein_execute(t,req,estimate,used_product,'USD',jsonb_build_
 result:=public.mt_tradein_result(t,estimate);
 if result->>'offset_minor' is distinct from '2000' or result->>'cash_difference_minor' is distinct from '2000' then raise exception 'Trade-in offset mismatch';end if;
 if (select remaining_minor from public.mt_debts where store_id=t and sale_id=(result->>'sale_id')::uuid)<>0 or (select paid_minor from public.mt_purchases where store_id=t and id=(result->>'purchase_id')::uuid)<>2000 then raise exception 'Trade-in unpaid';end if;
-if exists(select 1 from public.mt_cash_movements m join public.mt_debt_payments d on d.store_id=m.store_id and d.id=m.debt_payment_id where m.store_id=t and d.settlement_method='tradein_offset') then raise exception 'Fictitious cash';end if;
+if exists(select 1 from public.mt_cash_movements m join public.mt_debt_payments d on d.store_id=m.store_id and d.id=m.debt_payment_id where m.store_id=t and d.settlement_method='tradein_offset') or exists(select 1 from public.mt_cash_movements m join public.mt_supplier_payments d on d.store_id=m.store_id and d.id=m.supplier_payment_id where m.store_id=t and d.settlement_method='tradein_offset') then raise exception 'Fictitious cash';end if;
+if (select sum(m.amount_minor) from public.mt_cash_movements m join public.mt_debt_payments p on p.store_id=m.store_id and p.id=m.debt_payment_id join public.mt_debts d on d.store_id=p.store_id and d.id=p.debt_id where d.store_id=t and d.sale_id=(result->>'sale_id')::uuid) is distinct from 2000::numeric then raise exception 'Actual trade-in cash mismatch';end if;
 if not exists(select 1 from jsonb_array_elements(public.mt_financial_reconciliation(t)->'rows') x where x->>'currency'='USD' and x->>'account'='accounts_receivable' and x->>'balanced'='true') then raise exception 'Trade-in receivable reconciliation failed';end if;
 if not exists(select 1 from jsonb_array_elements(public.mt_financial_reconciliation(t)->'rows') x where x->>'currency'='USD' and x->>'account'='accounts_payable' and x->>'balanced'='true') then raise exception 'Trade-in payable reconciliation failed';end if;
 end;

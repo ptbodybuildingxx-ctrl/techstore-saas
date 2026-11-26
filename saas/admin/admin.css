@@ -388,3 +388,38 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;line
 .campaign-banner{background:var(--design-surface,var(--panel));border:1px solid var(--line);border-inline-start:4px solid var(--design-accent,var(--aurora-blue));border-radius:14px;padding:16px;margin:12px 0}.campaign-banner h3{margin:0 0 8px}.campaign-banner p{white-space:pre-wrap;margin:0}
 
 .notification-options{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.notification-options button{flex:1 1 170px}
+
+/* Final shared surface pass: preserve explicit published theme tokens and editor placement. */
+:root{--surface-radius:14px;--surface-gap:12px}
+main,.workspace-shell,#dashboard,#app,.panel,.scroll{min-width:0}
+main{max-width:1440px;padding:clamp(12px,2.4vw,28px)}
+h1,h2,h3{overflow-wrap:anywhere}
+.panel h2,.panel h3{line-height:1.4}
+.panel h3{font-size:1rem;margin-block:16px 10px}
+.panel form label{min-width:min(160px,100%)}
+.panel input:not([type=checkbox]):not([type=radio]),.panel select,.panel textarea{max-width:100%;min-width:0}
+textarea{font:inherit;color:inherit;padding:10px;border:1px solid var(--line);border-radius:8px}
+button,a.portal-choice{touch-action:manipulation}
+button{min-height:38px}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--design-accent,var(--blue));outline-offset:3px}
+:root:not([data-design=on]) .flag{color:#f4d29c;border-color:#c4a36c}
+:root:not([data-design=on]) .campaign-banner{border-inline-start-color:var(--aurora-accent)}
+:root[data-design=on] textarea{background:var(--design-surface);color:var(--design-text);border-color:color-mix(in srgb,var(--design-text) 40%,transparent)}
+.scroll{max-width:100%;overscroll-behavior-inline:contain}
+.scroll table th{font-size:.85rem;font-weight:700}
+.scroll table td{vertical-align:middle}
+#message:not(:empty){padding:10px 12px;border-inline-start:3px solid var(--design-accent,var(--blue));border-radius:8px;overflow-wrap:anywhere}
+.shop-links{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.shop-links a{display:inline-flex;align-items:center;min-height:40px;padding:8px 14px;text-decoration:none;border:1px solid var(--line);border-radius:10px;background:var(--design-surface,var(--panel));color:var(--design-text,var(--aurora-ink))}
+.storefront-page .catalog-tools{grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto}
+.shop-product-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;align-items:stretch}
+.shop-product-actions>button{width:100%;margin:0!important;min-height:44px;white-space:normal;overflow-wrap:anywhere}
+.shop-product-actions>.shop-add,.shop-product-actions>details{grid-column:1/-1}
+.shop-product-actions>details summary{cursor:pointer;padding:8px;font-weight:600}
+.storefront-page #products>tr>td:last-child{margin-top:auto}
+.storefront-page #libraryPanel table,.storefront-page #comparison table{white-space:normal;overflow-wrap:anywhere}
+#reviewDialog,#specEditor{max-width:calc(100vw - 24px)}
+@media(max-width:850px){.workspace-nav{position:sticky;top:0;z-index:4;max-width:100%;margin-bottom:10px;align-items:center}.workspace-nav button{min-height:44px}.workspace-search{min-height:44px}}
+@media(max-width:540px){header h1{font-size:1.25rem}.panel{padding:12px}.section-head{align-items:start}.storefront-page .catalog-tools{grid-template-columns:1fr}.panel form label{min-width:100%}.panel form button{width:100%;min-height:44px}.metrics{gap:8px}.metric strong{font-size:1.45rem}.shop-links a{flex:1 1 auto;justify-content:center}.workspace-search{flex:0 0 132px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+@media print{.shop-links,.notification-options{display:none!important}}
