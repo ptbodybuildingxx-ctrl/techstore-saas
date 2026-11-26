@@ -212,3 +212,6 @@ Cash and credit POS invoice issue wrapper snapshots title, customer identity, wa
 
 ## Mixed invoice and warranty register (095)
 Extend invoice issue wrapper to mixed tender terms with existing financial engine and add paged warranty register with return-aware coverage. Include invoice details in business export. No tests run.
+
+## Channel invoice snapshots (096)
+Online, guest and atomic trade-in sales use the canonical settlement functions and snapshot invoice metadata inside the same transaction. Legacy entry points issue a minimal snapshot with no implied warranty. New metadata cannot be attached to a previously completed sale. No tests run.

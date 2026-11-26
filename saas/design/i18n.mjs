@@ -1,5 +1,11 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+ "اعتماد بيانات الفاتورة":"Confirm invoice details",
+ "تحقق من بيانات الفاتورة":"Check invoice details",
+ "إصدار فاتورة الطلب":"Issue order invoice",
+ "طلب متجر إلكتروني":"Online store order",
+ "طلب زائر":"Guest order",
+ "عملية استبدال جهاز":"Device trade-in",
  "سجل كفالات المبيعات":"Sales warranty register",
  "صلاحية المدة والكمية لا تعني قبول المطالبة ضمن شروط الكفالة.":"Date and quantity coverage do not establish claim eligibility.",
  "بحث برقم الفاتورة أو التسلسلي أو العميل":"Search by invoice, serial or customer",
