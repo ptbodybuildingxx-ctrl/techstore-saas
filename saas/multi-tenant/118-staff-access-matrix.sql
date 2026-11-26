@@ -53,22 +53,27 @@ begin
  ('repair_task_finish',r='tech',true,true,array['repair_read','repair_transition'],true),
  ('repair_create',false,true,true,array[]::text[],false),
  ('product_price_edit',false,true,true,array[]::text[],false),
- ('customer_create',r='cashier','read'=any(rg) and 'customer_create'=any(rg),true,array['receivable_read'],true),
- ('debt_payment',r='cashier','read'=any(rg) and 'debt_payment'=any(rg),true,array['receivable_read'],true),
+ ('customer_create',r='cashier','read'=any(rg) and 'customer_create'=any(rg),true,array['receivable_read','customer_read'],true),
+ ('debt_payment',r='cashier','read'=any(rg) and 'debt_payment'=any(rg),true,array['receivable_read','debt_read'],true),
  ('quote_create',r='cashier',true,true,array['catalog_read'],true),
  ('quote_read',r='cashier',true,false,array[]::text[],true),
  ('receipt_read',r in ('cashier','tech'),true,false,case when r='tech' then array['repair_read'] else array['sales_read'] end,true),
  ('warranty_read',r='cashier',true,false,array['sales_read'],true),
  ('receivable_read',r='cashier','read'=any(rg),true,array[]::text[],true),
- ('customer_edit',r='cashier','read'=any(rg) and 'customer_edit'=any(rg),true,array['receivable_read'],true),
- ('credit_sale',r='cashier','read'=any(rg) and 'credit_sale'=any(rg),true,array['receivable_read','sell'],true),
- ('standalone_open',r='cashier','read'=any(rg) and 'standalone_open'=any(rg),true,array['receivable_read'],true),
- ('standalone_payment',r='cashier','read'=any(rg) and 'standalone_payment'=any(rg),true,array['receivable_read','debt_payment'],true),
- ('payable_manage',r='cashier','read'=any(rg) and 'payable_manage'=any(rg),true,array['receivable_read'],true),
+ ('customer_edit',r='cashier','read'=any(rg) and 'customer_edit'=any(rg),true,array['receivable_read','customer_read'],true),
+ ('credit_sale',r='cashier','read'=any(rg) and 'credit_sale'=any(rg),true,array['receivable_read','customer_read','debt_read','sell'],true),
+ ('standalone_open',r='cashier','read'=any(rg) and 'standalone_open'=any(rg),true,array['receivable_read','debt_read'],true),
+ ('standalone_payment',r='cashier','read'=any(rg) and 'standalone_payment'=any(rg),true,array['receivable_read','debt_read','debt_payment'],true),
+ ('payable_manage',r='cashier','read'=any(rg) and 'payable_manage'=any(rg),true,array['receivable_read','debt_read'],true),
  ('procurement_read',r='stock',coalesce(pg.read_allowed,false),false,array[]::text[],true),
- ('supplier_write',r='stock',coalesce(pg.read_allowed and pg.manage_suppliers,false),true,array['procurement_read'],true),
- ('purchase_write',r='stock',coalesce(pg.read_allowed and pg.receive_credit,false),true,array['procurement_read','catalog_read','stock_adjust'],true),
+ ('supplier_write',r='stock',coalesce(pg.read_allowed and pg.manage_suppliers,false),true,array['procurement_read','supplier_read'],true),
+ ('purchase_write',r='stock',coalesce(pg.read_allowed and pg.receive_credit,false),true,array['procurement_read','supplier_read','purchase_read','catalog_read','stock_adjust'],true),
  ('notifications_read',r in ('stock','tech'),true,false,array[]::text[],true),
+ ('customer_read',r='cashier','read'=any(rg),true,array['receivable_read'],true),
+ ('debt_read',r='cashier','read'=any(rg),true,array['receivable_read'],true),
+ ('installment_read',r='cashier','read'=any(rg),true,array['receivable_read','debt_read'],true),
+ ('supplier_read',r='stock',coalesce(pg.read_allowed,false),false,array['procurement_read'],true),
+ ('purchase_read',r='stock',coalesce(pg.read_allowed,false),false,array['procurement_read'],true),
  ('orders_read',false,true,false,array[]::text[],false),('orders_write',false,true,true,array[]::text[],false),
  ('warranty_write',false,true,true,array[]::text[],false),('returns_read',false,true,false,array[]::text[],false),('returns_write',false,true,true,array[]::text[],false),
  ('used_read',false,true,false,array[]::text[],false),('used_write',false,true,true,array[]::text[],false),
@@ -76,7 +81,7 @@ begin
  ('finance_read',false,true,false,array[]::text[],false),('finance_write',false,true,true,array[]::text[],false),
  ('staff_admin',false,true,true,array[]::text[],false),('store_admin',false,true,true,array[]::text[],false),('backup_admin',false,true,true,array[]::text[],false)
  )
- select jsonb_agg(jsonb_build_object('action',action,'editable',enabled and r<>'owner' and editable and role_access,'denied',action=any(d),'effective',enabled and ((r='owner' and (not write_action or licensed)) or (role_access and grant_access and (not write_action or licensed) and not action=any(d) and not depends&&d)),'reason',case when not enabled then 'inactive' when r='owner' then case when write_action and not licensed then 'license' else 'allowed' end when not role_access then 'role' when not grant_access then 'grant' when write_action and not licensed then 'license' when action=any(d) then 'denied' when depends&&d then 'dependency' else 'allowed' end) order by action) into items from matrix;
+ select jsonb_agg(jsonb_build_object('action',action,'editable',enabled and r<>'owner' and editable and role_access,'denied',action=any(d),'effective',enabled and ((r='owner' and (not write_action or licensed)) or (role_access and grant_access and (not write_action or licensed) and not (action=any(d)) and not (depends&&d))),'reason',case when not enabled then 'inactive' when r='owner' then case when write_action and not licensed then 'license' else 'allowed' end when not role_access then 'role' when not grant_access then 'grant' when write_action and not licensed then 'license' when action=any(d) then 'denied' when depends&&d then 'dependency' else 'allowed' end) order by action) into items from matrix;
  return jsonb_build_object('user',u,'role',r,'active',enabled,'branch',b,'denials',to_jsonb(d),'operations',items);
 end $$;
 create function public.mt_staff_access_matrix(s uuid,u uuid)
@@ -94,7 +99,7 @@ begin
  if expected is null or desired is null or cardinality(expected)>64 or cardinality(desired)>64 or array_position(desired,null) is not null or previous is distinct from (select coalesce(array_agg(distinct x order by x),'{}'::text[]) from unnest(expected)x) then raise exception 'Permissions changed; reload' using errcode='22023';end if;
  for a in select distinct x from unnest(previous||desired)x where (x=any(previous)) is distinct from (x=any(desired)) loop
   if not exists(select 1 from jsonb_array_elements(state->'operations') j where j->>'action'=a and j->>'editable'='true') then raise exception 'Operation outside current role' using errcode='22023';end if;
-  perform tenant_private.staff_permission_set(s,u,a,not a=any(desired));
+  perform tenant_private.staff_permission_set(s,u,a,not (a=any(desired)));
  end loop;
  return tenant_private.staff_access_matrix(s,u);
 end $$;
