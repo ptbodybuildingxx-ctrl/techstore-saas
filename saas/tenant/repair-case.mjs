@@ -1,13 +1,13 @@
 // Repair consent workspace: no identity document numbers, no offline identity actions.
-import {tr} from '../design/i18n.mjs';
-const date=v=>v?new Date(v).toLocaleString('ar-SY',{timeZone:'Asia/Damascus'}):'—';
+import {tr,currentLanguage} from '../design/i18n.mjs';
+const date=v=>v?new Date(v).toLocaleString(currentLanguage()==='en'?'en-GB':'ar-SY',{timeZone:'Asia/Damascus'}):'—';
 const stateLabels={received:'مستلم',diagnosing:'قيد الفحص',repairing:'قيد الإصلاح',ready:'جاهز للتسليم',delivered:'تم التسليم',cancelled:'ملغى',offered:'بانتظار الموافقة',approved:'مقبول',rejected:'مرفوض',superseded:'ملغى'};
 const auditLabels={account_linked:'ربط الحساب',identity_checked:'توثيق التحقق من الهوية',tracking_activated:'تفعيل متابعة طلب تاريخي',tracking_rotated:'إعادة إصدار رمز المتابعة',paper_decision:'قرار ورقي موثق',photo_visibility:'تغيير مشاركة الصورة'};
 const methods={government_id_seen:'مطابقة وثيقة الهوية حضورياً',intake_receipt_and_confirmed_account:'مطابقة وصل الاستلام وحساب مؤكد',confirmed_account_and_in_person_attestation:'تأكيد حضوري وحساب مؤكد',government_id_and_original_intake_verified:'مطابقة الهوية ووصل الاستلام الأصلي',government_id_seen_signed_paper:'مطابقة الهوية والوثيقة الورقية الموقعة'};
 const isOpen=s=>['received','diagnosing','repairing','ready'].includes(s);
 export function createRepairCasePanel({api,s,write,run,node,table,form,money,active,printArea}){
  const root=node('div'),area=node('div'),status=node('p'),retry=node('button',tr('إعادة تأكيد إجراء الهوية'));retry.type='button';retry.hidden=true;
- let current=null,pending=null;
+ let pending=null;
  const p=t=>node('p',tr(t));const heading=t=>node('h4',tr(t));const button=(label,fn)=>{const b=node('button',tr(label));b.type='button';b.onclick=()=>run(fn);return b};
  function displayDate(value){return date(value)}
  async function send(){
@@ -29,7 +29,7 @@ export function createRepairCasePanel({api,s,write,run,node,table,form,money,act
  }
  function auditDetail(x){const d=x.details||{},parts=[];if(d.method)parts.push(tr(methods[d.method]||d.method));if(d.reference)parts.push(tr('مرجع الوثيقة الداخلية')+': '+d.reference);if(typeof d.accepted==='boolean')parts.push(tr(d.accepted?'مقبول':'مرفوض'));if(d.currency&&d.amount_minor!=null)parts.push(money(d.amount_minor,d.currency));if(typeof d.visible==='boolean')parts.push(tr(d.visible?'مشتركة مع العميل':'خاصة بالموظفين'));if(d.superseded_estimate)parts.push(tr('التقدير السابق')+': '+d.superseded_estimate);return parts.join(' — ')||'—'}
  async function load(id){
-  const r=await api.repairCaseReview(s.id,id);if(!active())return;current=id;
+  const r=await api.repairCaseReview(s.id,id);if(!active())return;
   area.replaceChildren(heading('ملف الموافقة والتحقق من الهوية'),node('p',r.customer_name+' — '+r.device+' — '+tr(stateLabels[r.state]||r.state)),node('p',tr(r.tracked?'المتابعة مفعلة':'طلب تاريخي دون رمز متابعة')+' / '+tr(r.linked?'حساب العميل مرتبط':'حساب العميل غير مرتبط')+' / '+tr(r.approved?'موافقة صالحة':'لا توجد موافقة صالحة')));
   const open=isOpen(r.state),offered=r.estimates.find(e=>e.superseded_at===null&&e.state==='offered');
   if(write&&open){
