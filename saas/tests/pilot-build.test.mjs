@@ -14,9 +14,11 @@ test('pilot publish build excludes legacy application, SQL and non-allowlisted a
   execFileSync(process.execPath,[join(dir,'saas/deploy/build-pilot.mjs')]);
   const out=join(dir,'dist-pilot');
   const files=(await readdir(out,{recursive:true,withFileTypes:true})).filter(x=>x.isFile()).map(x=>join(x.parentPath,x.name).slice(out.length+1)).sort();
-  assert.deepEqual(files,[...assets,'index.html','robots.txt'].sort());
+  assert.deepEqual(files,[...assets,'index.html','robots.txt','_headers','404.html'].sort());
   assert.match(await readFile(join(out,'index.html'),'utf8'),/بيئة اختبار غير تجارية/);
   assert.match(await readFile(join(out,'saas/tenant/index.html'),'utf8'),/noindex,nofollow/);
+  const headers=await readFile(join(out,'_headers'),'utf8');for(const expected of ["frame-ancestors 'none'","X-Frame-Options: DENY","Cache-Control: no-store","Referrer-Policy: no-referrer","X-Content-Type-Options: nosniff","X-Robots-Tag: noindex, nofollow"])assert.ok(headers.includes(expected),expected);
+  assert.match(await readFile(join(out,'saas/admin/admin.mjs'),'utf8'),/github\.io/);
   assert.throws(()=>execFileSync(process.execPath,[join(dir,'saas/deploy/build-pilot.mjs')],{stdio:'pipe'}));
  }finally{await rm(dir,{recursive:true,force:true})}
 });

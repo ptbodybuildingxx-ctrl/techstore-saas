@@ -7,6 +7,7 @@ const allow=['saas/admin/index.html','saas/admin/admin.css','saas/admin/admin.mj
 const allowedHost='https://mezsyzdieqmqulddcrtg.supabase.co';
 const config=await readFile(join(root,'saas/admin/config.mjs'),'utf8');
 if(!config.includes(allowedHost)||!/publishableKey:"sb_publishable_[A-Za-z0-9_-]{20,200}"/.test(config)||/sb_secret_|service_role\s*[:=]/i.test(config))throw Error('Unexpected pilot config');
+if(!/publicMediaEnabled\s*:\s*false/.test(config)||/customerAuthEnabled\s*:\s*true/.test(config))throw Error('Public activation forbidden for closed pilot');
 const landing='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'self\'; base-uri \'none\'; form-action \'none\'"><title>TechStore SaaS | Pilot</title><link rel="stylesheet" href="saas/admin/admin.css"></head><body><header><div><small>TECHSTORE SAAS</small><h1>النسخة التجريبية المشتركة</h1></div></header><main><section class="panel"><h2>بيئة اختبار غير تجارية</h2><p>لا تدخل بيانات عملاء حقيقية أو تسجل مدفوعات حقيقية. الدخول يتطلب حساباً مصرحاً به مسبقاً.</p><p><a href="saas/admin/">لوحة الإدارة المركزية</a></p><p><a href="saas/tenant/">واجهة المحل التجريبية</a></p><p><a href="saas/storefront/">متجر العميل التجريبي</a></p></section></main></body></html>';
 await mkdir(out,{recursive:false}); // fail rather than reuse an existing output directory
 for(const path of allow){
@@ -19,5 +20,8 @@ for(const path of allow){
  else await copyFile(src,dst);
 }
 await writeFile(join(out,'index.html'),landing,{flag:'wx'});
+// Cloudflare Pages / compatible static host response headers. Not an access-control substitute.
+await writeFile(join(out,'_headers'),"/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'\n  Cache-Control: no-store\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n",{flag:'wx'});
+await writeFile(join(out,'404.html'),'<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>404</title></head><body><h1>الصفحة غير موجودة</h1><a href="/">العودة إلى البداية</a></body></html>',{flag:'wx'});
 await writeFile(join(out,'robots.txt'),'User-agent: *\nDisallow: /\n',{flag:'wx'});
 console.log('Development pilot built: '+allow.length+' allowlisted assets; no legacy application or SQL included.');
