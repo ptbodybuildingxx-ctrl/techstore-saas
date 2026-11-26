@@ -26,7 +26,7 @@ begin
    if bl ? 'layout' then
     lay:=bl->'layout';
     if jsonb_typeof(lay) is distinct from 'object' then return false;end if;
-    if (select count(*) from jsonb_object_keys(lay))<>case when lay ? 'position' then 7 else 6 end or not(lay ?& array['desktop','mobile','align','padding','image_fit','heading']) then return false;end if;
+    if (select count(*) from jsonb_object_keys(lay))<>(case when lay ? 'position' then 7 else 6 end) or not(lay ?& array['desktop','mobile','align','padding','image_fit','heading']) then return false;end if;
     if jsonb_typeof(lay->'desktop') is distinct from 'number' or jsonb_typeof(lay->'mobile') is distinct from 'number' or lay->>'desktop' not in ('3','4','6','8','9','12') or lay->>'mobile' not in ('6','12') or exists(select 1 from jsonb_each(lay) x where x.key not in ('desktop','mobile','position') and jsonb_typeof(x.value)<>'string') or lay->>'align' not in ('start','center','end') or lay->>'padding' not in ('compact','normal','spacious') or lay->>'image_fit' not in ('natural','square','wide') or lay->>'heading' not in ('small','normal','large') then return false;end if;
     if lay ? 'position' then
      pos:=lay->'position';
@@ -52,5 +52,5 @@ begin
   if dev->>'layout' not in ('list','cards') or dev->>'density' not in ('compact','normal','spacious') or dev->>'columns' not in ('1','2','3','4') or (k='mobile' and dev->>'columns' not in ('1','2')) then return false;end if;
  end loop;
  return true;
-end $$;
+end; $$;
 commit;
