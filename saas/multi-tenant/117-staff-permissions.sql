@@ -5,7 +5,7 @@ alter table tenant_private.staff_denials add constraint staff_denials_action_che
 
 create function tenant_private.staff_sale_scope(p_store uuid,p_sale uuid,p_actor uuid)
 returns boolean language sql stable security definer set search_path='' as $$
- select coalesce(tenant_private.member_role(p_store)='owner' or (tenant_private.member_role(p_store)='cashier' and p_actor=auth.uid() and (tenant_private.current_branch_scope(p_store) is null or exists(select 1 from tenant_private.branch_sales b where b.store_id=p_store and b.sale_id=p_sale and b.branch_id=tenant_private.current_branch_scope(p_store)))),false)
+ select coalesce(tenant_private.member_role(p_store)='owner' or (tenant_private.member_role(p_store)='cashier' and p_actor=auth.uid() and exists(select 1 from public.mt_sales a where a.store_id=p_store and a.id=p_sale and a.actor=auth.uid()) and (tenant_private.current_branch_scope(p_store) is null or exists(select 1 from tenant_private.branch_sales b where b.store_id=p_store and b.sale_id=p_sale and b.branch_id=tenant_private.current_branch_scope(p_store)))),false)
 $$;
 revoke all on function tenant_private.staff_sale_scope(uuid,uuid,uuid) from public,anon,authenticated;
 grant execute on function tenant_private.staff_sale_scope(uuid,uuid,uuid) to authenticated;
@@ -365,16 +365,37 @@ create or replace function public.mt_sale_receipt_lines(p_store uuid,p_sale uuid
 returns setof public.mt_sale_lines language sql stable set search_path='' as $$
  select * from public.mt_sale_lines where store_id=p_store and sale_id=p_sale and tenant_private.staff_action_allowed(p_store,'receipt_read') order by product_id limit 100
 $$;
+create function tenant_private.staff_low_stock_count(p_store uuid)
+returns bigint language sql stable security definer set search_path='' as $
+ select case when tenant_private.member_role(p_store) in ('owner','stock') and tenant_private.staff_action_allowed(p_store,'catalog_read') then case when tenant_private.current_branch_scope(p_store) is null then (select count(*) from public.mt_products where store_id=p_store and quantity<=5) else (select count(*) from tenant_private.branch_stock where store_id=p_store and branch_id=tenant_private.current_branch_scope(p_store) and units<=5) end else 0 end
+$;
+revoke all on function tenant_private.staff_low_stock_count(uuid) from public,anon,authenticated;
+grant execute on function tenant_private.staff_low_stock_count(uuid) to authenticated;
 create or replace function public.mt_work_alerts(p_store uuid)
 returns jsonb language plpgsql stable set search_path='' as $$
 declare role_now text:=tenant_private.member_role(p_store);r jsonb:='{}'::jsonb;
 begin
  if role_now is null then raise exception 'Tenant access denied' using errcode='42501';end if;
  if not tenant_private.staff_action_allowed(p_store,'notifications_read') then return r;end if;
- if role_now in ('owner','stock') and tenant_private.staff_action_allowed(p_store,'catalog_read') then r:=r||jsonb_build_object('low_stock',(select count(*) from tenant_private.scoped_products(p_store,null,'',null,100,true)));end if;
+ if role_now in ('owner','stock') and tenant_private.staff_action_allowed(p_store,'catalog_read') then r:=r||jsonb_build_object('low_stock',tenant_private.staff_low_stock_count(p_store));end if;
  if role_now in ('owner','tech') and tenant_private.staff_action_allowed(p_store,'repair_read') then r:=r||jsonb_build_object('repairs_ready',(select count(*) from public.mt_repairs where store_id=p_store and state='ready'),'repairs_received',(select count(*) from public.mt_repairs where store_id=p_store and state='received'));end if;
  if role_now='owner' then r:=r||jsonb_build_object('orders_pending',(select count(*) from public.mt_online_orders where store_id=p_store and state='pending'),'installments_overdue',(select count(*) from public.mt_installments where store_id=p_store and due_date<(now() at time zone 'Asia/Damascus')::date and paid_minor+waived_minor<amount_minor));end if;
  return r;
 end $$;
+
+-- Moving a staff member invalidates explicit grants, including a move back to an old branch.
+create function tenant_private.revoke_moved_staff_grants()
+returns trigger language plpgsql security definer set search_path='' as $
+declare s uuid;u uuid;
+begin
+ if tg_op='UPDATE' and old.branch_id is not distinct from new.branch_id then return new;end if;
+ if tg_op='DELETE' then s:=old.store_id;u:=old.user_id;else s:=new.store_id;u:=new.user_id;end if;
+ delete from tenant_private.procurement_grants where store_id=s and user_id=u;
+ delete from tenant_private.receivable_grants where store_id=s and user_id=u;
+ if tg_op='DELETE' then return old;end if;return new;
+end $;
+revoke all on function tenant_private.revoke_moved_staff_grants() from public,anon,authenticated;
+create trigger mt_revoke_moved_staff_grants after insert or update or delete on tenant_private.staff_branch_scope for each row execute function tenant_private.revoke_moved_staff_grants();
+create trigger mt_revoke_moved_cashier_grants after insert or update or delete on tenant_private.cashier_branch_scope for each row execute function tenant_private.revoke_moved_staff_grants();
 
 commit;
