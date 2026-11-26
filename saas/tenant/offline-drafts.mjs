@@ -1,3 +1,4 @@
+import {ledgerFresh} from './offline-receivables.mjs';
 // Cold-start operational draft forms. Local role is a presentation hint, never permission.
 const uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 const text=(v,max,optional=false)=>{if(typeof v!=='string'||v.trim().length>max||(!optional&&!v.trim()))throw Error('Invalid text');return v.trim()};
@@ -32,6 +33,7 @@ const receivableDraftActions=Object.freeze({customer:'customer_create',customerE
 export function coldDraftAllowed(snapshot,kind){
  if(!snapshot)return false;
  if(kind==='stockCount')return ['owner','stock'].includes(snapshot.role)&&!!snapshot.countProducts?.length;
+ if(snapshot.ledger&&Object.hasOwn(receivableDraftActions,kind))return ledgerFresh(snapshot.ledger)&&snapshot.receivableActions?.includes('read')&&snapshot.receivableActions.includes(receivableDraftActions[kind]);
  if(snapshot.role==='owner')return true;
  return snapshot.role==='cashier'&&Array.isArray(snapshot.receivableActions)&&snapshot.receivableActions.includes('read')&&Object.hasOwn(receivableDraftActions,kind)&&snapshot.receivableActions.includes(receivableDraftActions[kind]);
 }
@@ -41,10 +43,10 @@ export function createColdDraft(snapshot,kind,v,requestId=crypto.randomUUID()){
  const base={kind,store:snapshot.store,requestId},c=snapshot.currency,b=snapshot.branch;
  switch(kind){
  case 'customer':return {...base,name:text(v.name,160),phone:text(v.phone,60,true)};
- case 'customerEdit':return {...base,customer:id(v.customer),oldName:text(v.oldName,160),oldPhone:text(v.oldPhone,60,true),name:text(v.name,160),phone:text(v.phone,60,true)};
- case 'pay':return {...base,debt:id(v.debt),currency:select(v.currency,['SYP','USD','EUR']),amount:money(v.amount)};
- case 'standaloneOpen':{const direction=select(v.direction,['receivable','payable']),count=units(v.count),amount=money(v.amount),due=text(v.due,10);if(count>120||count>amount||direction==='payable'&&(!coldPayablesAllowed(snapshot)||count!==1)||!/^\d{4}-\d{2}-\d{2}$/.test(due)||!Number.isFinite(Date.parse(due))||due<'1900-01-01'||due>'2200-01-01')throw Error('Invalid standalone terms');return {...base,payload:{customer:v.customer?id(v.customer):null,branch:b,direction,party:text(v.party,160),phone:text(v.phone,60,true),currency:select(v.currency,['SYP','USD','EUR']),amount,count,due,notes:text(v.notes,300,true)}}}
- case 'standalonePay':return {...base,payload:{debt:id(v.debt),amount:money(v.amount),memo:text(v.memo,300,true)}};
+ case 'customerEdit':{const customer=id(v.customer),oldName=text(v.oldName,160),oldPhone=text(v.oldPhone,60,true);if(snapshot.ledger&&!snapshot.ledger.customers.some(x=>x.id===customer&&x.name===oldName&&x.phone===oldPhone))throw Error('Customer not in snapshot');return {...base,customer,oldName,oldPhone,name:text(v.name,160),phone:text(v.phone,60,true)}}
+ case 'pay':{const debt=id(v.debt),currency=select(v.currency,['SYP','USD','EUR']),amount=money(v.amount);if(snapshot.ledger&&!snapshot.ledger.debts.some(d=>d.kind==='invoice'&&d.id===debt&&d.currency===currency&&amount<=d.remaining_minor))throw Error('Payment exceeds captured debt or reference not found');return {...base,debt,currency,amount}}
+ case 'standaloneOpen':{const direction=select(v.direction,['receivable','payable']),count=units(v.count),amount=money(v.amount),due=text(v.due,10);if(count>120||count>amount||direction==='payable'&&(!coldPayablesAllowed(snapshot)||count!==1)||!/^\d{4}-\d{2}-\d{2}$/.test(due)||!Number.isFinite(Date.parse(due))||due<'1900-01-01'||due>'2200-01-01')throw Error('Invalid standalone terms');const customer=v.customer?id(v.customer):null,party=text(v.party,160),phone=text(v.phone,60,true);if(customer&&snapshot.ledger&&!snapshot.ledger.customers.some(x=>x.id===customer&&x.name===party&&x.phone===phone))throw Error('Customer not in snapshot');return {...base,payload:{customer,branch:b,direction,party,phone,currency:select(v.currency,['SYP','USD','EUR']),amount,count,due,notes:text(v.notes,300,true)}}}
+ case 'standalonePay':{const debt=id(v.debt),amount=money(v.amount);if(snapshot.ledger&&!snapshot.ledger.debts.some(d=>d.kind==='standalone'&&d.id===debt&&amount<=d.remaining_minor&&(d.direction==='receivable'||coldPayablesAllowed(snapshot))))throw Error('Payment exceeds captured debt or reference not found');return {...base,payload:{debt,amount,memo:text(v.memo,300,true)}}}
 
  case 'stockCount':{const product=id(v.product),p=snapshot.countProducts?.find(x=>x.id===product);if(!p||typeof v.actual!=='string'||!/^\d{1,10}$/.test(v.actual)||Number(v.actual)>1000000000)throw Error('Invalid count');return {...base,branch:b,reason:text(v.reason,160),items:[{id:product,event:crypto.randomUUID(),expected:p.expected,actual:Number(v.actual)}]}}
 

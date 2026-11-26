@@ -1,3 +1,4 @@
+import {validateOfflineReceivables} from './offline-receivables.mjs';
 import {designResponse,validateSpecs,validateReceiptSettings,validateCatalogProfile} from '../design/theme.mjs';
 const origin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -167,6 +168,10 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc('mt_list_debts',{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.sale_id)||!isId(x.customer_id)||!currency(x.currency)||!int(x.principal_minor,1,100000000000000)||!int(x.deposit_minor,0,x.principal_minor-1)||!int(x.remaining_minor,0,x.principal_minor-x.deposit_minor)||!int(x.installment_count,1,60)))throw Error('Invalid debts');return r;
+  },
+  async offlineReceivableSnapshot(store,actor){
+   if(!isId(actor))throw Error('Invalid offline account');
+   return validateOfflineReceivables(await rpc('mt_offline_receivable_snapshot',{p_store:store},store),{store,actor});
   },
   async receivableGrants(store,user=null){
    if(user!==null&&!isId(user))throw Error('Invalid employee');
