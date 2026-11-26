@@ -98,12 +98,12 @@ alter table tenant_private.order_discounts add constraint mt_discount_source che
  or (combined and reward_points is null and price_tier is not null and line_prices is not null)
 );
 -- Returns restore only the proportional part of the spent points; cancellation releases all.
-create function tenant_private.spend_checkout_consumed(s uuid,a uuid) returns bigint language sql stable security definer set search_path='' as $
+create function tenant_private.spend_checkout_consumed(s uuid,a uuid) returns bigint language sql stable security definer set search_path='' as $$
  select coalesce((select case when o.state='cancelled' then 0 when o.state='fulfilled' then p.points_used-floor(p.points_used::numeric*least(o.total_minor,coalesce(r.returned,0))/o.total_minor)::bigint else p.points_used end
  from tenant_private.spend_checkout p join public.mt_online_orders o on o.store_id=p.store_id and o.id=p.order_id
  left join lateral(select sum(total_minor) returned from public.mt_returns where store_id=s and sale_id=o.sale_id) r on true
  where p.store_id=s and p.order_id=a),0)
-$;
+$$;
 revoke all on function tenant_private.spend_checkout_consumed(uuid,uuid) from public,anon,authenticated,service_role;
 
 
