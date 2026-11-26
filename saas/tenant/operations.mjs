@@ -1,4 +1,4 @@
-import {createRepairCasePanel} from './repair-case.mjs';
+import {createRepairCasePanel,createRepairWarrantyPanel} from './repair-case.mjs';
 import {createStaffPermissionsPanel} from './staff-permissions.mjs';
 import {loadMembershipPricing} from './membership-pricing.mjs';
 import {tr} from '../design/i18n.mjs';
@@ -142,6 +142,7 @@ const reconcile=node('button','مطابقة الصندوق مع سجل الحر�
  if(write&&cs.length)bills.append(node('p','أدخل بنود قطع الغيار بصيغة معرّف المنتج,الكمية,السعر بالعملة المختارة؛ افصل البنود بفاصلة منقوطة. اتركها فارغة إن لم تستخدم قطعاً.'),form([['repair','معرّف الصيانة الجاهزة','text'],['currency','العملة','select',cs],['service','أجرة الخدمة (0 مسموح)','text'],['parts','القطع (اختياري)','optional'],['warranty','أيام الضمان (0–730)','text']],'إصدار الفاتورة وتسليم الجهاز',v=>{const lines=v.parts.trim()?v.parts.split(';').map(t=>{const [product_id,units,price,...extra]=t.split(',').map(x=>x.trim());if(extra.length||!price)throw Error('Invalid parts');return {product_id,units:Number(units),expected_price_minor:minor(price)}}):[];return start({kind:'repairCheckout',repair:v.repair,currency:v.currency,service:minor(v.service,true),lines,warranty:Number(v.warranty)})}),form([['invoice','معرّف الفاتورة','text'],['reason','سبب طلب الضمان','text']],'فتح طلب ضمان',v=>start({kind:'warrantyOpen',...v})));
  const claims=await listPanel('طلبات الضمان','warranty_claims',['الطلب','الفاتورة','السبب','الحالة'],x=>[x.id,x.invoice_id,x.reason,x.state]);
  if(write)claims.append(form([['claim','معرّف الطلب','text'],['next','الحالة','select',[['accepted','قبول'],['rejected','رفض'],['resolved','إغلاق بعد المعالجة']]],['note','البيان','text']],'تحديث الضمان',v=>start({kind:'warrantyTransition',...v})));
+ if(owner)claims.append(createRepairWarrantyPanel({api,s,run,node,table,form,money,active:()=>store?.id===s.id&&store.role==='owner'&&claims.isConnected}));
  const replacements=await listPanel('قطع الغيار ضمن الضمان','warranty_parts',['المرجع','مطالبة الضمان','المنتج','الكمية','السبب'],x=>[x.id,x.claim_id,x.product_id,x.units,x.reason]);
  if(write)replacements.append(node('p','تُخصم القطع من المخزون وتدخل تكلفتها ضمن تكلفة الصيانة دون تحصيل من العميل. يجب قبول المطالبة أولاً.'),form([['claim','معرّف مطالبة الضمان المقبولة','text'],['product','معرّف القطعة','text'],['units','الكمية','number'],['reason','السبب','text']],'تسجيل قطعة ضمان',v=>start({kind:'warrantyPart',claim:v.claim,product:v.product,units:Number(v.units),reason:v.reason})));
  const repairRefunds=await listPanel('تسويات فواتير الصيانة','repair_refunds',['المرجع','الفاتورة الأصلية','المبلغ المسترد','السبب'],x=>[x.id,x.invoice_id,money(x.amount_minor,x.currency),x.reason]);
