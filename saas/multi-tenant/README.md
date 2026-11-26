@@ -164,3 +164,6 @@ Immutable additions and deductions on unpaid payroll statements; confirmed disbu
 
 ## Branch account balances (076)
 Current location-attributed customer receivables, supplier payables, net payroll liabilities, outstanding staff advances, physical stock quantities and activated cash balances by currency. Global FIFO does not provide per-location inventory valuation; this is explicitly unavailable rather than estimated. Corrected sale-return cash movement type in the unmerged 073. No independent branch bank book or branch FIFO yet.
+
+## Staff read and edit restrictions (077)
+Adds per-employee denials for catalog/price reading, stock history, sale history, repair access, product metadata editing and task completion, including restrictive RLS and explicit checks in scoped lookup RPCs. Existing owner-only operations and roles are not elevated. Financial/stock documents are intentionally immutable; deletion remains restricted to existing controlled cancellation/reversal flows. Other RPCs and UI visibility still need a full permission coverage audit.
