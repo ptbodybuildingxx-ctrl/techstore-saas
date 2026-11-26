@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {summarizeBranchJournal} from '../tenant/branch-finance.mjs';
+import {summarizeBranchJournal,branchClearingTotals} from '../tenant/branch-finance.mjs';
 const row=(account,debit,credit,branch_id='branch-a',currency='SYP')=>({branch_id,name:branch_id??'Central',currency,account,opening:'0',debit:String(debit),credit:String(credit),closing:String(BigInt(debit)-BigInt(credit))});
 const report=rows=>({mode:'branch_journal_projection',opening_verified:false,rows});
 test('branch management result uses exact signed integer postings, with no final profit assertion',()=>{
@@ -12,3 +12,5 @@ test('central and branch groups and currencies cannot be combined to conceal imb
  assert.throws(()=>summarizeBranchJournal(report([row('cash',100,0,'branch-a','SYP'),row('sales_revenue',0,100,'branch-a','USD')])),/Unbalanced/);
 });
 test('duplicate accounts fail closed',()=>{assert.throws(()=>summarizeBranchJournal(report([row('cash',0,0),row('cash',0,0)])),/Duplicate/)});
+
+test('interbranch clearing is reconciled within each currency, with no fabricated opening balances',()=>{const groups=summarizeBranchJournal(report([row('interbranch_clearing',100,0,'branch-a'),row('cash',0,100,'branch-a'),row('cash',100,0,'branch-b'),row('interbranch_clearing',0,100,'branch-b')]));assert.deepEqual(branchClearingTotals(groups),[{currency:'SYP',balance:0n,balanced:true}]);assert.ok(groups.every(x=>x.classificationResidual===0n&&x.openingVerified===false));});

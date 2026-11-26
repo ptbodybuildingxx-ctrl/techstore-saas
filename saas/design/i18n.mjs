@@ -1,5 +1,13 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "تاريخ غير متاح": "Date unavailable",
+  "النتيجة التراكمية المنسوبة": "Attributed cumulative result",
+  "حسابات غير مسواة (مدين/دائن)": "Unresolved balances (debit/credit)",
+  "حسابات أخرى غير مصنفة": "Other unclassified accounts",
+  "مطابقة حسابات التحويل بين الفروع": "Interbranch clearing reconciliation",
+  "الرصيد المجمع": "Consolidated balance",
+  "متوازن": "Balanced",
+  "غير متوازن": "Unbalanced",
   "تسجيل دفعة دين": "Record debt payment",
   "إنشاء عرض سعر": "Create price quote",
   "مسودات البيع دون اتصال": "Offline sales drafts",

@@ -8,7 +8,7 @@ const operations=Object.freeze({"حالة الاشتراك":"settings","المو
 export function operationGroup(title){if(!Object.hasOwn(operations,title))throw Error('Unmapped operation section: '+title);return operations[title];}
 export function matchesGroup(value,group){return typeof value==='string'&&value.split(/\s+/).includes(group);}
 export function createWorkspace(root,nav){
- let allowed=[],active=null,query='',available=[],drawerOpen=false;
+ let allowed=[],active=null,query='',available=[],drawerOpen=false,returnFocus=null;
  const doc=nav.ownerDocument,mobile=doc.defaultView.matchMedia('(max-width: 850px)');
  const make=(tag,cls)=>{const n=doc.createElement(tag);n.className=cls;return n};
  const bar=make('div','workspace-mobile-bar'),menuButton=make('button','workspace-menu-toggle'),activeLabel=make('strong','workspace-active-label'),backdrop=make('button','workspace-backdrop'),quick=make('nav','workspace-quick-nav');
@@ -18,12 +18,14 @@ export function createWorkspace(root,nav){
  function drawer(open,focus=false){
   drawerOpen=!!open&&mobile.matches&&available.length>0;
   nav.dataset.drawerOpen=String(drawerOpen);nav.inert=mobile.matches&&!drawerOpen;
+  root.inert=drawerOpen;quick.inert=drawerOpen;bar.inert=drawerOpen;
+  if(drawerOpen)nav.setAttribute('aria-label',tr('الأقسام'));else nav.removeAttribute('aria-label');
   menuButton.setAttribute('aria-expanded',String(drawerOpen));backdrop.hidden=!drawerOpen;
-  if(focus){if(drawerOpen)nav.querySelector('input')?.focus();else menuButton.focus()}
+  if(focus){if(drawerOpen){returnFocus=doc.activeElement;nav.querySelector('input')?.focus()}else{const target=returnFocus?.isConnected&&!returnFocus.closest('[inert]')?returnFocus:menuButton;returnFocus=null;target.focus()}}
  }
  menuButton.onclick=()=>drawer(!drawerOpen,true);backdrop.onclick=()=>drawer(false,true);
  mobile.addEventListener('change',()=>drawer(false));
- doc.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawerOpen){e.preventDefault();drawer(false,true)}});
+ doc.addEventListener('keydown',e=>{if(!drawerOpen)return;if(e.key==='Escape'){e.preventDefault();drawer(false,true);return}if(e.key!=='Tab')return;const targets=[...nav.querySelectorAll('button:not([disabled]),input:not([disabled])')].filter(n=>!n.hidden&&!n.closest('[hidden]'));if(!targets.length)return;const first=targets[0],last=targets.at(-1);if(e.shiftKey&&(doc.activeElement===first||!nav.contains(doc.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(doc.activeElement===last||!nav.contains(doc.activeElement))){e.preventDefault();first.focus()}});
  function item(key,compact=false){
   const b=make('button',compact?'workspace-quick-item':'workspace-nav-item');b.type='button';
   const icon=make('span','workspace-icon');icon.textContent=icons[key]||'•';icon.setAttribute('aria-hidden','true');
@@ -43,7 +45,7 @@ export function createWorkspace(root,nav){
   const heading=make('div','workspace-drawer-heading'),title=make('strong',''),close=make('button','workspace-drawer-close');
   title.textContent=tr('الأقسام');close.type='button';close.textContent='×';close.setAttribute('aria-label',tr('إغلاق القائمة'));close.onclick=()=>drawer(false,true);heading.append(title,close);
   const buttons=available.map(key=>item(key));
-  const filter=()=>{query=search.value;for(const [i,b] of buttons.entries())b.hidden=!tr(labels[available[i]]).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())};search.oninput=filter;nav.replaceChildren(heading,search,...buttons);filter();
+  const filter=()=>{query=search.value;for(const [i,b] of buttons.entries())b.hidden=![labels[available[i]],tr(labels[available[i]])].some(label=>label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))};search.oninput=filter;nav.replaceChildren(heading,search,...buttons);filter();
   menuButton.textContent='☰ '+tr('الأقسام');activeLabel.textContent=active?tr(labels[active]):'';backdrop.setAttribute('aria-label',tr('إغلاق القائمة'));quick.setAttribute('aria-label',tr('التنقل السريع'));
   const first=available.slice(0,4);quick.replaceChildren(...first.map(k=>item(k,true)));
   if(available.length>4){const more=make('button','workspace-quick-item');more.type='button';more.textContent='☰ '+tr('المزيد');more.onclick=()=>drawer(true,true);quick.append(more)}

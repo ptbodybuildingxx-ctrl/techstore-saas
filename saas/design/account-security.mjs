@@ -60,7 +60,7 @@ export function mountAccountSecurity(root,{api,run,message}){
  const list=node('div'),secret=node('p'),form=node('form'),label=node('label','رمز المصادقة'),input=node('input'),status=node('p');
  let pending=null;
  const reset=()=>{pending=null;secret.textContent='';input.value='';form.hidden=true;list.replaceChildren();status.textContent=''};
- input.autocomplete='one-time-code';input.inputMode='numeric';input.maxLength=6;input.required=true;label.append(input);
+ input.autocomplete='one-time-code';input.inputMode='numeric';input.maxLength=6;input.pattern='[0-9]{6}';input.required=true;label.append(input);
  const submit=node('button','تأكيد');submit.type='submit';form.append(label,submit,button('إلغاء',async()=>{if(pending)await api.security.remove(pending.id);pending=null;secret.textContent='';input.value='';form.hidden=true}));
  async function refresh(){
   const [factors,sessions]=await Promise.all([api.security.factors(),api.security.sessions()]);
