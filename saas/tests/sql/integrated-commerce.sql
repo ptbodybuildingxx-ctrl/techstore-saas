@@ -152,6 +152,8 @@ branch_sale:=(v->>'id')::uuid;
 if public.mt_branch_cash_sale(t,branch,branch_request,'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)))->>'id' is distinct from branch_sale::text then raise exception 'Branch replay';end if;
 perform public.mt_record_return(t,gen_random_uuid(),branch_sale,branch_product,1,'Branch return');
 if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '3' then raise exception 'Branch return mismatch';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_branch_sales_report(t,today-1,today+1)) x where x->>'branch'=branch::text and x->>'gross'='1000' and x->>'returns'='1000' and x->>'net'='0') then raise exception 'Branch accounting report mismatch';end if;
+if (select sum(units*unit_price_minor) from public.mt_repair_receipt_lines(t,inv)) is distinct from 3000::numeric then raise exception 'Repair receipt lines mismatch';end if;
 begin perform public.mt_branch_overview(other,null);raise exception 'Branch leak';exception when insufficient_privilege then null;end;
 end;
 reset role;raise exception using errcode='ZX001',message='rollback';

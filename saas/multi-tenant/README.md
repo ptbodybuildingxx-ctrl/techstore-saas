@@ -71,3 +71,6 @@ Owner receipt settings capture identity, logo, address, phone, titles, format an
 
 ## Branch allocation (046)
 Branch balances partition existing physical stock; transfers are idempotent and do not double-post cash or FIFO. Cash branch sales use the existing sale engine and branch returns restore branch stock. Main-store stock reductions and order reservations cannot consume allocated quantities. Purchases, credit/mixed sales, repair and delivery still originate in the main store, cost layers remain store-wide, and per-branch staff permissions and financial statements are not implemented. Deploy only after 044–046 pass and dedicated database migration is verified.
+
+## Branch revenue and repair receipts (047)
+Owner-only, original sale and return records aggregated by branch/currency and Damascus calendar dates. This is net sales revenue, not profit; no branch-specific expenses or inventory valuation. Repair receipts read original parts, service charges, warranty and issuance identity from the authoritative records.
