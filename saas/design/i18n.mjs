@@ -1,5 +1,15 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "محفوظ محلياً بانتظار المزامنة": "Saved locally, awaiting synchronization",
+  "تحصيل دفعة دين فاتورة": "Collect invoice debt payment",
+  "الاسم السابق": "Previous name",
+  "الهاتف السابق (اختياري)": "Previous phone (optional)",
+  "معرّف الدين": "Debt ID",
+  "معرّف العميل (اختياري)": "Customer ID (optional)",
+  "بيع آجل أو بالتقسيط": "Credit or installment sale",
+  "آجل / أقساط": "Credit / installments",
+  "مرجع الطلب": "Request reference",
+  "تم تأكيد الطلب": "Request confirmed",
   "الديون والأقساط المستقلة": "Independent debts & installments",
   "سجل رصيداً قائماً لنا أو علينا دون فاتورة. لا يتحرك الصندوق إلا عند تسجيل دفعة فعلية. الأقساط شهرية دون فوائد.": "Record an existing receivable or payable without an invoice. Cash moves only on actual settlement. Monthly installments are interest-free.",
   "نوع الذمة": "Debt direction",

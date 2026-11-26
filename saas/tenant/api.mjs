@@ -165,6 +165,18 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=await rpc('mt_list_debts',{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.sale_id)||!isId(x.customer_id)||!currency(x.currency)||!int(x.principal_minor,1,100000000000000)||!int(x.deposit_minor,0,x.principal_minor-1)||!int(x.remaining_minor,0,x.principal_minor-x.deposit_minor)||!int(x.installment_count,1,60)))throw Error('Invalid debts');return r;
   },
+  async receivableOperation(store,x){
+   if(!x||x.store!==store||!isId(x.requestId))throw Error('Invalid receivable operation');
+   switch(x.kind){
+    case 'customer':return this.addCustomer(store,x.requestId,x.name,x.phone);
+    case 'customerEdit':return this.editCustomer(store,x.requestId,x);
+    case 'pay':return this.payDebt(store,x.debt,x.requestId,x.currency,x.amount);
+    case 'credit':if(x.sale?.store!==store||x.sale?.requestId!==x.requestId||x.sale.loyalty!==undefined)throw Error('Invalid credit draft');return this.recordCredit(x.sale,x.terms);
+    case 'standaloneOpen':return this.standaloneOpen(store,x.requestId,x.payload);
+    case 'standalonePay':return this.standalonePay(store,x.requestId,x.payload);
+    default:throw Error('Unsupported receivable operation');
+   }
+  },
   async standaloneOpen(store,requestId,x){
    if(!isId(requestId)||!x||!(x.customer===null||isId(x.customer))||!(x.branch===null||isId(x.branch))||!['receivable','payable'].includes(x.direction)||typeof x.party!=='string'||!x.party.trim()||x.party.length>160||typeof x.phone!=='string'||x.phone.length>60||!currency(x.currency)||!int(x.amount,1,100000000000000)||!int(x.count,1,Math.min(120,x.amount))||(x.direction==='payable'&&x.count!==1)||typeof x.due!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.due)||!Number.isFinite(Date.parse(x.due))||x.due<'1900-01-01'||x.due>'2200-01-01'||typeof x.notes!=='string'||x.notes.length>300)throw Error('Invalid standalone debt');
    const r=await rpc('mt_standalone_open',{p_store:store,p_request:requestId,p_customer:x.customer,p_branch:x.branch,p_direction:x.direction,p_party:x.party,p_phone:x.phone,p_currency:x.currency,p_amount:x.amount,p_count:x.count,p_due:x.due,p_notes:x.notes},store);if(r!==requestId)throw Error('Opening not confirmed');return r;
