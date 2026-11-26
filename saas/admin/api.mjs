@@ -2,7 +2,10 @@ import {createAccountSecurity} from '../design/account-security.mjs';
 import {validateTheme,designResponse} from '../design/theme.mjs';
 const allowedOrigin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const states=['','provisioning','ready','suspended','closed'];
-const plans=['basic','business','pro'];
+const validPlan=x=>typeof x==='string'&&/^[a-z][a-z0-9-]{2,39}$/.test(x);
+const moduleKeys=['catalog','sales','purchases','suppliers','customers','credit','standalone_debts','repairs','quotes','stock_counts','stock_transfers','branches','payroll','tradein','coupons'];
+const moduleFlags=x=>x&&typeof x==='object'&&Object.keys(x).length===moduleKeys.length&&moduleKeys.every(k=>typeof x[k]==='boolean');
+const validRef=x=>typeof x==='string'&&uuid.test(x);const count=x=>Number.isSafeInteger(x)&&x>=0;
 const actions=['trial','suspend','cancel','reopen'];
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}) {
@@ -80,19 +83,42 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
   async designHistory(store){if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_design_history',{p_store:store,p_before:null,p_limit:50});if(!Array.isArray(r)||r.length>50||r.some(x=>!Number.isSafeInteger(x?.revision)||x.revision<1))throw Error('Invalid history');return r},
   async designChange(store,state,action,theme=null,restore=null){if(!uuid.test(store)||!['save','publish','restore'].includes(action))throw Error('Invalid design action');designResponse(state);if(action==='save')theme=validateTheme(theme);else if(theme!==null)throw Error('Unexpected theme');if(action==='restore'?(!Number.isSafeInteger(restore)||restore<1):restore!==null)throw Error('Invalid restore');return designResponse(await rpc('mt_design_change',{p_store:store,p_expected:state.revision,p_expected_published:state.published_revision,p_action:action,p_theme:theme,p_restore:restore}))},
   async operationsOverview(ids){if(!Array.isArray(ids)||ids.length>100||new Set(ids).size!==ids.length||ids.some(x=>typeof x!=='string'||!uuid.test(x)))throw Error('Invalid store page');const r=await rpc('mt_admin_operations_overview',{p_stores:ids}),keys=['shared','licensed','trials','paid','manual','blocked','expiring','pending_domains','active_domains','queued_recovery','planned_releases','local_shards','verified_shards'],nonnegative=x=>Number.isSafeInteger(x)&&x>=0,s=r?.summary;if(!r||typeof r.live_billing_enabled!=='boolean'||typeof r.as_of!=='string'||!Number.isFinite(Date.parse(r.as_of))||!s||!keys.every(k=>nonnegative(s[k]))||s.licensed+s.blocked!==s.shared||s.trials+s.paid+s.manual!==s.licensed||s.expiring>s.licensed||(!r.live_billing_enabled&&s.paid!==0)||s.verified_shards>s.local_shards||!Array.isArray(r.stores)||r.stores.length>ids.length||new Set(r.stores.map(x=>x?.id)).size!==r.stores.length||r.stores.some(x=>!x||!ids.includes(x.id)||!(x.shard===null||typeof x.shard==='string')||typeof x.licensed!=='boolean'||typeof x.storefront_active!=='boolean'||(x.storefront_active&&!x.licensed)||!['none','pending','active'].includes(x.domain_state)||!nonnegative(x.pending_orders)||!nonnegative(x.dispatched_orders)||x.dispatched_orders>x.pending_orders||typeof x.backup_verified!=='boolean')||r.stores.filter(x=>x.licensed).length>s.licensed||r.stores.filter(x=>!x.licensed).length>s.blocked)throw Error('Invalid operations metrics');return r},
+  async planCatalogReview(){
+   const r=await rpc('mt_admin_plan_catalog_review',{});
+   if(!r||typeof r.editable!=='boolean'||!Array.isArray(r.plans)||r.plans.length<3||r.plans.length>50||new Set(r.plans.map(x=>x.code)).size!==r.plans.length||r.plans.some(x=>!validPlan(x.code)||typeof x.name!=='string'||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1||typeof x.enrollment!=='boolean'||!count(x.subscribers)||typeof x.deletable!=='boolean')||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!validRef(x.request_id)||!validRef(x.actor)||!validPlan(x.plan_code)||!['create','rename','delete'].includes(x.action)||typeof x.reference!=='string'))throw Error('Invalid plan catalog');return r
+  },
+  async planCatalogChange(x){
+   if(!validRef(x.request)||!validPlan(x.code)||!['create','rename','delete'].includes(x.action)||!x.params||typeof x.reference!=='string'||!x.reference.trim()||x.reference.trim().length>200)throw Error('Invalid catalog action');
+   const r=await rpc('mt_admin_plan_catalog_change',{req:x.request,action:x.action,code_value:x.code,expected:x.expected,params:x.params,proof:x.reference.trim()});if(r!==x.request)throw Error('Catalog action not confirmed');return r
+  },
+  async modulesReview(){
+   const r=await rpc('mt_admin_modules_review',{});if(!r||!Array.isArray(r.plans)||r.plans.length<3||r.plans.length>50||r.plans.some(x=>!validPlan(x.code)||typeof x.name!=='string'||!Number.isSafeInteger(x.revision)||x.revision<1||!moduleFlags(x.flags))||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!validRef(x.request_id)||!validRef(x.actor)||!validPlan(x.plan_code)||typeof x.reference!=='string'||!moduleFlags(x.before_flags)||!moduleFlags(x.after_flags)))throw Error('Invalid module policy');return r
+  },
+  async modulesChange(x){
+   if(!validRef(x.request)||!validPlan(x.plan)||!Number.isSafeInteger(x.expected)||x.expected<1||!moduleFlags(x.flags)||typeof x.reference!=='string'||!x.reference.trim()||x.reference.trim().length>200)throw Error('Invalid module policy action');
+   const r=await rpc('mt_admin_modules_change',{req:x.request,plan:x.plan,expected:x.expected,flags_value:x.flags,proof:x.reference.trim()});if(r!==x.request)throw Error('Module action not confirmed');return r
+  },
+  async membersReview(store,offset=0){
+   if(!validRef(store)||!count(offset)||offset>100000)throw Error('Invalid member page');const r=await rpc('mt_admin_members_review',{s:store,off:offset});
+   if(!r||!Array.isArray(r.members)||r.members.length>50||typeof r.more!=='boolean'||r.members.some(x=>!validRef(x.user_id)||!['owner','cashier','stock','tech'].includes(x.role)||typeof x.active!=='boolean'||typeof x.blocked!=='boolean'||!count(x.revision)||typeof x.display_name!=='string')||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!validRef(x.request_id)||!validRef(x.user_id)||!validRef(x.actor)||typeof x.reference!=='string'||typeof x.blocked!=='boolean'||typeof x.previous_blocked!=='boolean'))throw Error('Invalid member directory');return r
+  },
+  async memberChange(x){
+   if(!validRef(x.store)||!validRef(x.request)||!validRef(x.user)||!count(x.expected)||!['owner','cashier','stock','tech'].includes(x.role)||typeof x.active!=='boolean'||typeof x.blocked!=='boolean'||typeof x.reference!=='string'||!x.reference.trim()||x.reference.trim().length>200)throw Error('Invalid membership control');
+   const r=await rpc('mt_admin_member_change',{s:x.store,req:x.request,u:x.user,expected:x.expected,expected_role:x.role,expected_active:x.active,blocked_value:x.blocked,proof:x.reference.trim()});if(r!==x.request)throw Error('Member action not confirmed');return r
+  },
   async planPolicyReview(){
-   const r=await rpc('mt_admin_plan_policy_review',{}),flags=['enrollment','storefront','orders','guest','delivery'],valid=x=>x&&plans.includes(x.plan_code)&&Number.isSafeInteger(x.revision)&&x.revision>=1&&flags.every(k=>typeof x[k]==='boolean');
-   if(!r||!Array.isArray(r.plans)||r.plans.length!==3||new Set(r.plans.map(x=>x.plan_code)).size!==3||r.plans.some(x=>!valid(x)||typeof x.name!=='string'||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1||!Number.isSafeInteger(x.subscribers)||x.subscribers<0||!Number.isSafeInteger(x.licensed)||x.licensed<0||x.licensed>x.subscribers)||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!uuid.test(x.request_id)||!uuid.test(x.actor)||!plans.includes(x.plan_code)||typeof x.reference!=='string'||!valid(x.before_state)||!valid(x.after_state)||!Number.isFinite(Date.parse(x.created_at))))throw Error('Invalid plan policy');
+   const r=await rpc('mt_admin_plan_policy_review',{}),flags=['enrollment','storefront','orders','guest','delivery'],valid=x=>x&&validPlan(x.plan_code)&&Number.isSafeInteger(x.revision)&&x.revision>=1&&flags.every(k=>typeof x[k]==='boolean');
+   if(!r||!Array.isArray(r.plans)||(r.plans.length<3||r.plans.length>50)||new Set(r.plans.map(x=>x.plan_code)).size!==r.plans.length||r.plans.some(x=>!valid(x)||typeof x.name!=='string'||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1||!Number.isSafeInteger(x.subscribers)||x.subscribers<0||!Number.isSafeInteger(x.licensed)||x.licensed<0||x.licensed>x.subscribers)||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!uuid.test(x.request_id)||!uuid.test(x.actor)||!validPlan(x.plan_code)||typeof x.reference!=='string'||!valid(x.before_state)||!valid(x.after_state)||!Number.isFinite(Date.parse(x.created_at))))throw Error('Invalid plan policy');
    return r
   },
   async planPolicyChange(request,plan,expected,flags,reference){
-   if(typeof request!=='string'||!uuid.test(request)||!plans.includes(plan)||!Number.isSafeInteger(expected)||expected<1||!flags||Object.keys(flags).length!==5||!['enrollment','storefront','orders','guest','delivery'].every(k=>typeof flags[k]==='boolean')||typeof reference!=='string'||!reference.trim()||reference.trim().length>200)throw Error('Invalid plan policy change');
+   if(typeof request!=='string'||!uuid.test(request)||!validPlan(plan)||!Number.isSafeInteger(expected)||expected<1||!flags||Object.keys(flags).length!==5||!['enrollment','storefront','orders','guest','delivery'].every(k=>typeof flags[k]==='boolean')||typeof reference!=='string'||!reference.trim()||reference.trim().length>200)throw Error('Invalid plan policy change');
    const r=await rpc('mt_admin_plan_policy_change',{req:request,plan,expected,flags,proof:reference.trim()});if(r!==request)throw Error('Unconfirmed policy change');return r
   },
   async storeControlReview(store,offset=0){
    if(typeof store!=='string'||!uuid.test(store)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid store review');
    const r=await rpc('mt_admin_store_review',{s:store,off:offset}),v=r?.snapshot,validDate=x=>x===null||typeof x==='string'&&Number.isFinite(Date.parse(x)),validId=x=>typeof x==='string'&&uuid.test(x),count=x=>Number.isSafeInteger(x)&&x>=0;
-   if(!v||v.id!==store||typeof v.name!=='string'||typeof v.slug!=='string'||!states.slice(1).includes(v.state)||!plans.includes(v.plan)||!['pending','trial','active','past_due','suspended','cancelled'].includes(v.subscription_state)||![v.valid_until,v.manual_until,v.subscription_updated,v.control_updated].every(validDate)||!(v.manual_request===null||validId(v.manual_request))||!(v.manual_reference===null||typeof v.manual_reference==='string')||!['storefront_paused','provider_bound','live_billing','local'].every(k=>typeof v[k]==='boolean')||!['licensed','storefront_visible','more'].every(k=>typeof r[k]==='boolean')||!['owner_count','staff_count','product_count','pending_orders'].every(k=>count(r[k]))||!Array.isArray(r.history)||r.history.length>50||!Array.isArray(r.legacy_history)||r.legacy_history.length>50||r.history.some(x=>!validId(x.request_id)||!validId(x.actor)||typeof x.action!=='string'||typeof x.reference!=='string'||!validDate(x.created_at)||!x.before_state||!x.after_state)||r.legacy_history.some(x=>!validId(x.id)||!validId(x.actor)||typeof x.action!=='string'||!validDate(x.recorded_at)))throw Error('Invalid store control data');
+   if(!v||v.id!==store||typeof v.name!=='string'||typeof v.slug!=='string'||!states.slice(1).includes(v.state)||!validPlan(v.plan)||!['pending','trial','active','past_due','suspended','cancelled'].includes(v.subscription_state)||![v.valid_until,v.manual_until,v.subscription_updated,v.control_updated].every(validDate)||!(v.manual_request===null||validId(v.manual_request))||!(v.manual_reference===null||typeof v.manual_reference==='string')||!['storefront_paused','provider_bound','live_billing','local'].every(k=>typeof v[k]==='boolean')||!['licensed','storefront_visible','more'].every(k=>typeof r[k]==='boolean')||!['owner_count','staff_count','product_count','pending_orders'].every(k=>count(r[k]))||!Array.isArray(r.history)||r.history.length>50||!Array.isArray(r.legacy_history)||r.legacy_history.length>50||r.history.some(x=>!validId(x.request_id)||!validId(x.actor)||typeof x.action!=='string'||typeof x.reference!=='string'||!validDate(x.created_at)||!x.before_state||!x.after_state)||r.legacy_history.some(x=>!validId(x.id)||!validId(x.actor)||typeof x.action!=='string'||!validDate(x.recorded_at)))throw Error('Invalid store control data');
    return r
   },
   async storeControlChange(store,request,action,expected,params,reference){
@@ -102,7 +128,7 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
   async sharedLicenseStatus(ids){
    if(!Array.isArray(ids)||ids.length>100||ids.some(x=>typeof x!=='string'||!uuid.test(x)))throw Error('Invalid license page');
    const r=await rpc('mt_admin_shared_license_status',{p_stores:ids});
-   if(!Array.isArray(r)||r.length>ids.length||new Set(r.map(x=>x?.id)).size!==r.length||r.some(x=>!x||!ids.includes(x.id)||!['pending','trial','active','past_due','suspended','cancelled'].includes(x.state)||!plans.includes(x.plan)||typeof x.write_entitlement!=='boolean'||!['trial','manual','provider','none'].includes(x.license_source)))throw Error('Invalid license page');return r;
+   if(!Array.isArray(r)||r.length>ids.length||new Set(r.map(x=>x?.id)).size!==r.length||r.some(x=>!x||!ids.includes(x.id)||!['pending','trial','active','past_due','suspended','cancelled'].includes(x.state)||!validPlan(x.plan)||typeof x.write_entitlement!=='boolean'||!['trial','manual','provider','none'].includes(x.license_source)))throw Error('Invalid license page');return r;
   },
   async sharedRecovery(){
    const r=await rpc('mt_admin_shared_recovery_overview',{p_limit:50});if(!r||!['requests','backups','plans'].every(k=>Array.isArray(r[k])&&r[k].length<=50&&r[k].every(x=>x&&typeof x.id==='string'&&uuid.test(x.id)&&typeof x.shard_code==='string'))||r.requests.some(x=>!['queued','cancelled'].includes(x.state)||!['project_backup','tenant_export','restore_drill'].includes(x.kind))||r.backups.some(x=>typeof x.eligible!=='boolean')||r.plans.some(x=>typeof x.eligible!=='boolean'||!['planned','cancelled'].includes(x.state)))throw Error('Invalid recovery overview');return r;
@@ -115,10 +141,10 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
   },
   async sharedRecoveryCancel(id,type){if(typeof id!=='string'||!uuid.test(id)||!['recovery','release'].includes(type))throw Error('Invalid cancel');const r=await rpc('mt_admin_shared_recovery_cancel',{p_id:id,p_type:type});if(typeof r!=='boolean')throw Error('Invalid response');return r},
   async planPrices(){
-   const r=await rpc('mt_admin_plan_prices',{});if(!r||typeof r.editable!=='boolean'||!Array.isArray(r.plans)||r.plans.length!==3||new Set(r.plans.map(x=>x?.code)).size!==3||r.plans.some(x=>!x||!plans.includes(x.code)||typeof x.name!=='string'||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1)||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!x||!uuid.test(x.id)||!plans.includes(x.plan_code)||!Number.isSafeInteger(x.previous_cents)||!Number.isSafeInteger(x.new_cents)||typeof x.note!=='string'))throw Error('Invalid plans');return r;
+   const r=await rpc('mt_admin_plan_prices',{});if(!r||typeof r.editable!=='boolean'||!Array.isArray(r.plans)||(r.plans.length<3||r.plans.length>50)||new Set(r.plans.map(x=>x?.code)).size!==r.plans.length||r.plans.some(x=>!x||!validPlan(x.code)||typeof x.name!=='string'||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1)||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!x||!uuid.test(x.id)||!validPlan(x.plan_code)||!Number.isSafeInteger(x.previous_cents)||!Number.isSafeInteger(x.new_cents)||typeof x.note!=='string'))throw Error('Invalid plans');return r;
   },
   async changePlanPrice({request,plan,expected,price,note}){
-   if(typeof request!=='string'||!uuid.test(request)||!plans.includes(plan)||!Number.isSafeInteger(expected)||expected<1||!Number.isSafeInteger(price)||price<100||price>10000000||typeof note!=='string'||!note.trim()||note.trim().length>300)throw Error('Invalid price');
+   if(typeof request!=='string'||!uuid.test(request)||!validPlan(plan)||!Number.isSafeInteger(expected)||expected<1||!Number.isSafeInteger(price)||price<100||price>10000000||typeof note!=='string'||!note.trim()||note.trim().length>300)throw Error('Invalid price');
    const r=await rpc('mt_admin_plan_price_change',{p_request:request,p_plan:plan,p_expected:expected,p_price:price,p_note:note.trim()});if(typeof r!=='string'||!uuid.test(r))throw Error('Price not confirmed');return r;
   },
   async contact(email=null){
@@ -142,7 +168,7 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(!Number.isSafeInteger(offset)||offset<0||offset>2147483647||!Number.isInteger(limit)||limit<1||limit>100||typeof query!=='string'||query.length>160||!states.includes(state))throw Error('Invalid filters');
    const r=await rpc('saas_admin_overview',{p_offset:offset,p_limit:limit,p_query:query.trim(),p_state:state});
    if(!r||!Array.isArray(r.rows)||r.rows.length>limit||!['total','ready','suspended','active_subscriptions','matched'].every(k=>Number.isSafeInteger(r[k])&&r[k]>=0)||r.matched>r.total||r.rows.length>r.matched)throw Error('Invalid overview');
-   for(const row of r.rows)if(!uuid.test(row.id)||typeof row.name!=='string'||typeof row.slug!=='string'||!states.slice(1).includes(row.state)||typeof row.provisioned!=='boolean'||!(row.plan_code===null||plans.includes(row.plan_code))||!(row.subscription_state===null||['pending','trial','active','past_due','suspended','cancelled'].includes(row.subscription_state))||!(row.valid_until===null||(typeof row.valid_until==='string'&&Number.isFinite(Date.parse(row.valid_until)))))throw Error('Invalid store row');
+   for(const row of r.rows)if(!uuid.test(row.id)||typeof row.name!=='string'||typeof row.slug!=='string'||!states.slice(1).includes(row.state)||typeof row.provisioned!=='boolean'||!(row.plan_code===null||validPlan(row.plan_code))||!(row.subscription_state===null||['pending','trial','active','past_due','suspended','cancelled'].includes(row.subscription_state))||!(row.valid_until===null||(typeof row.valid_until==='string'&&Number.isFinite(Date.parse(row.valid_until)))))throw Error('Invalid store row');
    return r;
   },
   async shardDirectory(after=null,limit=50){
@@ -163,13 +189,13 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(!(action==='cancel'&&result===null)&&(typeof result!=='string'||!uuid.test(result)))throw Error('Unconfirmed move plan');return result;
   },
   async registerShared({name,slug,plan,owner}){
-   if(typeof name!=='string'||name.trim().length<1||name.trim().length>160||typeof slug!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(slug)||!plans.includes(plan)||typeof owner!=='string'||!uuid.test(owner))throw Error('Invalid shared store details');
+   if(typeof name!=='string'||name.trim().length<1||name.trim().length>160||typeof slug!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(slug)||!validPlan(plan)||typeof owner!=='string'||!uuid.test(owner))throw Error('Invalid shared store details');
    const id=await rpc('mt_admin_create_store',{p_name:name.trim(),p_slug:slug,p_plan:plan,p_owner:owner});
    if(typeof id!=='string'||!uuid.test(id))throw Error('Unconfirmed shared store registration');
    return id;
   },
   async register({name,slug,plan}){
-   if(typeof name!=='string'||name.trim().length<1||name.trim().length>160||typeof slug!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(slug)||!plans.includes(plan))throw Error('Invalid store details');
+   if(typeof name!=='string'||name.trim().length<1||name.trim().length>160||typeof slug!=='string'||!/^[a-z][a-z0-9-]{2,39}$/.test(slug)||!validPlan(plan))throw Error('Invalid store details');
    const id=await rpc('saas_admin_register',{p_name:name.trim(),p_slug:slug,p_plan:plan});
    if(typeof id!=='string'||!uuid.test(id))throw Error('Unconfirmed registration; refresh before retrying');
    return id;
@@ -192,7 +218,7 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    const r=await rpc('saas_admin_billing_overview',{p_limit:limit});
    const isId=x=>typeof x==='string'&&uuid.test(x),date=x=>typeof x==='string'&&/^\d{4}-\d{2}-01$/.test(x)&&Number.isFinite(Date.parse(x));
    if(!r||r.mode!=='sandbox'||!date(r.month)||!['stores','invoices'].every(k=>Array.isArray(r[k])&&r[k].length<=limit))throw Error('Invalid sandbox billing overview');
-   if(r.stores.some(x=>!x||!isId(x.id)||typeof x.name!=='string'||!['basic','business','pro'].includes(x.plan_code)||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1)||r.invoices.some(x=>!x||!isId(x.id)||!isId(x.store_id)||typeof x.store_name!=='string'||!date(x.period_start)||!date(x.period_end)||!Number.isSafeInteger(x.amount_cents)||x.amount_cents<1||x.currency!=='USD'||!['basic','business','pro'].includes(x.plan_code)||!['draft','paid','failed','refunded','void'].includes(x.state)))throw Error('Invalid sandbox billing data');
+   if(r.stores.some(x=>!x||!isId(x.id)||typeof x.name!=='string'||!validPlan(x.plan_code)||!Number.isSafeInteger(x.monthly_usd_cents)||x.monthly_usd_cents<1)||r.invoices.some(x=>!x||!isId(x.id)||!isId(x.store_id)||typeof x.store_name!=='string'||!date(x.period_start)||!date(x.period_end)||!Number.isSafeInteger(x.amount_cents)||x.amount_cents<1||x.currency!=='USD'||!validPlan(x.plan_code)||!['draft','paid','failed','refunded','void'].includes(x.state)))throw Error('Invalid sandbox billing data');
    return r;
   },
   async billingDraft(store,month){
