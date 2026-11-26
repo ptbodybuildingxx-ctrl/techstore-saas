@@ -188,3 +188,6 @@ Owner-only period trial-balance projection from canonical journal pairs. Attribu
 
 ## Additional employee operation restrictions (083)
 Independent denials for customer creation, debt payments excluding original sale deposits, and price quote creation. The branch overview now honors the stock history restriction. All checks restrict existing authority and do not grant access. No physical deletion of financial records. Migration not applied; SQL integration and UI validation pending.
+
+## Central expense allocation (084)
+Owner-only, licensed and serialized management redistribution of classified central expenses and recorded income-tax expense to a named branch. Each allocation creates offsetting branch/central reporting pairs through interbranch clearing; consolidated accounting and actual cash/tax liability do not change. Positive net expense in the open Damascus reporting month caps allocation; existing UTC closure is conservatively respected. Reversals are immutable, full and posted at current time. Historical central versus main attribution remains unresolved, and no opening balance or legal tax is certified. Not applied or tested against a database.

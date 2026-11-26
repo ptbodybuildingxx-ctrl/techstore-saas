@@ -1,5 +1,15 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "توزيع المصروفات المركزية": "Central expense allocation",
+  "التوزيع إداري فقط ضمن الرصيد المتاح للشهر المفتوح، ولا يحرك النقد أو الالتزام الضريبي. القيد العكسي يسجل بتاريخ اليوم ولا يغير القيود المغلقة.": "Management allocation only, limited to available expense in the open month. No cash or tax liability movement. Reversals post today without changing closed periods.",
+  "مرجع التوزيع": "Allocation reference",
+  "تأكيد توزيع المصروف": "Confirm expense allocation",
+  "معرّف التوزيع الأصلي": "Original allocation ID",
+  "مرجع القيد العكسي": "Reversal reference",
+  "عكس التوزيع": "Reverse allocation",
+  "قيد عكسي": "Reversal",
+  "معكوس": "Reversed",
+  "موزع": "Allocated",
   "مسودات العمليات التشغيلية": "Operational drafts",
   "المراجع تكتب من السجلات المعروفة مسبقاً. لا يتم تسجيل أي حركة مالية أو اعتماد أي طلب قبل المزامنة.": "Enter references from previously known records. No financial posting or confirmation occurs before synchronization.",
   "إعادة حفظ المسودة نفسها": "Retry saving the same draft",
