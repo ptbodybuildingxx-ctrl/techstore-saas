@@ -227,4 +227,24 @@ begin
  return jsonb_build_object('mode','current_subledger_reconciliation','rows',rows,'stock_quantity_mismatches',stock_mismatches,'balanced',stock_mismatches=0 and not exists(select 1 from jsonb_array_elements(rows) x where x->>'balanced'='false'));
 end; $$;
 
+-- Current coverage of documented output-tax assessments (never assumes missing = zero).
+create function tenant_private.indirect_tax_summary(p_store uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare rows jsonb;
+begin
+ if tenant_private.member_role(p_store) is distinct from 'owner' then raise exception 'Owner required' using errcode='42501';end if;
+ with amounts as (select currency,coalesce(sum(tax_minor) filter(where kind in ('sale','repair')),0) assessed,coalesce(sum(tax_minor) filter(where kind in ('sale_return','repair_refund')),0) reversed from public.mt_indirect_tax_entries where store_id=p_store group by currency),
+ payments as (select currency,sum(amount_minor) paid from public.mt_accounting_adjustments where store_id=p_store and kind='expense_indirect_tax_payment' group by currency),
+ missing as (select currency,count(*) missing from (
+ select s.currency from public.mt_sales s where s.store_id=p_store and not exists(select 1 from public.mt_indirect_tax_entries e where e.store_id=p_store and e.kind='sale' and e.source_id=s.id)
+ union all select s.currency from public.mt_repair_invoices s where s.store_id=p_store and not exists(select 1 from public.mt_indirect_tax_entries e where e.store_id=p_store and e.kind='repair' and e.source_id=s.id)
+ union all select s.currency from public.mt_returns s where s.store_id=p_store and not exists(select 1 from public.mt_indirect_tax_entries e where e.store_id=p_store and e.kind='sale_return' and e.source_id=s.id)
+ union all select s.currency from public.mt_repair_refunds s where s.store_id=p_store and not exists(select 1 from public.mt_indirect_tax_entries e where e.store_id=p_store and e.kind='repair_refund' and e.source_id=s.id)
+ ) q group by currency)
+ select coalesce(jsonb_agg(jsonb_build_object('currency',c.currency,'assessed',coalesce(a.assessed,0)::text,'reversed',coalesce(a.reversed,0)::text,'paid',coalesce(p.paid,0)::text,'balance',(coalesce(a.assessed,0)-coalesce(a.reversed,0)-coalesce(p.paid,0))::text,'unclassified_documents',coalesce(m.missing,0)) order by c.currency),'[]'::jsonb) into rows from tenant_private.sale_currencies c left join amounts a on a.currency=c.currency left join payments p on p.currency=c.currency left join missing m on m.currency=c.currency where c.store_id=p_store;
+ return rows;
+end; $$;
+create function public.mt_indirect_tax_summary(p_store uuid) returns jsonb language sql stable security invoker set search_path='' as $$select tenant_private.indirect_tax_summary(p_store)$$;
+revoke all on function tenant_private.indirect_tax_summary(uuid),public.mt_indirect_tax_summary(uuid) from public,anon,authenticated,service_role;
+grant execute on function tenant_private.indirect_tax_summary(uuid),public.mt_indirect_tax_summary(uuid) to authenticated;
+
 commit;
