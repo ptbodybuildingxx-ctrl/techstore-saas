@@ -4,3 +4,6 @@ Recovery: capture database dump, complete Storage archive and config privately w
 
 
 Artifact extraction: `node saas/recovery/bundle.mjs extract /private/bundle /private/new-extraction` with the same private environment key. The new directory must not exist, must be outside the repository and encrypted bundle, and must have a regular parent. Authenticated decryption checks every byte and removes incomplete output on failure. Extraction alone is not database restoration, and no backup evidence or release approval is created.
+
+
+`saas/recovery/isolated-drill.mjs` runs in the disposable PostgreSQL 17 GitHub Actions service, creates a synthetic source and target, dumps, encrypts, extracts, restores, compares rows and role/RLS behavior, and checks the fixture Storage archive and config. It is not a restore of the SaaS development or production database and cannot register backup evidence.
