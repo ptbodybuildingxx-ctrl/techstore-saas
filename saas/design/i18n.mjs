@@ -1,5 +1,10 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "إعداد المصادقة لأول مرة": "Set up authenticator for the first time",
+  "إعداد المصادقة لأول مرة يتطلب كلمة المرور ورمزاً صحيحاً من تطبيق المصادقة، ولا يمنح جلسة إدارة.": "Initial authenticator setup requires the password and a valid authenticator code, and does not create an administrative session.",
+  "أضف هذا المفتاح يدوياً إلى تطبيق المصادقة ثم أدخل الرمز الحالي من 6 أرقام. لا تشارك المفتاح.": "Enter this key manually in your authenticator app, then enter its current six-digit code. Do not share the key.",
+  "تم تفعيل المصادقة. سجل الدخول مجدداً.": "Authenticator verified. Sign in again.",
+  "تم إلغاء إعداد المصادقة.": "Authenticator setup cancelled.",
   "مطابقة الأرصدة الحالية": "Reconcile current balances",
   "آخر اعتماد للأرصدة": "Latest balance confirmation",
   "الأرصدة قابلة للاعتماد": "Balances eligible for confirmation",

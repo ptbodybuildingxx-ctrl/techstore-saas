@@ -7,7 +7,7 @@ const actions=['trial','suspend','cancel','reopen'];
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}) {
  if(url!==allowedOrigin||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey)) throw Error('Invalid control-plane configuration');
- let session=null;
+ let session=null,setupBusy=false;
  async function request(path,body,token,method='POST') {
   const res=await fetcher(url+path,{method,headers:{apikey:publishableKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',redirect:'error',credentials:'omit'});
   if(!res.ok){const e=Error(res.status===401||res.status===403?'Access denied':res.status===409?'Store identifier already exists':'Request failed');e.status=res.status;throw e}
@@ -23,6 +23,31 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
   async signInUsername(username,password,codeProvider){
    if(typeof username!=='string'||username.trim().toLowerCase()!=='king')throw Error('Invalid username');
    return this.signIn('king@techstore-admin.invalid',password,codeProvider);
+  },
+  // Password-authenticated first-factor enrollment has a separate ephemeral Auth session.
+  // Never publish the token to the administrative RPC adapter or open the dashboard.
+  async enrollFirstTotp(username,password,codeProvider){
+   if(setupBusy||session||typeof username!=='string'||username.trim().toLowerCase()!=='king'||typeof password!=='string'||!password||typeof codeProvider!=='function')throw Error('Initial enrollment unavailable');
+   setupBusy=true;let temporary=null,pending=null,verificationStarted=false;
+   const update=s=>{if(typeof s?.access_token!=='string'||!s.access_token||!Number.isFinite(s.expires_in)||s.expires_in<=0)throw Error('Invalid enrollment session');temporary={accessToken:s.access_token,expiresAt:clock()+s.expires_in*1000}};
+   const temporaryToken=()=>{if(!temporary||temporary.expiresAt<=clock()+5000)throw Error('Enrollment session expired');return temporary.accessToken};
+   const enrollment=createAccountSecurity({request,token:temporaryToken,replaceSession:update,rpc:async()=>{throw Error('Administrative RPC denied during enrollment')},requireVerifiedFactor:true});
+   try{
+    update(await request('/auth/v1/token?grant_type=password',{email:'king@techstore-admin.invalid',password}));
+    if((await enrollment.factors()).some(x=>x.status==='verified'))throw Error('Authenticator already enrolled');
+    pending=await enrollment.enroll();
+    const code=await codeProvider(pending.secret);
+    if(code===null||code===undefined)return false;
+    if(typeof code!=='string'||!/^\d{6}$/.test(code))throw Error('Invalid TOTP');
+    verificationStarted=true;
+    await enrollment.verify(pending.id,code);
+    if(!(await enrollment.factors()).some(x=>x.id===pending.id&&x.status==='verified'))throw Error('Enrollment not confirmed');
+    return true;
+   }finally{
+    if(pending&&!verificationStarted)try{await enrollment.remove(pending.id)}catch{}
+    const old=temporary;temporary=null;
+    try{if(old)await request('/auth/v1/logout?scope=local',undefined,old.accessToken)}finally{setupBusy=false}
+   }
   },
   async domains(store){
    if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_domain_list',{p_store:store});
@@ -83,6 +108,7 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    return r;
   },
   async signIn(email,password,codeProvider=null){
+   if(setupBusy)throw Error('Enrollment in progress');
    session=null;
    if(typeof email!=='string'||!email.trim()||typeof password!=='string'||!password)throw Error('Email and password required');
    const s=await request('/auth/v1/token?grant_type=password',{email:email.trim(),password});
