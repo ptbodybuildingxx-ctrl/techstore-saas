@@ -12,6 +12,10 @@ export const draftForms=Object.freeze({
  supplierPayment:{label:'سداد مورد',fields:[field('purchase','معرّف الشراء'),field('amount','الدفعة')]},
  repair:{label:'استلام جهاز',fields:[field('customer','معرّف العميل'),field('device','الجهاز'),field('imei','IMEI (اختياري)','optional'),field('fault','العطل')]},
  transition:{label:'تحديث الصيانة',fields:[field('repair','معرّف الطلب'),field('next','الحالة','select',[['diagnosing','قيد الفحص'],['repairing','قيد الإصلاح'],['ready','جاهز للتسليم'],['cancelled','ملغى']]),field('note','ملاحظات')]},
+ supplierReturn:{label:'تسجيل مرتجع المورد',fields:[field('purchase','معرّف الشراء'),field('units','الكمية','number'),field('reason','سبب المرتجع'),field('refund','تأكيد قبض النقد إن استحق','select',[['no','لم أقبض نقداً'],['yes','أؤكد قبض المبلغ المستحق']])]},
+ warrantyTransition:{label:'تحديث الضمان',fields:[field('claim','معرّف الطلب'),field('next','الحالة','select',[['accepted','قبول'],['rejected','رفض'],['resolved','إغلاق بعد المعالجة']]),field('note','البيان')]},
+ warrantyPart:{label:'تسجيل قطعة ضمان',fields:[field('claim','معرّف مطالبة الضمان المقبولة'),field('product','معرّف القطعة','product'),field('units','الكمية','number'),field('reason','السبب')]},
+ repairRefund:{label:'تسجيل الاسترداد',fields:[field('invoice','معرّف الفاتورة'),field('amount','المبلغ بعملة الفاتورة'),field('reason','سبب الاسترداد'),field('confirmed','تأكيد رد النقد للعميل','select',[['no','لم يتم الرد'],['yes','تم رد المبلغ']])]},
  warrantyOpen:{label:'طلب ضمان',fields:[field('invoice','معرّف الفاتورة'),field('reason','السبب')]},
  voucher:{label:'تسجيل سند',fields:[field('voucherKind','نوع السند','select',[['salary','راتب'],['commission','عمولة'],['bonus','مكافأة'],['rent','إيجار'],['utilities','خدمات'],['other','أخرى'],['receipt','قبض']]),field('party','الطرف أو الموظف'),field('reference','مرجع السند'),field('amount','المبلغ')]},
  campaign:{label:'حفظ مسودة حملة',fields:[field('title','عنوان الحملة'),field('body','نص العرض'),field('from','من','date'),field('to','إلى','date')]}
@@ -25,6 +29,10 @@ export function createColdDraft(snapshot,kind,v,requestId=crypto.randomUUID()){
  case 'supplierPayment':return {...base,purchase:id(v.purchase),currency:c,amount:money(v.amount)};
  case 'repair':{const imei=text(v.imei,15,true);if(imei&&!/^\d{15}$/.test(imei))throw Error('Invalid IMEI');return {...base,branch:b,customer:id(v.customer),device:text(v.device,160),imei:imei||null,fault:text(v.fault,300)}}
  case 'transition':return {...base,repair:id(v.repair),next:select(v.next,['diagnosing','repairing','ready','cancelled']),note:text(v.note,300)};
+ case 'supplierReturn':return {...base,purchase:id(v.purchase),units:units(v.units),reason:text(v.reason,300),confirmRefund:select(v.refund,['no','yes'])==='yes'};
+ case 'warrantyTransition':return {...base,claim:id(v.claim),next:select(v.next,['accepted','rejected','resolved']),note:text(v.note,300)};
+ case 'warrantyPart':{const product=id(v.product);if(!snapshot.products.some(x=>x.id===product))throw Error('Unknown product');return {...base,claim:id(v.claim),product,units:units(v.units),reason:text(v.reason,300)}}
+ case 'repairRefund':if(v.confirmed!=='yes')throw Error('Confirm actual refund');return {...base,invoice:id(v.invoice),amount:money(v.amount),reason:text(v.reason,300),confirm:true};
  case 'warrantyOpen':return {...base,invoice:id(v.invoice),reason:text(v.reason,300)};
  case 'voucher':return {...base,branch:b,currency:c,voucherKind:select(v.voucherKind,['salary','commission','bonus','rent','utilities','other','receipt']),party:text(v.party,160),reference:text(v.reference,160),amount:money(v.amount)};
  case 'campaign':if(![v.from,v.to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||v.from>v.to)throw Error('Invalid dates');return {...base,title:text(v.title,120),body:text(v.body,600),from:v.from,to:v.to};

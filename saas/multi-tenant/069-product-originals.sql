@@ -43,7 +43,7 @@ begin
 end $$;
 create or replace function tenant_private.resolve_public_original(p_slug text,p_image text) returns text language sql stable security definer set search_path='' as $$
  select coalesce((select m.object_path from public.saas_stores s0 join tenant_private.product_originals m on m.store_id=s0.id join tenant_private.storefront_products l on l.store_id=m.store_id and l.product_id=m.product_id and l.listed where s0.slug=p_slug and m.image_id=p_image and m.published and tenant_private.storefront_active(s0.id) and exists(select 1 from storage.objects o where o.bucket_id='saas-design-originals' and o.name=m.object_path)),(select r.object_path from public.saas_stores s join tenant_private.design_originals r on r.store_id=s.id where s.slug=p_slug and r.image_id=p_image and tenant_private.storefront_active(s.id) and r.public_fingerprint is not null and r.public_fingerprint=tenant_private.published_image_fingerprint(s.id,r.image_id) and exists(select 1 from storage.objects o where o.bucket_id='saas-design-originals' and o.name=r.object_path)))
-$;
+$$;
 
 create function tenant_private.public_product_originals(p_slug text,p_product uuid) returns jsonb language sql stable security definer set search_path='' as $$
  select coalesce(jsonb_agg(jsonb_build_object('image',r.image_id,'alt',r.alt) order by r.created_at,r.id),'[]') from public.saas_stores s join tenant_private.product_originals r on r.store_id=s.id where s.slug=p_slug and r.product_id=p_product and r.published and tenant_private.resolve_public_original(p_slug,r.image_id) is not null

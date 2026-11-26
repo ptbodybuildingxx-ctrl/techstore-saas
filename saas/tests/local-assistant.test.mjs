@@ -15,3 +15,5 @@ test('recognizes bounded bilingual budgets and never infers from model numbers',
  assert.throws(()=>assistantIntent('x'.repeat(241),'USD'));
  assert.equal(assistantPartLabel('socket'),'مقبس المعالج');
 });
+
+test('rejects signed or scientific budgets and inherited keys; repair questions are not build quotes',()=>{assert.equal(assistantIntent('PC build under -500 USD','USD').kind,'budget');assert.equal(assistantIntent('build for 1e3 USD','USD').kind,'budget');assert.equal(assistantIntent('متابعة جهاز الصيانة','USD').kind,'tracking');assert.equal(assistantPartLabel('constructor'),null);assert.equal(assistantPartLabel('__proto__'),null)});
