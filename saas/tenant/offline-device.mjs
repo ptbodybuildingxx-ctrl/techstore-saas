@@ -16,10 +16,9 @@ export async function prepareShell(){
  if(!window.isSecureContext||!navigator.serviceWorker||!window.caches)throw Error('Offline shell unavailable');
  const marker='/saas/tenant/offline.html',response=await fetch(marker,{cache:'no-store',credentials:'omit',redirect:'error'}),sha=response.headers.get('X-TechStore-Commit');
  if(!response.ok||!/^[a-f0-9]{40}$/.test(sha||''))throw Error('Unversioned offline shell');
- const name='techstore-offline-static-'+sha,r=await navigator.serviceWorker.register('/saas/tenant/offline-sw.mjs',{scope:'/saas/tenant/',type:'module',updateViaCache:'none'});
- async function ready(){if(!r.active||r.installing||r.waiting||!await caches.has(name))return false;const cache=await caches.open(name),page=await cache.match(marker),ledger=await cache.match('/saas/tenant/offline-receivables.mjs');return page?.headers.get('X-TechStore-Commit')===sha&&ledger?.headers.get('X-TechStore-Commit')===sha}
+ const name='techstore-offline-static-'+sha,r=await navigator.serviceWorker.register('/saas/tenant/offline-sw.mjs?v='+sha,{scope:'/saas/tenant/',type:'module',updateViaCache:'none'});
+ async function ready(){if(!r.active||new URL(r.active.scriptURL).searchParams.get('v')!==sha||r.installing||r.waiting||!await caches.has(name))return false;const cache=await caches.open(name),page=await cache.match(marker),ledger=await cache.match('/saas/tenant/offline-receivables.mjs');return page?.headers.get('X-TechStore-Commit')===sha&&ledger?.headers.get('X-TechStore-Commit')===sha}
  if(await ready())return;
- await r.update();
  const deadline=Date.now()+20000;while(Date.now()<deadline){if(await ready())return;await new Promise(resolve=>setTimeout(resolve,200))}
  throw Error('Offline shell not ready; reconnect and retry');
 }
