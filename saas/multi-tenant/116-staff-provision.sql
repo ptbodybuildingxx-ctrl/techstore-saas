@@ -26,9 +26,13 @@ begin
  if a is null or p_request is null or p_finish is null or n is null or length(n) not between 1 and 120 or e is null or length(e) not between 3 and 254 or e !~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$' or p_role is null or p_role not in ('cashier','stock','tech') then raise exception 'Invalid employee request' using errcode='22023';end if;
  if p_branch is not null then perform tenant_private.require_branch(p_store,p_branch);end if;
  select * into q from tenant_private.staff_provision_requests where store_id=p_store and request_id=p_request;
+ if not found and not p_finish then
+  select * into q from tenant_private.staff_provision_requests where store_id=p_store and actor=a and email=e and display_name=n and role=p_role and branch_id is not distinct from p_branch order by created_at desc limit 1;
+  if found then p_request:=q.request_id;end if;
+ end if;
  if found then
   if q.actor<>a or q.display_name<>n or q.email<>e or q.role<>p_role or q.branch_id is distinct from p_branch then raise exception 'Conflicting employee request' using errcode='22023';end if;
-  if q.completed_at is not null then return jsonb_build_object('actor',a,'user_id',q.user_id,'completed',true);end if;
+  if q.completed_at is not null then return jsonb_build_object('request_id',p_request,'actor',a,'user_id',q.user_id,'completed',true);end if;
  else
   if p_finish then raise exception 'Unknown employee request' using errcode='22023';end if;
   if (select count(*) from tenant_private.staff_provision_requests where store_id=p_store and created_at>now()-interval '1 hour')>=20 then raise exception 'Employee creation limit' using errcode='22023';end if;
@@ -37,14 +41,14 @@ begin
  end if;
  -- Only the Auth Admin endpoint can write raw_app_meta_data. Never trust user metadata.
  select id into u from auth.users where lower(email)=e and email_confirmed_at is not null and not is_anonymous and (banned_until is null or banned_until<=now()) and raw_app_meta_data->>'techstore_staff_request'=p_request::text and raw_app_meta_data->>'techstore_staff_store'=p_store::text and raw_app_meta_data->>'techstore_staff_actor'=a::text;
- if not p_finish then return jsonb_build_object('actor',a,'user_id',u,'completed',false);end if;
+ if not p_finish then return jsonb_build_object('request_id',p_request,'actor',a,'user_id',u,'completed',false);end if;
  if u is null then raise exception 'Provisioned Auth account required' using errcode='22023';end if;
  if exists(select 1 from tenant_private.members where store_id=p_store and user_id=u) then raise exception 'Account already assigned; review existing membership' using errcode='22023';end if;
  perform tenant_private.staff_set(p_store,p_request,u,p_role,true);
  insert into tenant_private.staff_profiles(store_id,user_id,display_name,photo) values(p_store,u,n,'');
  if p_branch is not null then perform tenant_private.staff_scope_set(p_store,u,p_branch);end if;
  update tenant_private.staff_provision_requests set user_id=u,completed_at=now() where store_id=p_store and request_id=p_request;
- return jsonb_build_object('actor',a,'user_id',u,'completed',true);
+ return jsonb_build_object('request_id',p_request,'actor',a,'user_id',u,'completed',true);
 end $$;
 create function public.mt_staff_provision(p_store uuid,p_request uuid,p_name text,p_email text,p_role text,p_branch uuid,p_finish boolean)
 returns jsonb language sql set search_path='' as $$select tenant_private.staff_provision(p_store,p_request,p_name,p_email,p_role,p_branch,p_finish)$$;
