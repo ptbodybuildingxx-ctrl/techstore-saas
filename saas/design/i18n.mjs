@@ -1,5 +1,7 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "للبيع المتصل. رمز العضوية واستبدال النقاط حسب القيمة يدعمان النقدي والآجل والأقساط والمختلط. مكافأة النقاط السابقة نقدية فقط. اترك الحقل فارغاً للبيع العادي.": "Connected sales: membership and spend-value points support cash, credit, installments and mixed tenders. Legacy rewards are cash-only. Leave empty for regular pricing.",
+  "تظل النقاط السابقة كما هي. بعد التفعيل يصبح الاستبدال حسب القيمة في المتجر ونقطة البيع النقدي والآجل والمختلط. أدخل قيمة دولار واحد بالليرة السورية واليورو حسب سياسة المحل. تُثبت هذه القيم مع المبيعات الجديدة.": "Existing points are retained. Spend-value redemption supports online, cash, credit and mixed sales. Enter the store's value of one US dollar in Syrian pounds and euros. New sales freeze these rates.",
   "دفع مختلط": "Mixed tender",
   "الدفع المختلط دون اتصال": "Offline mixed tender",
   "يُحسب المكافئ من سعر الصرف المحفوظ. يجب أن يطابق مجموع الدفعات صافي الفاتورة. سيعاد التحقق من صلاحية السعر عند المزامنة.": "Equivalent amounts use the saved exchange rate. Total tenders must match the net invoice; rate validity is checked again on synchronization.",
