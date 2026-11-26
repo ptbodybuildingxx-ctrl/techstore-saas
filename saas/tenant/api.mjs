@@ -12,6 +12,7 @@ export function saleAttempt(store,lines,c,requestId=crypto.randomUUID()){
 }
 export function saleInvoiceMetadata(v,lines){if(!v||!['title','customer','phone','terms'].every((k,i)=>typeof v[k]==='string'&&v[k].length<=[100,160,100,1000][i])||!Array.isArray(v.lines)||v.lines.length!==lines.length||v.lines.some(x=>!isId(x.product_id)||!int(x.months,0,120)||typeof x.serial!=='string'||x.serial.length>150||!lines.some(l=>l.product_id.toLowerCase()===x.product_id.toLowerCase()))||new Set(v.lines.map(x=>x.product_id.toLowerCase())).size!==v.lines.length)throw Error('Invalid invoice metadata');return Object.freeze({title:v.title.trim(),customer:v.customer.trim(),phone:v.phone.trim(),terms:v.terms.trim(),lines:Object.freeze(v.lines.map(x=>Object.freeze({product_id:x.product_id.toLowerCase(),months:x.months,serial:x.serial.trim()})).sort((a,b)=>a.product_id.localeCompare(b.product_id)))})}
 function validReturn(x,store){return !!x&&x.store_id===store&&isId(x.id)&&isId(x.request_id)&&isId(x.sale_id)&&isId(x.product_id)&&currency(x.currency)&&int(x.units,1,10000)&&int(x.unit_price_minor,1,100000000)&&x.total_minor===x.units*x.unit_price_minor&&int(x.debt_reduction_minor,0,x.total_minor)&&x.refund_minor===x.total_minor-x.debt_reduction_minor&&typeof x.reason==='string'}
+function validStandaloneDebt(d,store){return !!d&&d.store_id===store&&isId(d.id)&&(d.customer_id===null||isId(d.customer_id))&&(d.branch_id===null||isId(d.branch_id))&&['receivable','payable'].includes(d.direction)&&typeof d.party==='string'&&typeof d.phone==='string'&&currency(d.currency)&&int(d.principal_minor,1,100000000000000)&&int(d.remaining_minor,0,d.principal_minor)&&int(d.installment_count,1,120)&&typeof d.first_due==='string'&&typeof d.notes==='string'}
 export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now}){
  if(url!==origin||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey))throw Error('Invalid shared project configuration');
  let session=null,allowed=new Set(),epoch=0;
@@ -163,6 +164,24 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc('mt_list_debts',{p_store:store,p_after:after,p_limit:limit},store);
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||!isId(x.sale_id)||!isId(x.customer_id)||!currency(x.currency)||!int(x.principal_minor,1,100000000000000)||!int(x.deposit_minor,0,x.principal_minor-1)||!int(x.remaining_minor,0,x.principal_minor-x.deposit_minor)||!int(x.installment_count,1,60)))throw Error('Invalid debts');return r;
+  },
+  async standaloneOpen(store,requestId,x){
+   if(!isId(requestId)||!x||!(x.customer===null||isId(x.customer))||!(x.branch===null||isId(x.branch))||!['receivable','payable'].includes(x.direction)||typeof x.party!=='string'||!x.party.trim()||x.party.length>160||typeof x.phone!=='string'||x.phone.length>60||!currency(x.currency)||!int(x.amount,1,100000000000000)||!int(x.count,1,Math.min(120,x.amount))||(x.direction==='payable'&&x.count!==1)||typeof x.due!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.due)||!Number.isFinite(Date.parse(x.due))||x.due<'1900-01-01'||x.due>'2200-01-01'||typeof x.notes!=='string'||x.notes.length>300)throw Error('Invalid standalone debt');
+   const r=await rpc('mt_standalone_open',{p_store:store,p_request:requestId,p_customer:x.customer,p_branch:x.branch,p_direction:x.direction,p_party:x.party,p_phone:x.phone,p_currency:x.currency,p_amount:x.amount,p_count:x.count,p_due:x.due,p_notes:x.notes},store);if(r!==requestId)throw Error('Opening not confirmed');return r;
+  },
+  async standalonePay(store,requestId,x){
+   if(!isId(requestId)||!x||!isId(x.debt)||!int(x.amount,1,100000000000000)||typeof x.memo!=='string'||x.memo.length>300)throw Error('Invalid standalone payment');
+   const r=await rpc('mt_standalone_pay',{p_store:store,p_request:requestId,p_debt:x.debt,p_amount:x.amount,p_memo:x.memo},store);if(r!==requestId)throw Error('Payment not confirmed');return r;
+  },
+  async standaloneList(store,x,offset=0){
+   if(!x||typeof x.query!=='string'||x.query.length>160||!(x.customer===null||isId(x.customer))||!(x.direction===null||['receivable','payable'].includes(x.direction))||!int(offset,0,100000))throw Error('Invalid standalone filters');
+   const r=await rpc('mt_standalone_list',{p_store:store,p_query:x.query,p_customer:x.customer,p_direction:x.direction,p_offset:offset},store);
+   if(!r||r.store_id!==store||!Array.isArray(r.rows)||r.rows.length>51||r.rows.some(d=>!validStandaloneDebt(d,store)||typeof d.branch_name!=='string'||!['open','overdue','settled'].includes(d.status))||!Array.isArray(r.totals)||r.totals.length>6||r.totals.some(t=>!currency(t.currency)||!['receivable','payable'].includes(t.direction)||typeof t.principal!=='string'||!/^\d+$/.test(t.principal)||typeof t.remaining!=='string'||!/^\d+$/.test(t.remaining)))throw Error('Invalid standalone register');return r;
+  },
+  async standaloneDetails(store,debt,offset=0){
+   if(!isId(debt)||!int(offset,0,100000))throw Error('Invalid standalone page');
+   const r=await rpc('mt_standalone_details',{p_store:store,p_debt:debt,p_offset:offset},store);
+   if(!r||r.store_id!==store||!validStandaloneDebt(r.debt,store)||r.debt.id!==debt||!Array.isArray(r.schedule)||r.schedule.length!==r.debt.installment_count||r.schedule.some((i,n)=>i.store_id!==store||i.debt_id!==debt||i.number!==n+1||typeof i.due_date!=='string'||!int(i.amount_minor,1,100000000000000)||!int(i.paid_minor,0,i.amount_minor))||r.schedule.reduce((s,i)=>s+i.amount_minor-i.paid_minor,0)!==r.debt.remaining_minor||!Array.isArray(r.payments)||r.payments.length>51||r.payments.some(p=>p.store_id!==store||p.debt_id!==debt||!isId(p.id)||!isId(p.cash_id)||!int(p.amount_minor,1,100000000000000)||typeof p.memo!=='string'||!Number.isFinite(Date.parse(p.created_at))))throw Error('Invalid standalone details');return r;
   },
   async receivableRegister(store,x,offset=0){
    if(!x||!['debts','schedule','payments'].includes(x.mode)||typeof x.query!=='string'||x.query.length>160||!(x.customer===null||isId(x.customer))||!(x.currency===null||currency(x.currency))||!['all','open','overdue','settled'].includes(x.status)||!int(offset,0,100000))throw Error('Invalid register filters');

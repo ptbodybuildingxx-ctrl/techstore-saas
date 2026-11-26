@@ -51,6 +51,7 @@ begin
   return d.id;
  end if;
  if exists(select 1 from tenant_private.standalone_debt_payments where store_id=p_store and id=p_request) then raise exception 'Conflicting request';end if;
+ if p_customer is not null and not exists(select 1 from public.mt_customers where store_id=p_store and id=p_customer and name=btrim(p_party) and phone=btrim(p_phone)) then raise exception 'Customer profile has changed; reload first' using errcode='22023';end if;
  insert into tenant_private.standalone_debts(store_id,id,customer_id,branch_id,direction,party,phone,currency,principal_minor,remaining_minor,installment_count,first_due,notes,actor)
  values(p_store,p_request,p_customer,p_branch,p_direction,btrim(p_party),btrim(p_phone),p_currency,p_amount,p_amount,p_count,p_due,btrim(p_notes),auth.uid());
  insert into tenant_private.standalone_installments(store_id,debt_id,number,due_date,amount_minor)
