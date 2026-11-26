@@ -1,5 +1,14 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "مطابقة الهاتف المؤكد حالياً": "Current verified phone match",
+  "مطابق للهاتف المؤكد في الحساب": "Matches the confirmed account phone",
+  "غير مؤكد أو غير مطابق": "Unconfirmed or does not match",
+  "شركة الشحن": "Shipping company",
+  "وقت توثيق التسليم للشحن": "Carrier handoff recorded at",
+  "بيانات الشحن موثقة من المحل وليست تحديثاً آلياً من شركة الشحن.": "Shipping information is recorded by the shop, not automatically synchronized from the carrier.",
+  "توثيق التسليم لشركة الشحن": "Record carrier handoff",
+  "أدخل بيانات شحنة أنشأتها فعلياً لدى شركة الشحن. لا يرسل هذا الإجراء طلباً خارجياً أو يثبت قبضاً.": "Enter details of a shipment actually created with the carrier. This does not send an external request or confirm payment.",
+  "أؤكد تسليم الشحنة فعلياً لشركة الشحن وفق المرجع المدخل.": "I confirm that the shipment was actually handed to the carrier under the entered reference.",
   "قيد مركزي للباقة": "Central plan restriction",
   "تعديل ملف المنتج": "Edit product profile",
   "إضافة وتعديل وحذف سعر المنتج": "Add, edit and remove product price",
