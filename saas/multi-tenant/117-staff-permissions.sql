@@ -366,9 +366,9 @@ returns setof public.mt_sale_lines language sql stable set search_path='' as $$
  select * from public.mt_sale_lines where store_id=p_store and sale_id=p_sale and tenant_private.staff_action_allowed(p_store,'receipt_read') order by product_id limit 100
 $$;
 create function tenant_private.staff_low_stock_count(p_store uuid)
-returns bigint language sql stable security definer set search_path='' as $
+returns bigint language sql stable security definer set search_path='' as $$
  select case when tenant_private.member_role(p_store) in ('owner','stock') and tenant_private.staff_action_allowed(p_store,'catalog_read') then case when tenant_private.current_branch_scope(p_store) is null then (select count(*) from public.mt_products where store_id=p_store and quantity<=5) else (select count(*) from tenant_private.branch_stock where store_id=p_store and branch_id=tenant_private.current_branch_scope(p_store) and units<=5) end else 0 end
-$;
+$$;
 revoke all on function tenant_private.staff_low_stock_count(uuid) from public,anon,authenticated;
 grant execute on function tenant_private.staff_low_stock_count(uuid) to authenticated;
 create or replace function public.mt_work_alerts(p_store uuid)
@@ -385,7 +385,7 @@ end $$;
 
 -- Moving a staff member invalidates explicit grants, including a move back to an old branch.
 create function tenant_private.revoke_moved_staff_grants()
-returns trigger language plpgsql security definer set search_path='' as $
+returns trigger language plpgsql security definer set search_path='' as $$
 declare s uuid;u uuid;
 begin
  if tg_op='UPDATE' and old.branch_id is not distinct from new.branch_id then return new;end if;
@@ -393,7 +393,7 @@ begin
  delete from tenant_private.procurement_grants where store_id=s and user_id=u;
  delete from tenant_private.receivable_grants where store_id=s and user_id=u;
  if tg_op='DELETE' then return old;end if;return new;
-end $;
+end $$;
 revoke all on function tenant_private.revoke_moved_staff_grants() from public,anon,authenticated;
 create trigger mt_revoke_moved_staff_grants after insert or update or delete on tenant_private.staff_branch_scope for each row execute function tenant_private.revoke_moved_staff_grants();
 create trigger mt_revoke_moved_cashier_grants after insert or update or delete on tenant_private.cashier_branch_scope for each row execute function tenant_private.revoke_moved_staff_grants();
