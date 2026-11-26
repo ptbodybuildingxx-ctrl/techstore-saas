@@ -107,3 +107,6 @@ Atomic accepted-estimate settlement uses the existing credit sale and costed pur
 
 ## Visual verification
 The actual allowlisted portal, admin/tenant sign-in pages and shop route are exercised in Chromium on desktop/mobile with a synthetic catalog transport. This is not a pixel-by-pixel visual match of all authenticated pages, nor a live login or delivery test. Original TechStore remains read-only.
+
+## Product catalog parity (059)
+Owner-only create/edit/duplicate metadata, public name/English name/category/brand/model/variant/description/video, up to four compressed JPEG thumbnails, visibility and optional currency price. SKU changes do not rewrite historical sales or stock. Existing design image mappings are SKU-based and may need reassignment after SKU edits. Bulk selected product visibility/brand/category/fixed price; atomic CSV import of new draft products, 100 per file, no stock or cost changes. Public search matches metadata; product detail returns only listed in-stock products and public fields. Photos are bounded thumbnails, not full-resolution storage. Type-specific compatibility still uses existing specs keys. Dedicated migration 059 required before publishing the new UI.
