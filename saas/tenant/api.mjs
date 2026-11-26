@@ -304,7 +304,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   async operationsList(store,kind,after=null,limit=50){
    if(!['suppliers','purchases','purchase_batches','accounting_adjustments','indirect_tax_entries','period_closes','supplier_returns','repairs','staff','repair_invoices','warranty_claims','warranty_parts','repair_refunds','fx_rates','orders','coupons'].includes(kind)||!(after===null||isId(after))||!int(limit,1,100))throw Error('Invalid page');
    const r=await rpc(kind==='staff'?'mt_staff_list':'mt_list_'+kind,{p_store:store,p_after:after,p_limit:limit},store);
-   if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
+   if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||(kind==='staff'?(!isId(x.user_id)||!['owner','stock','cashier','tech'].includes(x.role)||typeof x.active!=='boolean'||(Object.hasOwn(x,'display_name')&&(typeof x.display_name!=='string'||x.display_name.length>120||!(x.branch_id===null||isId(x.branch_id))||!(x.branch_name===null||typeof x.branch_name==='string')||!(x.currency===null&&x.salary_minor===null&&x.commission_bps===null||currency(x.currency)&&int(x.salary_minor,0,100000000000)&&int(x.commission_bps,0,3000))||typeof x.clock_open!=='boolean'||![x.last_started_at,x.last_ended_at].every(v=>v===null||typeof v==='string'&&Number.isFinite(Date.parse(v)))))):(x.store_id!==store||!isId(x.id)))))throw Error('Invalid operations page');return r;
   },
   async operation(store,x){
    if(!x||!isId(x.requestId))throw Error('Invalid operation');
