@@ -38,7 +38,7 @@ begin
     e.recorded-coalesce(a.closing,0) difference
   from expected e full join actual a on coalesce(e.branch_id,'')=coalesce(a.branch_id,'') and e.currency=a.currency and e.account=a.account
  )
- select coalesce(jsonb_agg(jsonb_build_object('branch_id',branch_id,'name',name,'currency',currency,'account',account,'recorded',recorded::text,'journal',journal::text,'difference',difference::text,'balanced',coalesce(difference=0,false)) order by name,currency,account),'[]') into rows from compared;
+ select coalesce(jsonb_agg(jsonb_build_object('branch_id',c.branch_id,'name',c.name,'currency',c.currency,'account',c.account,'recorded',c.recorded::text,'journal',c.journal::text,'difference',c.difference::text,'balanced',coalesce(c.difference=0,false)) order by c.name,c.currency,c.account),'[]') into rows from compared c;
  select coalesce(max((x->>'unknown_cost_units')::numeric),0) into unknown from jsonb_array_elements(balances->'rows') x;
  ready:=coalesce((treasury->>'enabled')::boolean,false) and coalesce((treasury->>'reconciled')::boolean,false)
   and coalesce((balances->>'stock_valuation_available')::boolean,false)
