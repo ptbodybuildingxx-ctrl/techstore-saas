@@ -6,6 +6,7 @@ import {lstat,mkdir,mkdtemp,readFile,realpath,readdir,rm,stat} from 'node:fs/pro
 import {join,resolve,relative,isAbsolute} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {extractRecovery} from './bundle.mjs';
+import {normalizeInventory} from './table-inventory.mjs';
 const repo=fileURLToPath(new URL('../..',import.meta.url));
 const expected='mezsyzdieqmqulddcrtg';
 const assert=(ok,msg)=>{if(!ok)throw Error(msg)};
@@ -40,7 +41,8 @@ async function archive(path,destination,kind){
 }
 async function json(path,limit){const s=await stat(path);assert(s.size>0&&s.size<=limit,'Invalid JSON artifact size');return JSON.parse(await readFile(path,'utf8'))}
 async function digest(path){const h=createHash('sha256');for await(const chunk of createReadStream(path))h.update(chunk);return h.digest('hex')}
-export async function preflightRecovery({bundle,privateRoot,key}){
+export async function withVerifiedRecovery({bundle,privateRoot,key},use){
+ assert(typeof use==='function','Missing verified artifact consumer');
  assert(Buffer.isBuffer(key)&&key.length===32,'Invalid recovery key');
  process.umask(0o077);privateRoot=resolve(privateRoot);bundle=resolve(bundle);
  assert(await realpath(privateRoot)===privateRoot&&!inside(repo,privateRoot)&&!inside(bundle,privateRoot)&&((await stat(privateRoot)).mode&0o077)===0,'Use private root outside checkout and bundle');
@@ -64,9 +66,13 @@ export async function preflightRecovery({bundle,privateRoot,key}){
    const path=join(storage,file);assert((await stat(path)).size===o.bytes&&await digest(path)===o.sha256,'Object integrity mismatch');
    totalBytes+=o.bytes;assert(Number.isSafeInteger(totalBytes),'Invalid total size');
   }
-  return {id:evidence.id,capturedAt:evidence.capturedAt,applicationCommit:config.config.application_commit,buckets:bucketIds.size,objects:seen.size,storageBytes:totalBytes,artifactsVerified:true,restoreVerified:false};
+  const tableCounts=config.table_counts===undefined?null:normalizeInventory(config.table_counts);
+  if(tableCounts){const count=(schema,table)=>tableCounts.find(x=>x.schema===schema&&x.table===table)?.rows;assert(count('storage','objects')===String(seen.size)&&count('storage','buckets')===String(bucketIds.size),'Storage database inventory mismatch')}
+  const result={id:evidence.id,capturedAt:evidence.capturedAt,applicationCommit:config.config.application_commit,buckets:bucketIds.size,objects:seen.size,storageBytes:totalBytes,databaseInventoryPresent:tableCounts!==null,artifactsVerified:true,restoreVerified:false};
+  return await use({result,database,storage,tableCounts,index});
  }finally{await rm(work,{recursive:true,force:true})}
 }
+export async function preflightRecovery(options){return withVerifiedRecovery(options,({result})=>result)}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  let key;
  try{const [bundle,root]=process.argv.slice(2);assert(bundle&&root&&hex(process.env.RECOVERY_KEY_HEX,64),'Private arguments required');key=Buffer.from(process.env.RECOVERY_KEY_HEX,'hex');console.log(JSON.stringify(await preflightRecovery({bundle,privateRoot:root,key})))}
