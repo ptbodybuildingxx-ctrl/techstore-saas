@@ -1,3 +1,4 @@
+import {validateBillingPage,validateBillingDetails} from '../design/commercial-billing.mjs';
 import {createAccountSecurity} from '../design/account-security.mjs';
 import {validateTheme,designResponse} from '../design/theme.mjs';
 const allowedOrigin='https://mezsyzdieqmqulddcrtg.supabase.co';
@@ -97,6 +98,12 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
   async modulesChange(x){
    if(!validRef(x.request)||!validPlan(x.plan)||!Number.isSafeInteger(x.expected)||x.expected<1||!moduleFlags(x.flags)||typeof x.reference!=='string'||!x.reference.trim()||x.reference.trim().length>200)throw Error('Invalid module policy action');
    const r=await rpc('mt_admin_modules_change',{req:x.request,plan:x.plan,expected:x.expected,flags_value:x.flags,proof:x.reference.trim()});if(r!==x.request)throw Error('Module action not confirmed');return r
+  },
+  async commercialBilling(store,offset=0){if(!validRef(store)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid invoice page');const r=await rpc('mt_offline_billing_review',{s:store,off:offset});return validateBillingPage(r,store)},
+  async commercialBillingDetails(store,invoice,offset=0){if(!validRef(store)||!validRef(invoice)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid invoice');return validateBillingDetails(await rpc('mt_offline_billing_details',{s:store,i:invoice,off:offset}))},
+  async commercialBillingWrite(store,kind,x){
+   const specs={create:['mt_offline_billing_create',['req','month_value','expected_plan','expected_price','proof']],record:['mt_offline_billing_record',['req','i','k','orig','amount','method','proof','day_value','expected']],action:['mt_offline_billing_action',['req','i','k','proof']]},spec=Object.hasOwn(specs,kind)?specs[kind]:null;
+   if(!validRef(store)||!spec||!validRef(x.req)||spec[1].some(k=>!Object.hasOwn(x,k)))throw Error('Invalid billing write');const args={s:store};for(const k of spec[1])args[k]=x[k];const r=await rpc(spec[0],args);if(r!==x.req)throw Error('Billing write not confirmed');return r
   },
   async transfersReview(store){if(!validRef(store))throw Error('Invalid store');const r=await rpc('mt_transfer_admin_list',{s:store});if(!Array.isArray(r)||r.length>50||r.some(x=>!validRef(x.id)||x.store_id!==store||![x.old_owner,x.new_owner,x.proposed_by].every(validRef)||!['pending','completed','cancelled'].includes(x.state)||typeof x.reference!=='string'||!Number.isFinite(Date.parse(x.expires_at))))throw Error('Invalid transfer list');return r},
   async transferPropose(store,request,oldOwner,newOwner,reference){if(![store,request,oldOwner,newOwner].every(validRef)||oldOwner===newOwner||typeof reference!=='string'||!reference.trim()||reference.length>200)throw Error('Invalid transfer proposal');const r=await rpc('mt_transfer_propose',{s:store,req:request,old_u:oldOwner,new_u:newOwner,proof:reference.trim()});if(r!==request)throw Error('Transfer proposal not confirmed');return r},
