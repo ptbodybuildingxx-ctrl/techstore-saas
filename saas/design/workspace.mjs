@@ -15,19 +15,21 @@ export function createWorkspace(root,nav){
  const isMobile=()=>effectiveWorkspaceLayout(mode,mobile.matches)==='mobile';
  const make=(tag,cls)=>{const n=doc.createElement(tag);n.className=cls;return n};
  const bar=make('div','workspace-mobile-bar'),menuButton=make('button','workspace-menu-toggle'),activeLabel=make('strong','workspace-active-label'),backdrop=make('button','workspace-backdrop'),quick=make('nav','workspace-quick-nav');
- menuButton.type=backdrop.type='button';menuButton.setAttribute('aria-controls',nav.id);bar.append(menuButton,activeLabel);nav.before(bar,backdrop);root.after(quick);
+ menuButton.type=backdrop.type='button';backdrop.tabIndex=-1;menuButton.setAttribute('aria-controls',nav.id);bar.append(menuButton,activeLabel);nav.before(bar,backdrop);root.after(quick);
  const modeLabel=make('label','workspace-layout-control'),modeText=make('span',''),modeSelect=make('select','workspace-layout-mode');modeLabel.append(modeText,modeSelect);doc.querySelector('header')?.append(modeLabel);
  function applyMode(){doc.documentElement.dataset.workspaceLayout=effectiveWorkspaceLayout(mode,mobile.matches);modeText.textContent=tr('طريقة العرض');modeSelect.replaceChildren(...[['auto','تلقائي'],['desktop','حاسوب'],['mobile','موبايل']].map(([v,t])=>{const n=make('option','');n.value=v;n.textContent=tr(t);return n}));modeSelect.value=mode}
  modeSelect.onchange=()=>{mode=modeSelect.value;if(!['auto','desktop','mobile'].includes(mode))mode='auto';try{doc.defaultView.localStorage.setItem('techstore-workspace-layout',mode)}catch{}applyMode();drawer(false)};applyMode();
  const icons={overview:'⌂',shops:'▦',plans:'◈',infra:'⚙',billing:'▤',recovery:'↻',account:'●',sales:'▣',inventory:'▦',customers:'♙',returns:'↶',purchases:'▧',repairs:'⚒',finance:'▥',online:'◎',staff:'♟',settings:'⚙'};
  const panels=()=>[...root.querySelectorAll('[data-workspace-group]')];
  function drawer(open,focus=false){
-  drawerOpen=!!open&&isMobile()&&available.length>0;
+  const wasOpen=drawerOpen,next=!!open&&isMobile()&&available.length>0;
+  if(next&&!wasOpen)returnFocus=doc.activeElement;
+  drawerOpen=next;
   nav.dataset.drawerOpen=String(drawerOpen);nav.inert=isMobile()&&!drawerOpen;
   root.inert=drawerOpen;quick.inert=drawerOpen;bar.inert=drawerOpen;
   if(drawerOpen)nav.setAttribute('aria-label',tr('الأقسام'));else nav.removeAttribute('aria-label');
   menuButton.setAttribute('aria-expanded',String(drawerOpen));backdrop.hidden=!drawerOpen;
-  if(focus){if(drawerOpen){returnFocus=doc.activeElement;nav.querySelector('input')?.focus()}else{const target=returnFocus?.isConnected&&!returnFocus.closest('[inert]')?returnFocus:menuButton;returnFocus=null;target.focus()}}
+  if(focus){if(drawerOpen){nav.querySelector('input')?.focus()}else{const target=returnFocus?.isConnected&&!returnFocus.closest('[inert]')?returnFocus:menuButton;returnFocus=null;target.focus()}}
  }
  menuButton.onclick=()=>drawer(!drawerOpen,true);backdrop.onclick=()=>drawer(false,true);
  mobile.addEventListener('change',()=>{applyMode();drawer(false)});

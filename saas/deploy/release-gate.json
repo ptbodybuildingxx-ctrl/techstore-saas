@@ -1,6 +1,6 @@
 {
   "state": "held",
-  "reason": "Incomplete parity implementation; SQL and UI CI failures; migrations 059–086 not approved for live database",
+  "reason": "Incomplete parity implementation; migrations 059–087 not approved for live database; verify latest checks and recovery",
   "required": [
     "Finish parity implementation",
     "Resolve failing SQL and UI checks",
