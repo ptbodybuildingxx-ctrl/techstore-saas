@@ -1,5 +1,11 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "إنشاء حساب موظف": "Create employee account",
+  "البريد الإلكتروني للموظف": "Employee email",
+  "كلمة مرور أولية (12 حرفاً على الأقل)": "Initial password (at least 12 characters)",
+  "أؤكد أن البريد الإلكتروني يخص الموظف وأنني مخول بإنشاء حسابه. يجب تغيير كلمة المرور الأولية عند أول دخول.": "I confirm this email belongs to the employee and I am authorized to create the account. The initial password should be changed at first sign-in.",
+  "تم تأكيد حساب الموظف": "Employee account confirmed",
+  "لإنشاء حساب جديد فقط. عند انقطاع الرد أعد إدخال البيانات نفسها؛ لن تُستبدل كلمة مرور أي حساب موجود. سلّم كلمة المرور الأولية للموظف بشكل آمن.": "For new accounts only. If the response is interrupted, enter the same details again; existing passwords are never replaced. Deliver the initial password securely.",
   "دفعة راتب جزئية": "Partial payroll payment",
   "تسوية راتب نهائية": "Final payroll settlement",
   "مقاصة سلفة": "Advance offset",
