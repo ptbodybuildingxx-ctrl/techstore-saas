@@ -134,3 +134,6 @@ Bounded deterministic suggestions over up to 250 currently listed products and f
 
 ## Payroll accrual (066)
 Statement creation posts salary expense against payroll payable on issuance date, without backdating into a closed period. Payment uses the existing cash/voucher flow and reclassifies its adjustment to settle the payable rather than duplicate the expense. Liability is included in the trial balance, management statements, reconciliation and attributed branch result. No automatic retroactive commission adjustments.
+
+## Staff operation restrictions (067)
+Owner-managed per-user denials layered over existing roles, licenses and branch scopes, enforced by transaction triggers on sales, stock changes/transfers, product creation, repair transitions/evidence and attendance. UI exposes restrictions and disables several affected controls. Existing permissions are not broadened. No fine-grained read restriction or comprehensive screen/operation matrix yet; replay of a previously confirmed request may still return its original result.
