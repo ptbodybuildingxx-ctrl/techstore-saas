@@ -1,4 +1,4 @@
-import {designResponse} from '../design/theme.mjs';
+import {designResponse,validateSpecs} from '../design/theme.mjs';
 const origin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const isId=x=>typeof x==='string'&&uuid.test(x);
@@ -50,6 +50,13 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||typeof x.sku!=='string'||typeof x.name!=='string'||!int(x.quantity,0,1000000000)||!(x.unit_price_minor===null||int(x.unit_price_minor,1,100000000))))throw Error('Invalid product page');
    return r;
   },
+  async searchProducts(store,c=null,query='',after=null,limit=50,low=false){
+   if(!(c===null||currency(c))||typeof query!=='string'||query.length>100||!(after===null||isId(after))||!int(limit,1,100)||typeof low!=='boolean')throw Error('Invalid search');
+   const r=await rpc('mt_search_products',{p_store:store,p_currency:c,p_query:query.trim(),p_after:after,p_limit:limit,p_low:low},store);
+   if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||!isId(x.id)||typeof x.sku!=='string'||typeof x.name!=='string'||!int(x.quantity,0,1000000000)||!(x.unit_price_minor===null||int(x.unit_price_minor,1,100000000))))throw Error('Invalid product page');for(const x of r)validateSpecs(x.specs);return r;
+  },
+  async setSpecs(store,product,specs){if(!isId(product))throw Error('Invalid product');validateSpecs(specs);const r=await rpc('mt_set_product_specs',{p_store:store,p_product:product,p_specs:specs},store);validateSpecs(r);if(Object.keys(r).length!==Object.keys(specs).length||Object.keys(specs).some(k=>!Object.hasOwn(r,k)||r[k]!==specs[k]))throw Error('Specs not confirmed');return r},
+  async stockHistory(store,product,before=null,beforeId=null,limit=50){if(!isId(product)||!int(limit,1,100)||(before===null)!==(beforeId===null)||(before!==null&&(typeof before!=='string'||!Number.isFinite(Date.parse(before))||!isId(beforeId))))throw Error('Invalid history query');const r=await rpc('mt_stock_history',{p_store:store,p_product:product,p_before:before,p_before_id:beforeId,p_limit:limit},store);if(!Array.isArray(r)||r.length>limit||r.some(x=>!x||x.store_id!==store||x.product_id!==product||!isId(x.request_id)||!int(x.delta,-1000000000,1000000000)||x.delta===0||!int(x.balance,0,1000000000)||!Number.isFinite(Date.parse(x.created_at))||!['sale','return','supplier_return','intake','other_out'].includes(x.kind)))throw Error('Invalid history');return r},
   async configure(store,c){if(!currency(c))throw Error('Invalid currency');const r=await rpc('mt_configure_sales',{p_store:store,p_currency:c},store);if(r!==c)throw Error('Currency not confirmed');return r},
   async addProduct(store,sku,name){if(typeof sku!=='string'||!sku.trim()||sku.trim().length>80||typeof name!=='string'||!name.trim()||name.trim().length>160)throw Error('Invalid product');const r=await rpc('mt_add_product',{p_store:store,p_sku:sku.trim(),p_name:name.trim()},store);if(!isId(r))throw Error('Product not confirmed');return r},
   async adjustStock(store,product,delta,requestId){if(!isId(product)||!isId(requestId)||!int(delta,-1000000000,1000000000)||delta===0)throw Error('Invalid adjustment');const r=await rpc('mt_adjust_stock',{p_store:store,p_product:product,p_delta:delta,p_request:requestId},store);if(!int(r,0,1000000000))throw Error('Stock not confirmed');return r},

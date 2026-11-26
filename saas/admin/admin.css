@@ -374,3 +374,5 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;line
 .workspace-search{width:100%;min-width:0;margin-bottom:6px}.workspace-nav button{display:flex;align-items:center;gap:10px}.workspace-icon{width:24px;flex:0 0 24px;text-align:center;font-size:1.1rem;color:inherit}.catalog-tools{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin:12px 0}.catalog-tools label{display:grid;gap:6px;min-width:0}.catalog-tools input,.catalog-tools select{width:100%;min-width:0}@media(max-width:850px){.workspace-search{width:160px;flex:0 0 160px;margin:0}}@media(max-width:540px){.catalog-tools{grid-template-columns:1fr}}
 
 .pos-search{display:grid;gap:6px;max-width:460px;margin-bottom:10px}.pos-search input{width:100%}.pos-search + p{font-size:.85rem}
+
+#stockHistory{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0}#stockHistory button,.shop-product-name+button{margin:4px}.catalog-tools{align-items:end}.catalog-tools input[type=checkbox]{width:auto}#comparison{margin-top:18px}#comparison th,#comparison td{white-space:normal;min-width:110px}.storefront-page .shop-add+button{width:100%;margin-top:6px}

@@ -17,6 +17,14 @@ if (select paid_minor from public.mt_list_purchase_batches(t) where id=batch) is
 select id into strict buy from public.mt_purchases where store_id=t and batch_id=batch and product_id=pr;
 perform public.mt_set_currency_price(t,pr,'USD',5000);perform public.mt_set_currency_price(t,part,'USD',3000);
 perform public.mt_storefront_enable(t,true);perform public.mt_storefront_list_product(t,pr,true);perform public.mt_delivery_enable(t,true);
+perform public.mt_set_product_specs(t,pr,'{"RAM":"8GB"}'::jsonb);
+if (select specs->>'RAM' from public.mt_search_products(t,'USD','DEVICE',null,50,false)) is distinct from '8GB' then raise exception 'Search/specifications mismatch';end if;
+if exists(select 1 from public.mt_search_products(t,'USD','missing',null,50,false)) then raise exception 'Search false positive';end if;
+if jsonb_array_length(public.mt_search_catalog('a-'||tag,'USD','PART',null,50)->'products')<>0 then raise exception 'Unpublished product leaked';end if;
+if public.mt_search_catalog('a-'||tag,'USD','device',null,50)->'products'->0->'specs'->>'RAM' is distinct from '8GB' then raise exception 'Public specifications missing';end if;
+if not exists(select 1 from public.mt_stock_history(t,pr) where delta=5 and balance=5) then raise exception 'Stock history missing';end if;
+begin perform public.mt_set_product_specs(other,pr,'{}');raise exception 'Cross tenant mutation accepted';exception when insufficient_privilege then null;end;
+
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
 ord:=public.mt_delivery_order('a-'||tag,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',pr,'units',2,'expected_price_minor',5000)),'Fixture address','000000000');
 if exists(select 1 from public.mt_list_purchase_batches(t)) then raise exception 'Purchase leaked';end if;

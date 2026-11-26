@@ -62,3 +62,6 @@ Source-bound append-only reclassifications for capital, loans, standalone stock 
 
 ## Central operational monitoring (039)
 Operator-only control-plane summary counts actual shared entitlement, trial/paid, blocked, seven-day expiry, domain registry status, queued recovery/release and local shards with recent verified restore evidence. Up to 100 store IDs per detail request, only aggregate pending/dispatched orders and status flags; no buyer data, transaction values or provider identifiers. SQL rollback verifies trial/pending states and owner denial. Manual refresh; no uptime or real load claim.
+
+## Catalog search and stock history (043)
+Server-side literal search by name/SKU across all rows with keyset pagination; public projection includes only listed in-stock products with prices and public string specifications. Owners and stock staff can edit specs under existing write entitlements. Low-stock filter uses a fixed five-unit threshold. Stock history is read-only for owner/stock roles. Deploy migration 043 to the dedicated SaaS database before deploying the matching UI. No branch inventory allocation or external notification delivery is implemented by this migration.
