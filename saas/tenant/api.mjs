@@ -18,6 +18,7 @@ function validReturn(x,store){return !!x&&x.store_id===store&&isId(x.id)&&isId(x
 export const receivableActions=Object.freeze(["read","customer_create","customer_edit","credit_sale","debt_payment","standalone_open","standalone_payment","payable_manage"]);
 function validReceivableActions(a){return Array.isArray(a)&&a.length<=receivableActions.length&&new Set(a).size===a.length&&a.every(k=>receivableActions.includes(k))}
 function validateReceivableGrants(r,user){if(!r||!isId(r.user)||(user!==null&&r.user!==user)||!(r.branch===null||isId(r.branch))||!validReceivableActions(r.granted)||!validReceivableActions(r.effective)||r.effective.some(a=>!r.granted.includes(a)))throw Error('Invalid receivable grants');return r}
+function validateSpendLoyalty(r){if(!r||typeof r.configured!=='boolean'||typeof r.enabled!=='boolean'||!int(r.points_per_usd,1,10000)||!int(r.max_redeem_bps,100,5000)||![r.syp_per_usd_minor,r.eur_per_usd_minor].every(v=>v===null||int(v,1,1000000000000)))throw Error('Invalid spend loyalty policy');return r}
 function localMembershipTotal(m,lines){if(!m||!isId(m.customer)||!int(m.expected,1,100000000000000)||!validPosLinePrices(m.prices,lines,m.expected))throw Error('Invalid local membership confirmation');return m.expected}
 function membershipTotal(m,lines){if(!m||!isId(m.token)||!int(m.expected,1,100000000000000)||!validPosLinePrices(m.prices,lines,m.expected))throw Error('Invalid membership confirmation');return m.expected}
 function validPosLinePrices(p,lines,total){return !!p&&typeof p==='object'&&!Array.isArray(p)&&Object.keys(p).length===lines.length&&lines.every(l=>int(p[l.product_id],1,l.expected_price_minor))&&lines.reduce((s,l)=>s+l.units*p[l.product_id],0)===total}
@@ -436,6 +437,8 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    }
    return r;
   },
+  async spendLoyaltySettings(store){const r=await rpc('mt_spend_loyalty_read',{p_store:store},store);return validateSpendLoyalty(r)},
+  async spendLoyaltySet(store,x){if(typeof x.enabled!=='boolean'||!int(x.rate,1,10000)||!int(x.cap,100,5000)||![x.syp,x.eur].every(v=>v===null||int(v,1,1000000000000)))throw Error('Invalid spend loyalty settings');const r=validateSpendLoyalty(await rpc('mt_spend_loyalty_set',{p_store:store,p_enabled:x.enabled,p_rate:x.rate,p_cap:x.cap,p_syp:x.syp,p_eur:x.eur},store));if(!r.configured||r.enabled!==x.enabled||r.points_per_usd!==x.rate||r.max_redeem_bps!==x.cap||r.syp_per_usd_minor!==x.syp||r.eur_per_usd_minor!==x.eur)throw Error('Spend loyalty settings not confirmed');return r},
   async loyaltySettings(store){const r=await rpc('mt_loyalty_settings',{p_store:store},store);if(!r||typeof r.enabled!=='boolean'||!int(r.points_required,2,100)||!int(r.basis_points,100,5000))throw Error('Invalid loyalty settings');return r},
   async trialBalance(store,from,to){
    if(![from,to].every(x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x)))||Date.parse(to)<Date.parse(from)||Date.parse(to)-Date.parse(from)>365*86400000)throw Error('Invalid date range');
