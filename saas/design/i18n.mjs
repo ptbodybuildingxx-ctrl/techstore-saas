@@ -1,5 +1,7 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "تسجيل دفعة دين": "Record debt payment",
+  "إنشاء عرض سعر": "Create price quote",
   "مسودات البيع دون اتصال": "Offline sales drafts",
   "العودة للدخول": "Sign in online",
   "عبارة تشفير النسخة": "Snapshot passphrase",
