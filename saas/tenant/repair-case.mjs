@@ -48,3 +48,11 @@ export function createRepairCasePanel({api,s,write,run,node,table,form,money,act
  }
  root.append(heading('إدارة هوية العميل وموافقته'),p('اختر طلب الصيانة لعرض سجل القرارات وإدارة التحقق. لا تُدخل رقم الهوية أو صور وثائق شخصية.'),form([['repair','معرّف طلب الصيانة','text']],'فتح ملف الموافقة',v=>load(v.repair)),retry,status,area);return root;
 }
+
+export function createRepairWarrantyPanel({api,s,run,node,table,form,money,active}){
+ const root=node('div'),area=node('div'),first=node('button',tr('الأولى')),next=node('button',tr('التالي'));first.type=next.type='button';first.disabled=next.disabled=true;
+ const states={active:'ضمان ساري',expired:'ضمان منتهي',refunded:'فاتورة مستردة بالكامل',none:'بلا ضمان'};let query='',state='all',offset=0;
+ async function load(q= query,st=state,off=0){const r=await api.repairWarrantyRegister(s.id,q,st,off);if(!active())return;query=q;state=st;offset=off;first.disabled=offset===0;next.disabled=!r.more;area.replaceChildren(table(['الفاتورة','الجهاز','IMEI','العميل','الفرع','الضمان حتى','حالة الضمان','الإجمالي','المبلغ المسترد','المطالبات القائمة','المطالبات'],r.rows.map(x=>[x.id,x.device,x.imei||'—',x.customer_name,x.branch_id?x.branch_name:tr('المستودع الرئيسي'),x.warranty_until,tr(states[x.coverage]),money(x.total_minor,x.currency),money(x.refunded_minor,x.currency),x.active_claims,x.claim_count])))}
+ first.onclick=()=>run(()=>load(query,state,0));next.onclick=()=>run(()=>load(query,state,offset+50));
+ root.append(node('h4',tr('سجل كفالات الصيانة')),node('p',tr('الاسترداد الكامل يلغي فتح مطالبات جديدة؛ الاسترداد الجزئي يظهر منفصلاً ولا يلغي الضمان تلقائياً. المطالبة المفتوحة قبل انتهاء المدة تظل قابلة للمعالجة.')),form([['query','بحث بالجهاز أو العميل أو رقم الفاتورة','optional'],['state','حالة الضمان','select',[['all','الكل'],...Object.entries(states)]]],'بحث',v=>load(v.query.trim(),v.state)),first,next,area);return root;
+}
