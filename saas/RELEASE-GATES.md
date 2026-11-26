@@ -38,3 +38,8 @@ Integrated rollback SQL fixture: saas/tests/sql/integrated-commerce.sql. Managem
 ## 2026-11-26 — isolated domain build and verifier
 - Storefront-only build and trusted verification orchestration added; automated tests cover missing DNS, mismatched tenant/challenge, TLS failure and activation denial.
 - Real provider integration, certificates, actual ownership revalidation and deployment remain open. No commercial or paid service enabled.
+
+## 2026-11-26 — financial, design and recovery improvements
+- Migrations 040–042 applied to dedicated development database: bounded responsive grid positions, current subledger reconciliation, and source-linked documented tax-inclusive output assessments, return reversals and settlement. Client tests pass. No input VAT deduction, jurisdiction-specific tax filings or statutory profit certification.
+- Authenticated artifact extraction and synthetic PostgreSQL restore drill (rows, RLS, archive and configuration) passed in CI. No real SaaS project backup or operational restore evidence exists.
+- Added fresh-schema SQL integration workflow using disposable PostgreSQL and minimal synthetic Auth/Storage schema; no real sessions, hosting, accounts or commercial activation. Treat as verified only when CI passes on the relevant commit.

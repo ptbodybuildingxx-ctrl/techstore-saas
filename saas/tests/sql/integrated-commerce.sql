@@ -1,6 +1,6 @@
 -- Synthetic end-to-end SQL fixture. All changes roll back; no real customer records.
 do $t$
-declare op uuid:=gen_random_uuid();a uuid:=gen_random_uuid();buyer uuid:=gen_random_uuid();so uuid:=gen_random_uuid();sa uuid:=gen_random_uuid();sb uuid:=gen_random_uuid();t uuid;other uuid;pr uuid;part uuid;sup uuid;batch uuid;buy uuid;cust uuid;rep uuid;inv uuid;claim uuid;ord uuid;sale uuid;tag text:=substr(replace(gen_random_uuid()::text,'-',''),1,12);v jsonb;funding uuid:=gen_random_uuid();tax_request uuid:=gen_random_uuid();reward_request uuid;earned_sale uuid;reward_order uuid;line jsonb;today date:=(now() at time zone 'UTC')::date;
+declare op uuid:=gen_random_uuid();a uuid:=gen_random_uuid();buyer uuid:=gen_random_uuid();so uuid:=gen_random_uuid();sa uuid:=gen_random_uuid();sb uuid:=gen_random_uuid();t uuid;other uuid;pr uuid;part uuid;sup uuid;batch uuid;buy uuid;cust uuid;rep uuid;inv uuid;claim uuid;ord uuid;sale uuid;tag text:=substr(replace(gen_random_uuid()::text,'-',''),1,12);v jsonb;funding uuid:=gen_random_uuid();tax_request uuid:=gen_random_uuid();output_request uuid:=gen_random_uuid();tax_payment uuid:=gen_random_uuid();return_id uuid;refund_id uuid;recovery_id uuid;recovery_request uuid:=gen_random_uuid();queue_count bigint;reward_request uuid;earned_sale uuid;reward_order uuid;line jsonb;today date:=(now() at time zone 'UTC')::date;
 begin begin
 insert into auth.users(id,email,email_confirmed_at) values(op,tag||'-op@example.invalid',now()),(a,tag||'-a@example.invalid',now()),(buyer,tag||'-buyer@example.invalid',now());
 insert into auth.sessions(id,user_id,aal) values(so,op,'aal1'),(sa,a,'aal1'),(sb,buyer,'aal1');
@@ -49,6 +49,27 @@ perform public.mt_accounting_adjust(t,tax_request,'income_tax_accrual',null,'USD
 v:=public.mt_management_statements(t,today,today,'USD');
 if v->'translated'->>'capital' is distinct from '20000' or v->'translated'->>'loan_payable' is distinct from '10000' or v->'translated'->>'income_tax' is distinct from '500' or v->'translated'->>'result_after_recorded_tax' is distinct from '4500' then raise exception 'Classified statement mismatch %',v;end if;
 begin perform public.mt_accounting_adjust(t,gen_random_uuid(),'funding_equity',funding,'USD',1,'CAP-2','Excess');raise exception 'Excess classification accepted';exception when sqlstate '22023' then null;end;
+-- Invoice-wide documented output tax, exact return reversal, payment and journal reconciliation.
+select id into strict return_id from public.mt_returns where store_id=t and sale_id=sale;
+select id into strict refund_id from public.mt_repair_refunds where store_id=t and invoice_id=inv;
+v:=public.mt_indirect_tax_quote(t,'sale',sale,2500);
+if v->>'tax_minor' is distinct from '2000' then raise exception 'Sale tax calculation';end if;
+perform public.mt_record_indirect_tax(t,output_request,'sale',sale,2500,2000,'VAT-SALE','Synthetic rate');
+perform public.mt_record_indirect_tax(t,output_request,'sale',sale,2500,2000,'VAT-SALE','Synthetic rate');
+begin perform public.mt_record_indirect_tax(t,gen_random_uuid(),'sale',sale,2500,2000,'DUP','Duplicate');raise exception 'Duplicate tax accepted';exception when sqlstate '22023' then null;end;
+begin perform public.mt_record_indirect_tax(t,gen_random_uuid(),'repair',inv,2500,999,'WRONG','Wrong amount');raise exception 'Wrong tax accepted';exception when sqlstate '22023' then null;end;
+perform public.mt_record_indirect_tax(t,gen_random_uuid(),'repair',inv,2500,1000,'VAT-REPAIR','Synthetic rate');
+perform public.mt_record_indirect_tax(t,gen_random_uuid(),'sale_return',return_id,null,1000,'VAT-RETURN','Original rate');
+perform public.mt_record_indirect_tax(t,gen_random_uuid(),'repair_refund',refund_id,null,200,'VAT-REFUND','Original rate');
+perform public.mt_record_cash(t,tax_payment,'expense','USD',300,'Fixture tax settlement');
+perform public.mt_accounting_adjust(t,gen_random_uuid(),'expense_indirect_tax_payment',tax_payment,'USD',300,'VAT-PAY','Synthetic payment');
+v:=public.mt_indirect_tax_summary(t);
+if not exists(select 1 from jsonb_array_elements(v) x where x->>'currency'='USD' and x->>'assessed'='3000' and x->>'reversed'='1200' and x->>'paid'='300' and x->>'balance'='1500' and x->>'unclassified_documents'='0') then raise exception 'Tax settlement mismatch %',v;end if;
+v:=public.mt_financial_reconciliation(t);
+if v->>'balanced' is distinct from 'true' or not exists(select 1 from jsonb_array_elements(v->'rows') x where x->>'currency'='USD' and x->>'account'='indirect_tax_payable' and x->>'recorded'='-1500') then raise exception 'Reconciliation mismatch %',v;end if;
+v:=public.mt_management_statements(t,today,today,'USD');
+if v->'translated'->>'tax_payable' is distinct from '2000' or v->'translated'->>'result_after_recorded_tax' is distinct from '2700' or v->>'final_profit' is not null then raise exception 'After-tax management result mismatch %',v;end if;
+begin perform public.mt_financial_reconciliation(other);raise exception 'Cross-tenant reconciliation accepted';exception when insufficient_privilege then null;end;
 perform public.mt_set_loyalty(t,true,2,1000);
 line:=jsonb_build_array(jsonb_build_object('product_id',pr,'units',1,'expected_price_minor',5000));
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
@@ -76,6 +97,14 @@ perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_
 if public.mt_buyer_points('a-'||tag)->>'deficit' is distinct from '1' then raise exception 'Loyalty deficit mismatch';end if;
 perform set_config('request.jwt.claims',jsonb_build_object('sub',op,'session_id',so,'aal','aal1','role','authenticated')::text,true);
 v:=public.mt_admin_operations_overview(array[t,other]);
+queue_count:=(v->'summary'->>'queued_recovery')::bigint;
+recovery_id:=public.mt_admin_shared_recovery_request(recovery_request,'shared-001','tenant_export',t,null);
+if public.mt_admin_shared_recovery_request(recovery_request,'shared-001','tenant_export',t,null) is distinct from recovery_id then raise exception 'Recovery replay mismatch';end if;
+v:=public.mt_admin_operations_overview(array[t,other]);
+if (v->'summary'->>'queued_recovery')::bigint<>queue_count+1 then raise exception 'Queue monitor mismatch';end if;
+if not public.mt_admin_shared_recovery_cancel(recovery_id,'recovery') then raise exception 'Cancel recovery failed';end if;
+v:=public.mt_admin_operations_overview(array[t,other]);
+if (v->'summary'->>'queued_recovery')::bigint<>queue_count then raise exception 'Cancelled queue monitor mismatch';end if;
 if v->>'live_billing_enabled' is distinct from 'false' or v->'summary'->>'paid' is distinct from '0' or not exists(select 1 from jsonb_array_elements(v->'stores') x where x->>'id'=t::text and x->>'licensed'='true' and x->>'storefront_active'='true') then raise exception 'Central monitoring mismatch %',v;end if;
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
 if exists(select 1 from public.mt_sale_receipt_lines(t,sale)) or exists(select 1 from public.mt_list_repair_refunds(t)) then raise exception 'Tenant leak';end if;
