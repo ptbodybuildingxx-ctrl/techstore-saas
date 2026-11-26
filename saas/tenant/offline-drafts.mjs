@@ -7,6 +7,7 @@ const units=v=>{if(typeof v!=='string'||!/^\d{1,7}$/.test(v)||Number(v)<1||Numbe
 const select=(v,choices)=>{if(!choices.includes(v))throw Error('Invalid choice');return v};
 const field=(key,label,type='text',options)=>({key,label,type,options});
 export const draftForms=Object.freeze({
+ stockCount:{label:'الجرد الفعلي للمخزون',fields:[field('product','المنتج','countProduct'),field('actual','العدد الفعلي','countNumber'),field('reason','سبب الجرد ومرجعه')]},
  supplier:{label:'إضافة مورد',fields:[field('name','اسم المورد'),field('contact','مرجع التواصل (اختياري)','optional')]},
  purchase:{label:'تسجيل شراء',fields:[field('supplier','معرّف المورد'),field('product','معرّف المنتج','product'),field('units','الكمية','number'),field('cost','تكلفة القطعة'),field('paid','المبلغ المدفوع (0 للآجل)'),field('note','مرجع الشراء')]},
  supplierPayment:{label:'سداد مورد',fields:[field('purchase','معرّف الشراء'),field('amount','الدفعة')]},
@@ -21,9 +22,11 @@ export const draftForms=Object.freeze({
  campaign:{label:'حفظ مسودة حملة',fields:[field('title','عنوان الحملة'),field('body','نص العرض'),field('from','من','date'),field('to','إلى','date')]}
 });
 export function createColdDraft(snapshot,kind,v,requestId=crypto.randomUUID()){
- if(snapshot?.role!=='owner'||!uuid(snapshot.store)||!uuid(requestId)||!Object.hasOwn(draftForms,kind)||!['SYP','USD','EUR'].includes(snapshot.currency)||!(snapshot.branch===null||uuid(snapshot.branch)))throw Error('Invalid draft scope');
+ if((snapshot?.role!=='owner'&&!(snapshot?.role==='stock'&&kind==='stockCount'))||!uuid(snapshot.store)||!uuid(requestId)||!Object.hasOwn(draftForms,kind)||!['SYP','USD','EUR'].includes(snapshot.currency)||!(snapshot.branch===null||uuid(snapshot.branch)))throw Error('Invalid draft scope');
  const base={kind,store:snapshot.store,requestId},c=snapshot.currency,b=snapshot.branch;
  switch(kind){
+ case 'stockCount':{const product=id(v.product),p=snapshot.countProducts?.find(x=>x.id===product);if(!p||typeof v.actual!=='string'||!/^\d{1,10}$/.test(v.actual)||Number(v.actual)>1000000000)throw Error('Invalid count');return {...base,branch:b,reason:text(v.reason,160),items:[{id:product,event:crypto.randomUUID(),expected:p.expected,actual:Number(v.actual)}]}}
+
  case 'supplier':return {...base,name:text(v.name,160),contact:text(v.contact,160,true)};
  case 'purchase':{const product=id(v.product),u=units(v.units),cost=money(v.cost),paid=money(v.paid,true);if(!snapshot.products.some(x=>x.id===product)||cost>100000000||paid>u*cost)throw Error('Invalid purchase');return {...base,branch:b,currency:c,supplier:id(v.supplier),product,units:u,cost,paid,note:text(v.note,300)}}
  case 'supplierPayment':return {...base,purchase:id(v.purchase),currency:c,amount:money(v.amount)};

@@ -1,5 +1,16 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+ "مسودات البيع والجرد دون اتصال":"Offline sales and count drafts",
+ "مزامنة المسودات المحفوظة":"Sync saved drafts",
+ "حل تعارض الجرد المعلق":"Resolve pending count conflict",
+ "فتح الجرد دون اتصال":"Open offline counting",
+ "تجهيز نسخة الجرد دون اتصال":"Prepare offline count snapshot",
+ "تم تجهيز نسخة الجرد المشفرة":"Encrypted count snapshot prepared",
+ "حفظ نسخة الجرد المشفرة لهذا الموقع لمدة 24 ساعة؟":"Save an encrypted count snapshot for this location for 24 hours?",
+ "إلغاء طلب الجرد غير المعتمد على الخادم؟":"Cancel the unconfirmed count request on the server?",
+ "نسخ أخرى من الموديل":"Other variants of this model",
+ "المزيد من النسخ":"More variants",
+ "عرض النسخة":"View variant",
  "الجرد الفعلي للمخزون":"Physical stock count",
  "الموقع":"Location",
  "تحميل أرصدة الجرد":"Load count balances",
