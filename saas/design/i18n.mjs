@@ -1,5 +1,15 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "للموافقة على الإصلاح سجل الدخول بحسابك واربطه بطلب الصيانة لدى صاحب المحل. رمز المتابعة للقراءة فقط.": "To approve repair, sign in and link your account to the ticket with the shop owner. The tracking code is read-only.",
+  "إنشاء رمز ربط العميل": "Generate customer pairing code",
+  "الموافقة تحتاج حساب العميل المرتبط.": "Approval requires the linked customer account.",
+  "صالح عشر دقائق؛ سلّمه لصاحب المحل فقط.": "Valid for ten minutes; share only with the shop owner.",
+  "حساب العميل مرتبط": "Customer account linked",
+  "حساب العميل غير مرتبط": "Customer account not linked",
+  "الموافقة الموثقة": "Verified decision",
+  "رمز ربط العميل": "Customer pairing code",
+  "ربط حساب العميل بطلب الصيانة": "Link customer account to repair",
+  "هل تحققت من هوية العميل وحضوره وملكيته لهذا الطلب؟": "Have you verified the customer's identity, presence and ownership of this ticket?",
   "تأكيد دفعة راتب جزئية": "Confirm partial payroll payment",
   "هل تم دفع المبلغ فعلياً؟": "Was the money actually disbursed?",
   "معرّف التسوية الأصلية": "Original adjustment ID",

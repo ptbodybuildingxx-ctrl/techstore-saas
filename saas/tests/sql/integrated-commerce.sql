@@ -64,6 +64,19 @@ if (select sum(line_total_minor) from public.mt_sale_receipt_lines(t,sale)) is d
 perform public.mt_record_return(t,gen_random_uuid(),sale,pr,1,'Customer return');
 perform public.mt_supplier_return(t,gen_random_uuid(),buy,1,'Supplier return',true);
 cust:=public.mt_add_customer(t,gen_random_uuid(),'Customer','');rep:=public.mt_add_repair(t,gen_random_uuid(),cust,'Device',null,'Fault');
+
+declare code uuid;pair uuid;est uuid:=gen_random_uuid();begin
+code:=(public.mt_repair_tracking(t,rep)->>'code')::uuid;
+perform public.mt_repair_offer(t,rep,est,'USD',5000,'Fixture approved repair');
+begin perform public.mt_repair_decide('a-'||tag,code,est,true);raise exception 'Unlinked owner approved repair';exception when insufficient_privilege then null;end;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+pair:=public.mt_repair_pairing_code('a-'||tag);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+if not public.mt_repair_customer_link(t,rep,pair,true) then raise exception 'Link failed';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if not public.mt_repair_decide('a-'||tag,code,est,true) then raise exception 'Verified approval failed';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+end;
 perform public.mt_repair_transition(t,gen_random_uuid(),rep,'diagnosing','A');perform public.mt_repair_transition(t,gen_random_uuid(),rep,'repairing','B');perform public.mt_repair_transition(t,gen_random_uuid(),rep,'ready','C');
 inv:=public.mt_repair_checkout(t,gen_random_uuid(),rep,'USD',2000,jsonb_build_array(jsonb_build_object('product_id',part,'units',1,'expected_price_minor',3000)),90);
 claim:=public.mt_warranty_open(t,gen_random_uuid(),inv,'Warranty');perform public.mt_warranty_transition(t,gen_random_uuid(),claim,'accepted','Accepted');perform public.mt_warranty_part(t,gen_random_uuid(),claim,part,1,'Replacement');perform public.mt_warranty_transition(t,gen_random_uuid(),claim,'resolved','Resolved');perform public.mt_repair_refund(t,gen_random_uuid(),inv,1000,'Refund',true);
@@ -231,6 +244,19 @@ bp:=public.mt_branch_purchase(t,branch,rq,sup,branch_product,'USD',2,500,0,'Bran
 if public.mt_branch_purchase(t,branch,rq,sup,branch_product,'USD',2,500,0,'Branch purchase') is distinct from bp then raise exception 'Branch purchase replay';end if;
 perform public.mt_supplier_return(t,gen_random_uuid(),bp,1,'Branch supplier return',false);
 rr:=public.mt_branch_add_repair(t,branch,gen_random_uuid(),cust,'Branch device',null,'Fault');
+
+declare code uuid;pair uuid;est uuid:=gen_random_uuid();begin
+code:=(public.mt_repair_tracking(t,rr)->>'code')::uuid;
+perform public.mt_repair_offer(t,rr,est,'USD',1100,'Fixture approved repair');
+begin perform public.mt_repair_decide('a-'||tag,code,est,true);raise exception 'Unlinked owner approved repair';exception when insufficient_privilege then null;end;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+pair:=public.mt_repair_pairing_code('a-'||tag);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+if not public.mt_repair_customer_link(t,rr,pair,true) then raise exception 'Link failed';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if not public.mt_repair_decide('a-'||tag,code,est,true) then raise exception 'Verified approval failed';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+end;
 perform public.mt_repair_transition(t,gen_random_uuid(),rr,'diagnosing','A');perform public.mt_repair_transition(t,gen_random_uuid(),rr,'repairing','B');perform public.mt_repair_transition(t,gen_random_uuid(),rr,'ready','C');
 ri:=public.mt_repair_checkout(t,gen_random_uuid(),rr,'USD',100,jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)),90);
 if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '3' then raise exception 'Branch operation balances';end if;
