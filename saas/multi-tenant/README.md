@@ -131,3 +131,6 @@ Owner opt-in (off by default), bounded guest order queue with random tracking co
 
 ## Build suggestions and storefront polish
 Bounded deterministic suggestions over up to 250 currently listed products and five least-expensive options per required part type, constrained by budget and existing compatibility rules. Does not claim exhaustive optimization or performance/BIOS validation. Added responsive public navigation and card/evidence/editor styling. Dedicated authenticated-page visual parity, full bilingual UI and device tests remain pending.
+
+## Payroll accrual (066)
+Statement creation posts salary expense against payroll payable on issuance date, without backdating into a closed period. Payment uses the existing cash/voucher flow and reclassifies its adjustment to settle the payable rather than duplicate the expense. Liability is included in the trial balance, management statements, reconciliation and attributed branch result. No automatic retroactive commission adjustments.
