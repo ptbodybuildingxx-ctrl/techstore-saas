@@ -13,7 +13,7 @@ create table tenant_private.repair_paper_decisions(
  accepted boolean not null,currency text not null,amount_minor bigint not null check(amount_minor between 0 and 100000000000000),
  document_ref text not null check(length(btrim(document_ref)) between 1 and 120),
  actor uuid not null,created_at timestamptz not null default now(),
- primary key(store_id,estimate_id),unique(store_id,request_id),
+ primary key(store_id,estimate_id),unique(store_id,request_id),unique(store_id,document_ref),
  foreign key(store_id,estimate_id) references tenant_private.repair_estimates(store_id,id),
  foreign key(store_id,repair_id) references public.mt_repairs(store_id,id)
 );
@@ -59,7 +59,9 @@ begin
  if exists(select 1 from tenant_private.repair_customer_links where store_id=p_store and repair_id=p_repair) then raise exception 'Ticket already linked' using errcode='22023';end if;
  delete from tenant_private.repair_pairing_codes c where c.store_id=p_store and c.code=p_code and c.expires_at>now() and exists(select 1 from auth.users u where u.id=c.buyer and u.email_confirmed_at is not null and not u.is_anonymous and (u.banned_until is null or u.banned_until<=now())) returning buyer into b;
  if not found then raise exception 'Invalid or expired pairing code' using errcode='22023';end if;
- insert into tenant_private.repair_customer_links(store_id,repair_id,buyer,actor) values(p_store,p_repair,b,auth.uid());return true;
+ insert into tenant_private.repair_customer_links(store_id,repair_id,buyer,actor) values(p_store,p_repair,b,auth.uid());
+ update tenant_private.repair_estimates e set superseded_at=now() where e.store_id=p_store and e.repair_id=p_repair and e.superseded_at is null and exists(select 1 from tenant_private.repair_paper_decisions p where p.store_id=e.store_id and p.estimate_id=e.id);
+ return true;
 end $function$
 ;
 CREATE OR REPLACE FUNCTION tenant_private.repair_offer(p_store uuid, p_repair uuid, p_id uuid, p_currency text, p_amount bigint, p_description text)
@@ -201,7 +203,7 @@ declare v jsonb;
 begin
  if tenant_private.member_role(s) is distinct from 'owner' then raise exception 'Owner required' using errcode='42501';end if;
  perform tenant_private.require_repair(s,r,false);
- select jsonb_build_object('state',state,'customer_id',customer_id,'tracked',exists(select 1 from tenant_private.repair_tracking where store_id=s and repair_id=r),
+ select jsonb_build_object('state',state,'device',device,'customer_id',customer_id,'customer_name',(select name from public.mt_customers c0 where c0.store_id=s and c0.id=mt_repairs.customer_id),'tracked',exists(select 1 from tenant_private.repair_tracking where store_id=s and repair_id=r),
  'linked',exists(select 1 from tenant_private.repair_customer_links where store_id=s and repair_id=r),
  'approved',tenant_private.repair_approved(s,r),
  'estimates',coalesce((select jsonb_agg(to_jsonb(x) order by x.created_at desc,x.id) from (select e.id,e.currency,e.amount_minor,e.description,e.state,e.created_at,e.decided_at,e.superseded_at,case when p.estimate_id is not null then 'paper' when e.decision_session is not null and e.decided_by is not null then 'account' else null end decision_method,p.document_ref,e.decided_by from tenant_private.repair_estimates e left join tenant_private.repair_paper_decisions p on p.store_id=e.store_id and p.estimate_id=e.id where e.store_id=s and e.repair_id=r order by e.created_at desc,e.id limit 50)x),'[]'::jsonb),
@@ -220,9 +222,9 @@ begin
  select tr.store_id,tr.repair_id into t,r from tenant_private.repair_tracking tr join public.saas_stores s on s.id=tr.store_id where s.slug=p_slug and tr.code=p_code and tenant_private.storefront_active(s.id);
  if not found then return null;end if;
  linked:=coalesce(saas_private.live_session(),false) and exists(select 1 from tenant_private.repair_customer_links l where l.store_id=t and l.repair_id=r and l.buyer=auth.uid());
- select jsonb_build_object('device',case when linked then p.device else 'طلب صيانة' end,'state',p.state,'created_at',p.created_at,'can_decide',linked and p.state in ('received','diagnosing','repairing','ready'),
+ select jsonb_build_object('device',case when linked then p.device else 'طلب صيانة' end,'state',p.state,'created_at',p.created_at,'linked_account',linked,'can_decide',linked and p.state in ('received','diagnosing','repairing','ready'),
  'estimate',case when linked then (select jsonb_build_object('id',id,'currency',currency,'amount_minor',amount_minor,'description',description,'state',state) from tenant_private.repair_estimates where store_id=t and repair_id=r and superseded_at is null order by created_at desc,id desc limit 1) else null end,
- 'shared_evidence',case when linked then coalesce((select jsonb_agg(to_jsonb(x) order by x.created_at,x.id) from (select e.id,e.kind,e.photo,e.created_at from tenant_private.repair_evidence e join tenant_private.repair_photo_visibility v0 on v0.store_id=e.store_id and v0.evidence_id=e.id where e.store_id=t and e.repair_id=r and v0.repair_id=r and v0.buyer=auth.uid() and v0.visible and e.kind in ('before','after') and e.photo is not null order by e.created_at desc,e.id limit 50)x),'[]'::jsonb) else '[]'::jsonb end) into v from public.mt_repairs p where p.store_id=t and p.id=r;
+ 'shared_evidence',case when linked then coalesce((select jsonb_agg(to_jsonb(x) order by x.created_at,x.id) from (select e.id,e.kind,e.photo,e.created_at from tenant_private.repair_evidence e join tenant_private.repair_photo_visibility v0 on v0.store_id=e.store_id and v0.evidence_id=e.id where e.store_id=t and e.repair_id=r and v0.repair_id=r and v0.buyer=auth.uid() and v0.visible and e.kind in ('before','after') and e.photo is not null order by e.created_at desc,e.id limit 50)x),'[]'::jsonb) else '[]'::jsonb end) into v from public.mt_repairs p where p.store_id=t and p.id=r and exists(select 1 from tenant_private.repair_tracking tr where tr.store_id=t and tr.repair_id=r and tr.code=p_code);
  return v;
 end $$;
 
