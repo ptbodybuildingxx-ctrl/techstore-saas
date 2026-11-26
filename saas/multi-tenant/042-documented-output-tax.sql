@@ -22,7 +22,7 @@ create trigger mt_guard_closed_period before insert on public.mt_indirect_tax_en
 create function tenant_private.tax_inclusive_minor(p_gross bigint,p_bps integer) returns bigint language plpgsql immutable set search_path='' as $$
 begin
  if p_gross is null or p_gross not between 0 and 100000000000000 or p_bps is null or p_bps not between 0 and 10000 then raise exception 'Invalid tax basis' using errcode='22023';end if;
- return round(p_gross::numeric*p_bps/(10000+p_bps))::bigint;
+ return div(2*p_gross::numeric*p_bps+10000+p_bps,2*(10000+p_bps))::bigint;
 end; $$;
 
 create function tenant_private.indirect_tax_quote(p_store uuid,p_kind text,p_source uuid,p_rate integer) returns jsonb language plpgsql stable security definer set search_path='' as $$
