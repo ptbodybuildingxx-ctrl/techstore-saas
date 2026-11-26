@@ -21,11 +21,12 @@ export function createCentralControl({api,root,run,refresh}){
  async function show(id,offset=0){
   if(pending&&pending.store!==id)throw Error('Resolve previous administrative request first');
   const r=await api.storeControlReview(id,offset);if(!api.signedIn())return;selected=id;
+  const plans=(await api.planPolicyReview()).plans.filter(p=>p.enrollment&&p.plan_code!==r.snapshot.plan);if(!api.signedIn())return;
   const v=r.snapshot,manual=!!v.manual_request,local=v.local&&!v.provider_bound&&!v.live_billing,open=v.state==='provisioning';
   body.replaceChildren(n('h2',tr('التحكم المركزي بالمحل')+' — '+v.name),pair('معرّف المحل',v.id),pair('المعرّف',v.slug),pair('الحالة',stateLabel(v.state)),pair('الخطة',v.plan),pair('الاشتراك',stateLabel(v.subscription_state)),pair('صلاحية التشغيل',tr(r.licensed?'سارية':'غير متاحة')),pair('انتهاء الترخيص',when(v.valid_until)),pair('مصدر الترخيص',tr(manual?'ترخيص يدوي':v.subscription_state==='trial'?'تجربة إدارية':v.subscription_state==='active'?'مزود دفع':'لا يوجد ترخيص')),pair('مرجع الترخيص اليدوي',v.manual_reference),pair('المتجر',tr(r.storefront_visible?'ظاهر':'مخفي')),pair('إيقاف المتجر المركزي',tr(v.storefront_paused?'نعم':'لا')),pair('ارتباط مزود الدفع',tr(v.provider_bound?'نعم':'لا')),pair('الفوترة الحية',tr(v.live_billing?'مفعلة':'معطلة')));
   body.append(table(['الملاك النشطون','الموظفون النشطون','المنتجات','الطلبات المعلقة'],[[r.owner_count,r.staff_count,r.product_count,r.pending_orders]]),t('p','الترخيص اليدوي يمنح صلاحية التشغيل فقط ولا يثبت قبضاً أو اشتراكاً مدفوعاً. تغيير الباقة يلغي الترخيص الحالي ويتطلب إصدار ترخيص جديد.'));
   const actions=['rename',v.storefront_paused?'resume_shop':'pause_shop'];
-  if(open){actions.push('suspend','cancel');if(local){if(manual)actions.push('renew','revoke','plan');else if(['pending','trial','past_due'].includes(v.subscription_state))actions.push('grant','plan');if(['pending','trial'].includes(v.subscription_state))actions.push('trial')}}
+  if(open){actions.push('suspend','cancel');if(local){if(manual)actions.push('renew','revoke',...(plans.length?['plan']:[]));else if(['pending','trial','past_due'].includes(v.subscription_state))actions.push('grant',...(plans.length?['plan']:[]));if(['pending','trial'].includes(v.subscription_state))actions.push('trial')}}
   else if(['suspended','closed'].includes(v.state)){actions.push('reopen');if(v.state==='suspended')actions.push('cancel')}
   if(!pending){
    const f=n('form'),sel=n('select'),fields=n('div'),ref=n('input'),submit=t('button','اعتماد الإجراء الإداري');submit.type='submit';ref.required=true;ref.maxLength=200;
@@ -33,7 +34,7 @@ export function createCentralControl({api,root,run,refresh}){
    const label=(title,field)=>{const l=t('label',title);l.append(field);return l};
    let input=null;
    function paint(){fields.replaceChildren();input=null;const a=sel.value;if(['grant','renew','trial'].includes(a)){input=n('input');input.type='number';input.min='1';input.max=a==='trial'?'30':'365';input.step='1';input.value=a==='trial'?'14':'30';input.required=true;fields.append(label('مدة الترخيص بالأيام',input));if(a==='renew')fields.append(t('p','التجديد يضيف المدة إلى تاريخ الانتهاء الحالي أو إلى اليوم إذا انتهى.'))}
-    if(a==='plan'){input=n('select');for(const plan of ['basic','business','pro'].filter(x=>x!==v.plan)){const opt=n('option',plan);opt.value=plan;input.append(opt)}fields.append(label('الباقة الجديدة',input),t('p','سيتم إلغاء الصلاحية الحالية حتى إصدار ترخيص جديد.'))}
+    if(a==='plan'){input=n('select');for(const plan of plans){const opt=n('option',plan.name);opt.value=plan.plan_code;input.append(opt)}fields.append(label('الباقة الجديدة',input),t('p','سيتم إلغاء الصلاحية الحالية حتى إصدار ترخيص جديد.'))}
     if(a==='rename'){input=n('input');input.value=v.name;input.required=true;input.maxLength=160;fields.append(label('اسم المحل الجديد',input))}
     if(a==='pause_shop')fields.append(t('p','سيختفي المتجر العام وتتوقف خدمات العملاء المرتبطة به، دون حذف البيانات أو إيقاف لوحة المحل.'))
     if(['suspend','cancel'].includes(a))fields.append(t('p','سيتم إلغاء صلاحية التشغيل دون حذف بيانات المحل. إعادة الفتح لا تمنح ترخيصاً تلقائياً.'))
