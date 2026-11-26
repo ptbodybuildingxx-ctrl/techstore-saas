@@ -14,7 +14,7 @@ create function tenant_private.central_action_denied(s uuid,k text) returns bool
  select coalesce((select k=any(p.denied) from public.saas_subscriptions sub join tenant_private.admin_action_policy p on p.plan_code=sub.plan_code where sub.store_id=s),false)
 $$;
 create function tenant_private.staff_central_denials(s uuid) returns text[] language sql stable security definer set search_path='' as $$
- select coalesce((select array_agg(substr(k,7) order by k) from public.saas_subscriptions sub join tenant_private.admin_action_policy p on p.plan_code=sub.plan_code cross join lateral unnest(p.denied) k where sub.store_id=s and k like 'staff\_%' escape '\'),'{}'::text[])
+ select coalesce((select array_agg(substr(k,7) order by k) from public.saas_subscriptions sub join tenant_private.admin_action_policy p on p.plan_code=sub.plan_code cross join lateral unnest(p.denied) k where sub.store_id=s and left(k,6)='staff_'),'{}'::text[])
 $$;
 create function tenant_private.staff_all_denials(s uuid,u uuid) returns table(action text) language sql stable security definer set search_path='' as $$
  select d.action from tenant_private.staff_denials d where d.store_id=s and d.user_id=u
@@ -209,4 +209,72 @@ create function public.mt_admin_actions_review() returns jsonb language sql stab
 create function public.mt_admin_actions_change(req uuid,plan text,expected bigint,desired text[],proof text) returns uuid language sql set search_path='' as $$select tenant_private.admin_actions_change(req,plan,expected,desired,proof)$$;
 revoke all on function tenant_private.admin_actions_review(),public.mt_admin_actions_review(),tenant_private.admin_actions_change(uuid,text,bigint,text[],text),public.mt_admin_actions_change(uuid,text,bigint,text[],text) from public,anon,authenticated;
 grant execute on function tenant_private.admin_actions_review(),public.mt_admin_actions_review(),tenant_private.admin_actions_change(uuid,text,bigint,text[],text),public.mt_admin_actions_change(uuid,text,bigint,text[],text) to authenticated;
+
+create function tenant_private.member_central_actions(s uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$
+begin
+ if tenant_private.member_role(s) is distinct from 'owner' then raise exception 'Owner required' using errcode='42501';end if;
+ return coalesce((select to_jsonb(p.denied) from public.saas_subscriptions sub join tenant_private.admin_action_policy p on p.plan_code=sub.plan_code where sub.store_id=s),'[]'::jsonb);
+end $$;
+create function public.mt_member_central_actions(s uuid) returns jsonb language sql stable set search_path='' as $$select tenant_private.member_central_actions(s)$$;
+revoke all on function tenant_private.member_central_actions(uuid),public.mt_member_central_actions(uuid) from public,anon,authenticated;
+grant execute on function tenant_private.member_central_actions(uuid),public.mt_member_central_actions(uuid) to authenticated;
+CREATE OR REPLACE FUNCTION tenant_private.admin_plan_catalog_change(req uuid, action text, code_value text, expected jsonb, params jsonb, proof text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare p public.saas_plans%rowtype;e tenant_private.admin_plan_catalog_events%rowtype;beforev jsonb;afterv jsonb;name_value text;price integer;
+begin
+ if not coalesce(saas_private.is_operator(),false) then raise exception 'Operator required' using errcode='42501';end if;
+ if req is null or action is null or action not in ('create','rename','delete') or code_value is null or code_value !~ '^[a-z][a-z0-9-]{2,39}$' or jsonb_typeof(params) is distinct from 'object' or octet_length(params::text)>1000 or proof is null or length(btrim(proof)) not between 1 and 200 then raise exception 'Invalid catalog action' using errcode='22023';end if;
+ perform 1 from tenant_private.billing_configuration where singleton for update;
+ lock table tenant_private.payment_bindings in share mode;
+ select * into e from tenant_private.admin_plan_catalog_events where request_id=req;
+ if found then
+  if e.plan_code<>code_value or e.actor<>auth.uid() or e.action<>action or e.reference<>btrim(proof) or e.params<>params or e.before_state is distinct from expected then raise exception 'Conflicting catalog request';end if;return req;
+ end if;
+ if exists(select 1 from tenant_private.billing_configuration where live_enabled) or exists(select 1 from tenant_private.payment_bindings) then raise exception 'Managed provider catalog required';end if;
+ select * into p from public.saas_plans where code=code_value for update;
+ if found then beforev:=to_jsonb(p);end if;
+ if beforev is distinct from expected then raise exception 'Plan changed; reload';end if;
+ if action='create' then
+  if beforev is not null or (select count(*) from public.saas_plans)>=50 or exists(select 1 from tenant_private.admin_plan_catalog_events where plan_code=code_value) or (select count(*) from jsonb_object_keys(params))<>2 or not (params ?& array['name','price']) or coalesce(params->>'price','') !~ '^[0-9]{1,8}$' then raise exception 'Unavailable plan code or capacity';end if;
+  name_value:=btrim(coalesce(params->>'name',''));price:=(params->>'price')::integer;
+  if length(name_value) not between 1 and 100 or price not between 100 and 10000000 then raise exception 'Invalid plan name or price';end if;
+  insert into public.saas_plans(code,name,monthly_usd_cents) values(code_value,name_value,price);
+  insert into tenant_private.admin_plan_policy(plan_code,enrollment) values(code_value,false);
+ elsif action='rename' then
+  if beforev is null or (select count(*) from jsonb_object_keys(params))<>1 or length(btrim(coalesce(params->>'name',''))) not between 1 and 100 then raise exception 'Invalid plan name';end if;
+  name_value:=btrim(params->>'name');if name_value=p.name then raise exception 'Name unchanged';end if;
+  update public.saas_plans set name=name_value where code=code_value;
+ else
+  if beforev is null or params<>'{}'::jsonb or code_value in ('basic','business','pro') then raise exception 'Built-in or missing plan cannot be deleted';end if;
+  perform 1 from tenant_private.admin_plan_policy where plan_code=code_value for update;
+  if exists(select 1 from public.saas_subscriptions where plan_code=code_value) or exists(select 1 from tenant_private.admin_plan_policy_events where plan_code=code_value) or exists(select 1 from tenant_private.plan_price_history where plan_code=code_value) or exists(select 1 from saas_private.billing_sandbox_invoices where plan_code=code_value) or exists(select 1 from tenant_private.paid_periods where plan_code=code_value) or exists(select 1 from tenant_private.admin_manual_licenses where plan_code=code_value) or exists(select 1 from tenant_private.offline_billing_invoices where plan_code=code_value) or exists(select 1 from tenant_private.admin_action_events where plan_code=code_value) then raise exception 'Referenced plan must be retired by closing enrollment';end if;
+  delete from tenant_private.admin_plan_policy where plan_code=code_value;
+  delete from public.saas_plans where code=code_value;
+ end if;
+ select to_jsonb(p0) into afterv from public.saas_plans p0 where code=code_value;
+ insert into tenant_private.admin_plan_catalog_events(request_id,plan_code,actor,action,reference,params,before_state,after_state) values(req,code_value,auth.uid(),action,btrim(proof),params,beforev,afterv);
+ return req;
+end $function$
+;
+
+CREATE OR REPLACE FUNCTION tenant_private.admin_plan_catalog_review()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+ if not coalesce(saas_private.is_operator(),false) then raise exception 'Operator required' using errcode='42501';end if;
+ return jsonb_build_object('editable',not exists(select 1 from tenant_private.billing_configuration where live_enabled) and not exists(select 1 from tenant_private.payment_bindings),
+ 'plans',coalesce((select jsonb_agg(to_jsonb(x) order by code) from (select p.code,p.name,p.monthly_usd_cents,q.enrollment,q.revision,(select count(*) from public.saas_subscriptions where plan_code=p.code) subscribers,
+ (not exists(select 1 from public.saas_subscriptions where plan_code=p.code) and not exists(select 1 from tenant_private.plan_price_history where plan_code=p.code) and not exists(select 1 from tenant_private.admin_plan_policy_events where plan_code=p.code) and not exists(select 1 from saas_private.billing_sandbox_invoices where plan_code=p.code) and not exists(select 1 from tenant_private.paid_periods where plan_code=p.code) and not exists(select 1 from tenant_private.admin_manual_licenses where plan_code=p.code) and not exists(select 1 from tenant_private.offline_billing_invoices where plan_code=p.code) and not exists(select 1 from tenant_private.admin_action_events where plan_code=p.code) and p.code not in ('basic','business','pro')) deletable
+ from public.saas_plans p join tenant_private.admin_plan_policy q on q.plan_code=p.code)x),'[]'::jsonb),
+ 'history',coalesce((select jsonb_agg(to_jsonb(x) order by created_at desc,request_id) from (select request_id,plan_code,actor,action,reference,before_state,after_state,created_at from tenant_private.admin_plan_catalog_events order by created_at desc,request_id limit 50)x),'[]'::jsonb));
+end $function$
+;
+
 commit;
