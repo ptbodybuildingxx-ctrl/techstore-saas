@@ -179,6 +179,11 @@ const reconcile=node('button','مطابقة الصندوق مع سجل الحر�
    });
   }
   renderShopOrder(orderDetailBody,r,{money,action});if(!orderDetailDialog.open)orderDetailDialog.showModal();
+  if(write&&channel==='online'&&r.state==='pending'&&r.delivery_method==='delivery'&&!r.carrier){
+   const f=node('form'),carrier=node('input'),tracking=node('input'),submit=node('button',tr('توثيق التسليم لشركة الشحن'));carrier.required=tracking.required=true;carrier.maxLength=tracking.maxLength=100;tracking.value=r.tracking_reference||'';tracking.readOnly=r.delivery_state==='dispatched';submit.type='submit';let request=null;
+   const cl=node('label',tr('شركة الشحن')),tl=node('label',tr('مرجع التتبع'));cl.append(carrier);tl.append(tracking);f.append(node('p',tr('أدخل بيانات شحنة أنشأتها فعلياً لدى شركة الشحن. لا يرسل هذا الإجراء طلباً خارجياً أو يثبت قبضاً.')),cl,tl,submit);
+   f.onsubmit=e=>{e.preventDefault();run(async()=>{if(store?.id!==s.id||!orderDetailDialog.open||blocked()||pending||queuedOps()||!navigator.onLine)throw Error('Live connection and no pending writes required');const name=carrier.value.trim(),ref=tracking.value.trim();if(!name||!ref)return;if(!confirm(tr('أؤكد تسليم الشحنة فعلياً لشركة الشحن وفق المرجع المدخل.')))return;const key=JSON.stringify([name,ref]);if(request&&request.key!==key)throw Error('Retry the same dispatch reference');if(!request)request={key,id:crypto.randomUUID()};await api.carrierDispatch(s.id,id,request.id,name,ref);await showShopOrder(id,channel)})};orderDetailBody.append(f);
+  }
  }
  function shopOrderDetailButton(id,channel){const b=node('button',tr('تفاصيل الطلب'));b.type='button';b.onclick=()=>run(()=>showShopOrder(id,channel));return b}
  const guestArea=node('div'),guestFirst=node('button','الأولى'),guestNext=node('button','التالي');guestFirst.type=guestNext.type='button';let guestCursor=null;
