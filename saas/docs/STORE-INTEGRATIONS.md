@@ -1,0 +1,14 @@
+# Store integrations — Syria
+Status: manual carrier handoff and confirmed-phone matching implemented. No provider activated.
+
+## Payment
+Candidate: eCash (https://ecash-pay.com/). Obtain each merchant's approved agreement, official merchant API specification and server credentials, including settlement currency, minor-unit scale, hosted checkout, callback signature verification and refunds. Do not copy illustrative API examples into production. Local wallet providers (Sham Cash, Syriatel Cash, MTN Cash) require authorized merchant interfaces. No private credentials in browser or Git. Each store has separate merchant binding. Server generates checkout from persisted order, verifies signature and independently matches provider merchant, reference, currency, amount and final captured status. Idempotent event ledger; distinguish authorization, receipt, refund and settlement. Extend sale accounting to provider clearing rather than existing cash-on-delivery posting before activating prepaid checkout. Handle stock holds, expiry, failure and cancellation/refund without double collection. No activation without approved provider and operational verification.
+
+## Phone
+Supabase phone authentication requires a supported SMS provider (https://supabase.com/docs/guides/auth/phone-login). Verify Syrian +963 delivery and pricing with the provider. Keep existing email login; any phone-change flow must confirm possession in Auth and preserve the original buyer identity. Do not trust client flags, user_metadata or owner attestation as an OTP verification. Current delivery details only expose whether the buyer's currently confirmed phone matches that order's Syrian mobile number. No phone number other than the existing order contact is exposed. No SMS sending or provider enabled.
+
+## Shipping
+Candidate: Delivery Syria (https://deliverysyria.com/en/docs/api). Merchant API access is plan dependent. Obtain authorized merchant account and documented quote, create, track and signed webhook contracts. Obtain customer consent for necessary delivery data before submitting it externally. Server-side shop-specific binding and idempotent order-to-parcel mapping; quote fee and currency before customer consent, distinguish carrier acceptance from delivery, cash collection and remittance. Cancellation must not release reserved inventory until physical goods are returned. Existing manual shipping is available; handoff is documented by owner, not represented as a carrier API result. No automatic external dispatch or tracking.
+
+## Release gate
+No new paid services, fabricated payment/OTP/shipment results or credential storage. No tests run per project instruction. Actual provider onboarding, account terms, functional validation and backup coverage remain prerequisites for commercial use.
