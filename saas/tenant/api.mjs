@@ -1,3 +1,4 @@
+import {validateBillingPage,validateBillingDetails} from '../design/commercial-billing.mjs';
 import {validateShopOrder} from '../design/order-details.mjs';
 import {denialActions,validateAccessMatrix} from './staff-permissions.mjs';
 import {validateMixedRates} from './offline-mixed.mjs';
@@ -443,6 +444,8 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=await rpc('mt_operating_report',{p_store:store,p_from:from,p_to:to},store),integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
    if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['goods_revenue','repair_revenue','returns','net_revenue','unclassified_cash_expenses'].every(k=>integer(x[k]))||!int(x.unknown_cost_allocations,0,Number.MAX_SAFE_INTEGER)||(x.unknown_cost_allocations===0?!['cost','gross_margin','indicative_after_cash_expenses'].every(k=>integer(x[k])):!['cost','gross_margin','indicative_after_cash_expenses'].every(k=>x[k]===null))||BigInt(x.goods_revenue)+BigInt(x.repair_revenue)-BigInt(x.returns)!==BigInt(x.net_revenue)||(x.cost!==null&&(BigInt(x.net_revenue)-BigInt(x.cost)!==BigInt(x.gross_margin)||BigInt(x.gross_margin)-BigInt(x.unclassified_cash_expenses)!==BigInt(x.indicative_after_cash_expenses)))))throw Error('Invalid operating report');return r;
   },
+  async commercialBilling(store,offset=0){if(!isId(store)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid invoice page');const r=await rpc('mt_offline_billing_review',{s:store,off:offset},store);return validateBillingPage(r,store)},
+  async commercialBillingDetails(store,invoice,offset=0){if(!isId(store)||!isId(invoice)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid invoice');return validateBillingDetails(await rpc('mt_offline_billing_details',{s:store,i:invoice,off:offset},store))},
   async moduleStatus(store){const r=await rpc('mt_member_module_status',{s:store},store),keys=['catalog','sales','purchases','suppliers','customers','credit','standalone_debts','repairs','quotes','stock_counts','stock_transfers','branches','payroll','tradein','coupons'];if(!r||Object.keys(r).length!==keys.length||keys.some(k=>typeof r[k]!=='boolean'))throw Error('Invalid module status');return r},
   async licenseStatus(store){
    const r=await rpc('mt_license_status',{p_store:store},store);
