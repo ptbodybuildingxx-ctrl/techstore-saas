@@ -1,5 +1,14 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "أضف تطبيق مصادقة بديلاً وفعّله قبل إزالة التطبيق الأخير.": "Add and verify a replacement authenticator before removing the last one.",
+  "حذف آخر مسودة غير مرسلة": "Remove last unsent draft",
+  "المسودة التي جرت محاولة إرسالها لا يمكن حذفها محلياً؛ قد تكون معتمدة في الخادم.": "An attempted draft cannot be removed locally; it may already be posted on the server.",
+  "حذف آخر مسودة لم تُرسل إلى الخادم؟": "Remove the last draft that has never been sent to the server?",
+  "تم حذف المسودة غير المرسلة.": "Unsent draft removed.",
+  "عبارة تشفير قائمة العمليات": "Operation queue passphrase",
+  "إضافة تطبيق مصادقة": "Add authenticator",
+  "توجد عمليات تشغيلية مشفرة تنتظر اعتماد الخادم.": "Encrypted operations await server confirmation.",
+  "لا توجد عمليات تشغيلية محفوظة.": "No saved operations.",
   "ميزان مراجعة الفروع حسب القيود": "Branch journal trial balance",
   "تظهر القيود المركزية وغير الموزعة منفصلة. الأرصدة الافتتاحية التاريخية لم تعتمد بعد، ولا يمثل التقرير ميزانية قانونية مستقلة.": "Central and unallocated entries are shown separately. Historical opening balances are not approved; this is not an independent statutory statement.",
   "عرض ميزان مراجعة الفروع": "View branch trial balance",

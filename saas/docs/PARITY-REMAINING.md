@@ -1,6 +1,6 @@
-# Remaining implementation and release register (branch saas/final-operations-parity)
+# Remaining implementation and release register
 
-Baseline main includes 059–071; production release held. Draft PR #10 contains 072–082 plus recovery capture, encrypted operation queue, localization and responsive navigation. No live migration or release authorized. Do not treat a committed function as operational validation.
+Main includes 059–082 after merged PR #10; production release held. Development branch saas/closure-after-082 adds client-side administrator last-factor protection and safe tail-only unsent draft removal (online and offline workbench). The protection is an application guard, not an Auth provider-wide policy. No live migration or release authorized. Do not treat a committed function as operational validation.
 
 | Requested area | Implemented in development | Open work |
 |---|---|---|
@@ -11,7 +11,7 @@ Baseline main includes 059–071; production release held. Draft PR #10 contains
 | Repairs | 072 technician assignment, task completion and approval gates | Identity-verified customer approval, evidence media, legacy migration review |
 | Accounts | 070 staff TOTP; 080 shared buyer/admin challenge and account controls, AAL2 enforcement for enrolled users, individual application-session revocation | Unvalidated; admin requires initially enrolled TOTP; audit every authenticated endpoint, recovery, managed Auth settings and actual multi-device behavior |
 | Recovery | Private automated capture pipeline with role/schema/data exports, storage object archive, encryption and verification; example timer; per-object SHA-256 and atomic publication of verified encrypted captures | Real private host and secrets, coordinated write freeze, complete managed-platform settings, isolated verified restore, off-site retention |
-| Offline | Encrypted FIFO draft queue for selected request-id operations plus previous single cash sale envelope | Encrypted local workbench with up to 2,000 catalog rows, backward-readable bounded vault and persisted replay-attempt timestamp; larger catalogs, all other mutations, device enrollment/revocation, dependency/conflict resolution and server-authoritative reauthentication remain open |
+| Offline | Encrypted FIFO draft queue for selected request-id operations plus previous single cash sale envelope | Encrypted local workbench with up to 2,000 catalog rows, backward-readable bounded vault, persisted replay-attempt timestamp and removal of only the last never-attempted draft; larger catalogs, all other mutations, device enrollment/revocation, dependency/conflict resolution and server-authoritative reauthentication remain open |
 | Arabic/English | Shared locale resources and UI switch across portal, admin, workspace and storefront; static labels mapped; navigation/form headings | Additional security/offline/permission labels; dynamic status/receipt/designer labels and accessibility translation; language-switch and layout review |
 | Design | Original Aurora tokens, responsive cards, mobile workspace drawer/quick navigation and bidirectional layout | Page-by-page comparison against original TechStore main f0b680ca309c8e9fac82ad365809d057a7116b99, all authenticated states, mobile/desktop, print, designer and storefront |
 | Professional tools | Existing rules-based build advisor | Integrated AI assistant with approved provider and privacy boundary |
