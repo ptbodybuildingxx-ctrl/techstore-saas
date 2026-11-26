@@ -164,4 +164,48 @@ create function public.mt_repair_warranty_register(s uuid,q text,filter_state te
 returns jsonb language sql stable set search_path='' as $$select tenant_private.repair_warranty_register(s,q,filter_state,off)$$;
 revoke all on function tenant_private.repair_warranty_register(uuid,text,text,integer),public.mt_repair_warranty_register(uuid,text,text,integer) from public,anon,authenticated;
 grant execute on function tenant_private.repair_warranty_register(uuid,text,text,integer),public.mt_repair_warranty_register(uuid,text,text,integer) to authenticated;
+
+-- A linked customer may view their own repair warranty and open a claim.
+create function tenant_private.repair_buyer_warranty(p_slug text,p_code uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare s uuid:=tenant_private.buyer_store(p_slug);v jsonb;
+begin
+ select jsonb_build_object('invoice_id',i.id,'currency',i.currency,'total_minor',i.total_minor,'refunded_minor',f.refunded,
+ 'warranty_until',i.warranty_until,'coverage',case when i.warranty_days=0 then 'none' when i.total_minor>0 and f.refunded>=i.total_minor then 'refunded' when i.warranty_until<(now() at time zone 'Asia/Damascus')::date then 'expired' else 'active' end,
+ 'can_claim',i.warranty_days>0 and i.warranty_until>=(now() at time zone 'Asia/Damascus')::date and (i.total_minor=0 or f.refunded<i.total_minor) and not exists(select 1 from public.mt_warranty_claims where store_id=s and invoice_id=i.id and state in ('open','accepted')),
+ 'claims',coalesce((select jsonb_agg(to_jsonb(x) order by x.created_at desc,x.id) from (select id,state,created_at,case when actor=auth.uid() then reason else null end reason from public.mt_warranty_claims where store_id=s and invoice_id=i.id order by created_at desc,id limit 50)x),'[]'::jsonb))
+ into v from tenant_private.repair_tracking tr join tenant_private.repair_customer_links l on l.store_id=tr.store_id and l.repair_id=tr.repair_id
+ join public.mt_repairs r on r.store_id=tr.store_id and r.id=tr.repair_id and r.state='delivered'
+ join public.mt_repair_invoices i on i.store_id=r.store_id and i.repair_id=r.id
+ cross join lateral (select coalesce(sum(amount_minor),0)::bigint refunded from public.mt_repair_refunds where store_id=i.store_id and invoice_id=i.id) f
+ where tr.store_id=s and tr.code=p_code and l.buyer=auth.uid();
+ return v;
+end $$;
+
+create function tenant_private.repair_buyer_claim(p_slug text,p_code uuid,p_invoice uuid,p_request uuid,p_reason text)
+returns uuid language plpgsql security definer set search_path='' as $$
+declare s uuid:=tenant_private.buyer_store(p_slug);v public.mt_repair_invoices%rowtype;c public.mt_warranty_claims%rowtype;
+begin
+ if p_request is null or p_invoice is null or p_code is null or p_reason is null or length(btrim(p_reason)) not between 1 and 300 then raise exception 'Invalid warranty claim' using errcode='22023';end if;
+ perform 1 from public.saas_stores where id=s for update;
+ if tenant_private.buyer_store(p_slug)<>s then raise exception 'Store unavailable' using errcode='42501';end if;
+ select i.* into v from tenant_private.repair_tracking tr join tenant_private.repair_customer_links l on l.store_id=tr.store_id and l.repair_id=tr.repair_id
+ join public.mt_repairs r on r.store_id=tr.store_id and r.id=tr.repair_id and r.state='delivered'
+ join public.mt_repair_invoices i on i.store_id=r.store_id and i.repair_id=r.id
+ where tr.store_id=s and tr.code=p_code and l.buyer=auth.uid() and i.id=p_invoice;
+ if not found then raise exception 'Linked repair invoice required' using errcode='42501';end if;
+ select * into c from public.mt_warranty_claims where store_id=s and request_id=p_request;
+ if found then
+  if c.actor<>auth.uid() or c.invoice_id<>p_invoice or c.reason<>btrim(p_reason) then raise exception 'Conflicting warranty request' using errcode='22023';end if;return c.id;
+ end if;
+ if v.warranty_days=0 or v.warranty_until<(now() at time zone 'Asia/Damascus')::date or tenant_private.repair_fully_refunded(s,p_invoice) then raise exception 'Warranty unavailable' using errcode='22023';end if;
+ if exists(select 1 from public.mt_warranty_claims where store_id=s and invoice_id=p_invoice and state in ('open','accepted')) then raise exception 'An active warranty claim already exists' using errcode='22023';end if;
+ insert into public.mt_warranty_claims(store_id,request_id,invoice_id,reason,actor) values(s,p_request,p_invoice,btrim(p_reason),auth.uid()) returning * into c;
+ return c.id;
+end $$;
+create function public.mt_repair_buyer_warranty(p_slug text,p_code uuid) returns jsonb language sql stable set search_path='' as $$select tenant_private.repair_buyer_warranty(p_slug,p_code)$$;
+create function public.mt_repair_buyer_claim(p_slug text,p_code uuid,p_invoice uuid,p_request uuid,p_reason text) returns uuid language sql set search_path='' as $$select tenant_private.repair_buyer_claim(p_slug,p_code,p_invoice,p_request,p_reason)$$;
+revoke all on function tenant_private.repair_buyer_warranty(text,uuid),public.mt_repair_buyer_warranty(text,uuid),tenant_private.repair_buyer_claim(text,uuid,uuid,uuid,text),public.mt_repair_buyer_claim(text,uuid,uuid,uuid,text) from public,anon,authenticated;
+grant execute on function tenant_private.repair_buyer_warranty(text,uuid),public.mt_repair_buyer_warranty(text,uuid),tenant_private.repair_buyer_claim(text,uuid,uuid,uuid,text),public.mt_repair_buyer_claim(text,uuid,uuid,uuid,text) to authenticated;
+
 commit;
