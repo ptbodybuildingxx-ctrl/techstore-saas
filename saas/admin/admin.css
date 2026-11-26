@@ -369,3 +369,6 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;line
 .storefront-page .shop-quantity button{min-width:40px;min-height:40px}
 .storefront-page #cart td{vertical-align:middle}
 @media(max-width:540px){.storefront-page #catalog label{min-width:100%}.storefront-page #catalog button{width:100%}.storefront-page .panel{padding:14px}}
+
+/* Aurora section finder and public catalog filters */
+.workspace-search{width:100%;min-width:0;margin-bottom:6px}.workspace-nav button{display:flex;align-items:center;gap:10px}.workspace-icon{width:24px;flex:0 0 24px;text-align:center;font-size:1.1rem;color:inherit}.catalog-tools{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin:12px 0}.catalog-tools label{display:grid;gap:6px;min-width:0}.catalog-tools input,.catalog-tools select{width:100%;min-width:0}@media(max-width:850px){.workspace-search{width:160px;flex:0 0 160px;margin:0}}@media(max-width:540px){.catalog-tools{grid-template-columns:1fr}}

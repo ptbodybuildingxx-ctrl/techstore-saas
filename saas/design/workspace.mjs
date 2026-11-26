@@ -7,7 +7,7 @@ const operations=Object.freeze({"حالة الاشتراك":"settings","المو
 export function operationGroup(title){if(!Object.hasOwn(operations,title))throw Error('Unmapped operation section: '+title);return operations[title];}
 export function matchesGroup(value,group){return typeof value==='string'&&value.split(/\s+/).includes(group);}
 export function createWorkspace(root,nav){
- let allowed=[],active=null;
+ let allowed=[],active=null,query='';
  const panels=()=>[...root.querySelectorAll('[data-workspace-group]')];
  function render(){
   const available=allowed.filter(k=>panels().some(p=>!p.hidden&&!p.closest('[hidden]:not(#dashboard)')&&matchesGroup(p.dataset.workspaceGroup,k)));
@@ -18,11 +18,14 @@ export function createWorkspace(root,nav){
    const visible=[...container.querySelectorAll('[data-workspace-group]')].some(p=>!p.hidden&&matchesGroup(p.dataset.workspaceGroup,active));
    container.toggleAttribute('data-workspace-inactive',!visible);
   }
-  nav.replaceChildren(...available.map(key=>{const b=nav.ownerDocument.createElement('button');b.type='button';b.textContent=labels[key];b.setAttribute('aria-pressed',String(active===key));b.onclick=()=>select(key);return b;}));
+  const search=nav.ownerDocument.createElement('input');search.type='search';search.className='workspace-search';search.placeholder='ابحث في الأقسام';search.setAttribute('aria-label','بحث في الأقسام');search.value=query;
+  const icons={overview:'⌂',shops:'▦',plans:'◈',infra:'⚙',billing:'▤',recovery:'↻',account:'●',sales:'▣',inventory:'▦',customers:'♙',returns:'↶',purchases:'▧',repairs:'⚒',finance:'▥',online:'◎',staff:'♟',settings:'⚙'};
+  const buttons=available.map(key=>{const b=nav.ownerDocument.createElement('button');b.type='button';const icon=nav.ownerDocument.createElement('span');icon.className='workspace-icon';icon.textContent=icons[key]||'•';icon.setAttribute('aria-hidden','true');const label=nav.ownerDocument.createElement('span');label.textContent=labels[key];b.append(icon,label);b.setAttribute('aria-pressed',String(active===key));if(active===key)b.setAttribute('aria-current','page');b.onclick=()=>select(key);return b;});
+  const filter=()=>{query=search.value;for(const [i,b] of buttons.entries())b.hidden=!labels[available[i]].includes(query.trim());};search.oninput=filter;nav.replaceChildren(search,...buttons);filter();
   nav.hidden=!available.length;
  }
  function select(key){if(allowed.includes(key)){active=key;render();}}
  function sync(keys){allowed=[...keys].filter(key=>Object.hasOwn(labels,key));render();}
- function reset(){allowed=[];active=null;render();}
+ function reset(){allowed=[];active=null;query='';render();}
  return {select,sync,reset};
 }
