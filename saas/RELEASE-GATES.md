@@ -34,3 +34,7 @@ Integrated rollback SQL fixture: saas/tests/sql/integrated-commerce.sql. Managem
 ## Follow-up verification (2026-11-25)
 - [x] Executed the expanded `saas/tests/sql/integrated-commerce.sql` against the dedicated SaaS development database; all synthetic changes rolled back. Includes classified funding, income-tax accrual retry, loyalty earning/reservation/replay/cancellation/redemption/return deficit, operator dashboard and buyer denial.
 - Exact rational FX evidence validation and explicit warnings for unresolved balances and unrecorded income tax; CI validates client behavior. The tax and public-hosting gates above remain open.
+
+## 2026-11-26 — isolated domain build and verifier
+- Storefront-only build and trusted verification orchestration added; automated tests cover missing DNS, mismatched tenant/challenge, TLS failure and activation denial.
+- Real provider integration, certificates, actual ownership revalidation and deployment remain open. No commercial or paid service enabled.

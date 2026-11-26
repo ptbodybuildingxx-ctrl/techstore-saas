@@ -3,3 +3,7 @@ The central admin registers one current hostname per store, with a unique DNS TX
 
 ## Isolated storefront build
 Run `node saas/deploy/build-storefront.mjs` and publish only `dist-storefront` on a dedicated storefront HTTPS origin. The output contains no admin or tenant HTML/scripts, legacy workspace, or SQL. Shared CSS and public browser configuration are retained. Host resolution is mandatory; an unknown or disabled hostname fails closed. Signup and original media remain disabled. Do not publish or configure real domains until provider verification and TLS checks pass.
+
+
+## Trusted verifier orchestration
+`domain-verifier.mjs` validates pending identity, resolves the exact DNS TXT record, requires a trusted hosting adapter to confirm tenant mapping, certificate validation and a fresh challenge, hashes the resulting evidence, and invokes the existing service-only activation RPC. It never fetches arbitrary customer-controlled URLs. The production provider adapter and scheduled ownership rechecks are intentionally not configured. An injected callback is not itself proof of real hosting; only a deployed, independently verified adapter may be used.
