@@ -206,3 +206,6 @@ Read-only owner-scoped statement by supplier, currency, purchase location and Da
 
 ## Procurement profiles and grants (093)
 Add supplier contact fields, archival, idempotent profile/receipt/due requests, exact-date maturity and aging, and explicit stock employee access with scope checks. Delegated stock receipts are credit-only; owner cash operations still use canonical payment and return functions. No tests run.
+
+## Sale invoice metadata (094)
+Cash and credit POS invoice issue wrapper snapshots title, customer identity, warranty terms and line serial text/months with issue date. Existing sales remain unchanged. Current warranty-covered quantity is derived from canonical returns; serial-level return attribution is not implied. No tests run.

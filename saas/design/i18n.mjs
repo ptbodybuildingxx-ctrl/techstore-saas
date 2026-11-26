@@ -1,5 +1,17 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+ "بيانات الفاتورة والضمان":"Invoice and warranty details",
+ "البيانات اختيارية. للبيع الآجل يُحفظ اسم وهاتف العميل من الحساب المختار. لا يمكن تغيير مستند صادر.":"Optional details. Credit sales use the selected customer's name and phone. Issued documents cannot be modified.",
+ "عنوان الفاتورة":"Invoice title",
+ "اسم الزبون":"Customer name",
+ "هاتف الزبون":"Customer phone",
+ "شروط الضمان":"Warranty terms",
+ "الرقم التسلسلي (اختياري)":"Serial number (optional)",
+ "مدة الضمان بالأشهر":"Warranty months",
+ "الكمية المشمولة":"Covered quantity",
+ "بدون ضمان":"No warranty",
+ "ملغاة بسبب الإرجاع":"Cancelled by return",
+ "حفظ عملية بيع نقدية معلقة فقط؟ تشمل بيانات الفاتورة المدخلة ضمن النسخة المشفرة. لن تُعتبر فاتورة أو تخصم المخزون حتى اعتماد الخادم.":"Save an unconfirmed cash sale only? The encrypted copy includes entered invoice details. It is not an invoice and does not deduct stock until server approval.",
  "إضافة مورد تفصيلي":"Add detailed supplier",
  "تسجيل شراء مع استحقاق":"Record purchase with due date",
  "معرّف المورد (فارغ للإضافة)":"Supplier ID (blank for new)",
