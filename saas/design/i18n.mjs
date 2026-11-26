@@ -1,5 +1,12 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "مسودات العمليات التشغيلية": "Operational drafts",
+  "المراجع تكتب من السجلات المعروفة مسبقاً. لا يتم تسجيل أي حركة مالية أو اعتماد أي طلب قبل المزامنة.": "Enter references from previously known records. No financial posting or confirmation occurs before synchronization.",
+  "إعادة حفظ المسودة نفسها": "Retry saving the same draft",
+  "راجع تفاصيل المسودة قبل إرسالها. ستسجل بتاريخ اعتماد الخادم.": "Review the draft details before sending. It will be posted on the server confirmation date.",
+  "حفظ مسودة حملة": "Save campaign draft",
+  "شرح توليدي محلي بالإنجليزية": "Local generative explanation in English",
+  "الشرح التوليدي اختياري ويستخدم النموذج الموجود مسبقاً على جهازك، وقد يخطئ. نتائج فحص التوافق البرمجية هي المرجع.": "Optional generative explanation uses an already-installed device model and can be wrong. The deterministic compatibility checks remain authoritative.",
   "تاريخ غير متاح": "Date unavailable",
   "النتيجة التراكمية المنسوبة": "Attributed cumulative result",
   "حسابات غير مسواة (مدين/دائن)": "Unresolved balances (debit/credit)",
