@@ -1,3 +1,4 @@
+import {validCentralDenials} from '../tenant/staff-permissions.mjs';
 import {validateBillingPage,validateBillingDetails} from '../design/commercial-billing.mjs';
 import {createAccountSecurity} from '../design/account-security.mjs';
 import {validateTheme,designResponse} from '../design/theme.mjs';
@@ -92,6 +93,8 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(!validRef(x.request)||!validPlan(x.code)||!['create','rename','delete'].includes(x.action)||!x.params||typeof x.reference!=='string'||!x.reference.trim()||x.reference.trim().length>200)throw Error('Invalid catalog action');
    const r=await rpc('mt_admin_plan_catalog_change',{req:x.request,action:x.action,code_value:x.code,expected:x.expected,params:x.params,proof:x.reference.trim()});if(r!==x.request)throw Error('Catalog action not confirmed');return r
   },
+  async centralActionsReview(){const r=await rpc('mt_admin_actions_review',{});if(!r||!Array.isArray(r.plans)||r.plans.length<3||r.plans.length>50||r.plans.some(x=>!validPlan(x.code)||typeof x.name!=='string'||!Number.isSafeInteger(x.revision)||x.revision<1||!validCentralDenials(x.denied))||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!validRef(x.request_id)||!validRef(x.actor)||!validPlan(x.plan_code)||typeof x.reference!=='string'||!validCentralDenials(x.before_denied)||!validCentralDenials(x.after_denied)))throw Error('Invalid central actions');return r},
+  async centralActionsChange(x){if(!validRef(x.request)||!validPlan(x.plan)||!Number.isSafeInteger(x.expected)||x.expected<1||!validCentralDenials(x.desired)||typeof x.reference!=='string'||!x.reference.trim()||x.reference.trim().length>200)throw Error('Invalid central action');const r=await rpc('mt_admin_actions_change',{req:x.request,plan:x.plan,expected:x.expected,desired:x.desired,proof:x.reference.trim()});if(r!==x.request)throw Error('Central action not confirmed');return r},
   async modulesReview(){
    const r=await rpc('mt_admin_modules_review',{});if(!r||!Array.isArray(r.plans)||r.plans.length<3||r.plans.length>50||r.plans.some(x=>!validPlan(x.code)||typeof x.name!=='string'||!Number.isSafeInteger(x.revision)||x.revision<1||!moduleFlags(x.flags))||!Array.isArray(r.history)||r.history.length>50||r.history.some(x=>!validRef(x.request_id)||!validRef(x.actor)||!validPlan(x.plan_code)||typeof x.reference!=='string'||!moduleFlags(x.before_flags)||!moduleFlags(x.after_flags)))throw Error('Invalid module policy');return r
   },
