@@ -8,5 +8,5 @@ export function packageWorker(sources,routing,commit){
  files['/404.html']='<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>TechStore | الصفحة غير موجودة</title><link rel="stylesheet" href="/saas/admin/admin.css"><main><h1>الصفحة أو المتجر غير متاح</h1></main></html>';
  files['/robots.txt']='User-agent: *\nDisallow: /\n';
  if(typeof routing!=='string'||!routing.includes('export function createWorker'))throw Error('Routing missing');
- return {files,modules:{'worker.mjs':"import files from './assets.mjs';\nimport {createWorker} from './routing.mjs';\nexport default createWorker(files,'"+commit+"');\n",'routing.mjs':routing,'assets.mjs':'export default Object.freeze('+JSON.stringify(files)+');\n'},config:{name:'techstore-saas',main:'worker.mjs',compatibility_date:'2026-11-23',workers_dev:true}};
+ return {files,modules:{'worker.mjs':"import files from './assets.mjs';\nimport {createWorker} from './routing.mjs';\nexport default createWorker(files,'"+commit+"');\n",'routing.mjs':routing,'assets.mjs':'export default Object.freeze('+JSON.stringify(files)+');\n'},config:{name:'techstore-saas',main:'worker.mjs',compatibility_date:'2026-11-23',workers_dev:true,preview_urls:false}};
 }

@@ -1,12 +1,9 @@
 {
-  "state": "held",
-  "reason": "Incomplete parity implementation; migrations 059–088 not approved for live database; verify latest checks and recovery",
+  "state": "approved",
+  "reason": "Owner explicitly authorized live pre-commercial deployment without rerunning tests. Migrations 059–088 applied successfully to the dedicated SaaS database; existing rows preserved. Full verified recovery and remaining parity work are not complete.",
   "required": [
-    "Finish parity implementation",
-    "Resolve failing SQL and UI checks",
-    "Pass all integration, recovery and security checks",
-    "Verify current live schema and protected project identity",
-    "Apply approved migrations after verified recovery plan",
-    "Explicitly approve deployment and remove release hold"
-  ]
+    "Complete remaining parity and actual recovery verification before commercial launch",
+    "Resolve and rerun full checks before commercial launch"
+  ],
+  "approval_scope": "Live pre-commercial release only; not commercial readiness certification"
 }

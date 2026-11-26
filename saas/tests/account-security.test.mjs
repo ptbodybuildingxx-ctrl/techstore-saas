@@ -13,7 +13,7 @@ test('first factor setup never exposes an administrative session and requires ve
   else if(path==='/auth/v1/user')result={id:fixtureUser,factors:existing||verified?[{id:fixtureFactor,status:'verified',factor_type:'totp'}]:[]};
   else if(path==='/auth/v1/factors')result={id:fixtureFactor,totp:{secret:'ABCDEFGHIJKLMNOP'}};
   else if(path.endsWith('/challenge'))result={id:fixtureChallenge};
-  else if(path.endsWith('/verify')){verified=true;result={access_token:'verified',expires_in:60}};
+  else if(path.endsWith('/verify')){verified=true;result={access_token:'verified',expires_in:60}}
   else if(path==='/auth/v1/logout')return {ok:true,status:204};
   else throw Error('Unexpected request '+path);
   return {ok:true,status:200,json:async()=>result};
