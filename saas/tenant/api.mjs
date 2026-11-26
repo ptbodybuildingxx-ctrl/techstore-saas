@@ -445,7 +445,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   },
   async licenseStatus(store){
    const r=await rpc('mt_license_status',{p_store:store},store);
-   if(!r||!['pending','trial','active','past_due','suspended','cancelled'].includes(r.state)||!['basic','business','pro'].includes(r.plan)||typeof r.write_entitlement!=='boolean'||typeof r.live_billing_enabled!=='boolean')throw Error('Invalid license status');return r;
+   if(!r||!['pending','trial','active','past_due','suspended','cancelled'].includes(r.state)||!['basic','business','pro'].includes(r.plan)||typeof r.write_entitlement!=='boolean'||typeof r.live_billing_enabled!=='boolean'||!['trial','manual','provider','none'].includes(r.license_source))throw Error('Invalid license status');return r;
   },
   async periodSnapshot(store,close){
    if(!isId(close))throw Error('Invalid period');const r=await rpc('mt_period_snapshot',{p_store:store,p_close:close},store);
