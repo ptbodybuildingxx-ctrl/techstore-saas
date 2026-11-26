@@ -380,3 +380,5 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;line
 #specEditor{width:min(720px,94vw);max-height:85dvh;overflow:auto;border:1px solid var(--line);border-radius:18px;padding:24px;background:var(--design-surface,var(--panel));color:var(--design-text,var(--aurora-ink))}#specEditor::backdrop{background:#101a3577}.spec-field{display:grid;grid-template-columns:1fr 1.3fr auto;gap:8px;margin:8px 0}.spec-field input{width:100%;min-width:0}.shop-product-name details{font-size:.85rem;font-weight:400;margin-top:8px}.shop-product-name dt{font-weight:600}.shop-product-name dd{margin:0 0 5px;overflow-wrap:anywhere}@media(max-width:540px){.spec-field{grid-template-columns:1fr 1fr}.spec-field button{grid-column:1/-1}}
 
 #workAlerts .metric{text-align:start;width:100%}#workAlerts h3{margin:12px 0}#receiptConfig input[type=checkbox]{width:auto}#buildPanel{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:12px}#buildPanel li{margin:6px 0}.storefront-page .shop-add~button{width:100%;margin-top:5px}
+
+.storefront-page .buyer-watch{width:100%;margin-top:5px}#inboxPanel button{margin:4px}

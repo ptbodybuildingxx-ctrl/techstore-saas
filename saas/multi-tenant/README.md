@@ -74,3 +74,6 @@ Branch balances partition existing physical stock; transfers are idempotent and 
 
 ## Branch revenue and repair receipts (047)
 Owner-only, original sale and return records aggregated by branch/currency and Damascus calendar dates. This is net sales revenue, not profit; no branch-specific expenses or inventory valuation. Repair receipts read original parts, service charges, warranty and issuance identity from the authoritative records.
+
+## Buyer in-app notifications (048)
+Live-account scoped inbox records order state transitions and one-shot price-drop/restock watches for listed products, with read state and bounded pages. Watch caps: 30 per buyer/store and 1000 per store. No email, SMS or push transport, no real-time websocket delivery; refresh reads the persisted inbox. Old orders are not backfilled.

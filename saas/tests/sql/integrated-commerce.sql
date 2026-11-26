@@ -27,6 +27,10 @@ begin perform public.mt_set_product_specs(other,pr,'{}');raise exception 'Cross 
 
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
 ord:=public.mt_delivery_order('a-'||tag,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',pr,'units',2,'expected_price_minor',5000)),'Fixture address','000000000');
+if jsonb_array_length(public.mt_buyer_inbox('a-'||tag))<>1 then raise exception 'Order notification missing';end if;
+if not public.mt_watch_product('a-'||tag,pr,'USD','price_drop',true) then raise exception 'Watch failed';end if;
+if not public.mt_buyer_read('a-'||tag,(public.mt_buyer_inbox('a-'||tag)->0->>'id')::uuid) then raise exception 'Read state failed';end if;
+
 if exists(select 1 from public.mt_list_purchase_batches(t)) then raise exception 'Purchase leaked';end if;
 perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
 perform public.mt_receipt_config(t,jsonb_build_object('brand','Original identity','phone','123','address','Fixture','sale_title','Sale','repair_title','Repair','footer','Thanks','format','thermal','logo',''));
@@ -139,6 +143,11 @@ if not public.mt_domain_disable(t,(v->>'id')::uuid) then raise exception 'Domain
 perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
 begin perform public.mt_design_change(t,1,1,'publish');raise exception 'Owner accessed central design';exception when insufficient_privilege then null;end;
 begin perform public.mt_domain_request(t,gen_random_uuid(),'another.example.com');raise exception 'Owner accessed central domains';exception when insufficient_privilege then null;end;
+perform public.mt_set_currency_price(t,pr,'USD',4000);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if not exists(select 1 from jsonb_array_elements(public.mt_buyer_inbox('a-'||tag)) x where x->>'kind'='price_drop') then raise exception 'Price notification missing';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+if jsonb_array_length(public.mt_buyer_inbox('a-'||tag))<>0 then raise exception 'Buyer inbox leaked';end if;
 -- Branch transfers, cash sale, return and cross-tenant denial.
 declare branch uuid;branch_product uuid;branch_request uuid:=gen_random_uuid();branch_sale uuid;branch_move uuid:=gen_random_uuid();begin
 branch:=public.mt_branch_create(t,'Fixture branch');branch_product:=public.mt_add_product(t,'BRANCH-FIXTURE','Branch fixture');
