@@ -113,3 +113,6 @@ Owner-only create/edit/duplicate metadata, public name/English name/category/bra
 
 ## Storefront and POS availability (060)
 Listed, priced products remain visible when unavailable; boolean availability subtracts branch allocations and delivery reservations, without exposing quantities. Category choices populate from the public catalog and submit the existing search (not an exact category filter). Exact POS SKU scanning supports keyboard-wedge readers and validates branch availability. Existing order/sale engines still validate on submission; a catalog display is not a stock reservation. No camera scanning or label printing yet.
+
+## Repair customer tracking (061)
+New repair tickets capture receipt identity and a random bearer tracking code. Staff can print intake receipt, record bounded private before/after JPEG evidence and technical activity notes, and issue versioned cost offers. Public shop tracking reveals device description, state, and latest cost offer only to a holder of the code; approval/rejection is recorded but does not itself change repair state or block checkout. No historical branding is fabricated, no public evidence photos, no legal digital signature. Historical tickets do not automatically get tracking codes.
