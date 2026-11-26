@@ -1,3 +1,4 @@
+import {createBranchFinanceReview,createSyTaxPanel} from './finance-review.mjs';
 import {createRepairCasePanel,createRepairWarrantyPanel} from './repair-case.mjs';
 import {createStaffPermissionsPanel} from './staff-permissions.mjs';
 import {loadMembershipPricing} from './membership-pricing.mjs';
@@ -103,6 +104,7 @@ export function createOperationsPanel({api,run,showRepairReceipt,refresh,blocked
  report.append(node('h4',tr('توثيق اعتماد أرصدة الفروع')),node('p',tr('اعتماد لحظي بعد الجرد والمطابقة، لا يعد تدقيقاً قانونياً ولا يغير الأرصدة التاريخية.')),openingButton,openingLatest,openingArea);
  if(write)report.append(form([['reference','مرجع الجرد والمطابقة','text']],'اعتماد الأرصدة المطابقة',v=>{if(!navigator.onLine||queuedOps())throw Error('Online confirmation required');if(!confirm(tr('أؤكد الجرد الفعلي ومطابقة النقد والذمم مع المستندات.')))return;return start({kind:'branchOpeningConfirm',reference:v.reference,confirm:true})}));
  const allocationArea=node('div'),allocationNext=node('button',tr('التالي')),allocationFirst=node('button',tr('الأولى'));allocationNext.type=allocationFirst.type='button';allocationNext.hidden=true;let allocationCursor=null;
+ report.append(createBranchFinanceReview({api,node,form,table,money,minor,run,store:s.id,active:()=>store?.id===s.id,write,blocked:()=>blocked()||!!pending||!!queuedOps()}));
  const allocationAccounts=['rent_expense','payroll_expense','utilities_expense','other_operating_expense','income_tax_expense','expense_unclassified'].map(k=>[k,k]);
  async function allocationPage(after){const items=await api.branchExpenseList(s.id,after?.created_at??null,after?.request_id??null);if(store?.id!==s.id)return;allocationCursor=items.length===50?items.at(-1):null;allocationNext.hidden=!allocationCursor;allocationArea.replaceChildren(table(['الفرع','الحساب','المبلغ','المرجع','التاريخ','الحالة','المعرّف'],items.map(x=>[branches.find(b=>b[0]===x.branch_id)?.[1]||x.branch_id,tr(x.account),money(x.amount_minor,x.currency),x.reference,x.created_at,tr(x.reverses?'قيد عكسي':x.reversed?'معكوس':'موزع'),x.request_id])))}
  allocationFirst.onclick=()=>run(()=>allocationPage(null));allocationNext.onclick=()=>run(()=>allocationPage(allocationCursor));
@@ -198,6 +200,7 @@ const reconcile=node('button','مطابقة الصندوق مع سجل الحر�
  const tax=await listPanel('الضرائب الموثقة على المبيعات والصيانة','indirect_tax_entries',['النوع','معرّف المستند','الفاتورة الأصلية','الإجمالي','النسبة','الضريبة','المستند','البيان'],x=>[x.kind,x.source_id,x.invoice_id,money(x.gross_minor,x.currency),(x.rate_bps/100).toFixed(2)+'%',money(x.tax_minor,x.currency),x.reference,x.note]);
  tax.append(node('p','النسبة تحدد من المستند المعتمد لكل فاتورة شاملة للضريبة؛ أدخل 0 فقط للإعفاء الموثق. المرتجعات تستخدم نسبة الفاتورة الأصلية وتراعي التقريب التراكمي. هذا سجل ضريبة مخرجات وليس إقرار VAT أو نظام خصم ضريبة المدخلات. سوريا: رسم الإنفاق الاستهلاكي ليس خصماً عاماً للمدخلات؛ لا تخصم ضريبة المشتريات تلقائياً ولا تعتبر سلفة الاستيراد ضريبة قيمة مضافة. استخدم مستند التكليف النافذ المعتمد لدى محاسبك.'));
  const taxSummary=await api.indirectTaxSummary(s.id);tax.append(table(['العملة','ضريبة مثبتة','معكوسة','مسددة','الرصيد','مستندات غير مصنفة'],taxSummary.map(x=>[x.currency,...['assessed','reversed','paid','balance'].map(k=>money(x[k],x.currency)),x.unclassified_documents])));if(taxSummary.some(x=>x.unclassified_documents>0))tax.append(node('p','المستندات غير المصنفة لا تعني أنها معفاة من الضريبة.'));
+ tax.append(createSyTaxPanel({api,node,form,table,money,minor,run,store:s.id,active:()=>store?.id===s.id,write,blocked:()=>blocked()||!!pending||!!queuedOps()}));
  const kinds=[['sale','فاتورة بيع'],['repair','فاتورة صيانة'],['sale_return','مرتجع بيع'],['repair_refund','مرتجع صيانة']];
  function taxRate(v){if(!['sale','repair'].includes(v.taxKind))return null;if(!/^\d{1,3}(\.\d{1,2})?$/.test(v.percent.trim()))throw Error('Enter documented rate');return minor(v.percent,true)}
  const taxPreview=node('div');
