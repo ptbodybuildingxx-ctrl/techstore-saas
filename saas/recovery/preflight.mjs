@@ -21,18 +21,18 @@ function tar(args){
  });
 }
 async function archive(path,destination,kind){
- const rows=(await tar(['-tvf',path,'--numeric-owner','--quoting-style=literal'])).trimEnd().split('\n');
+ const rows=(await tar(['-tvf',path,'--numeric-owner','--quoting-style=escape'])).trimEnd().split('\n');
  const allowedDb=new Set(['roles.sql','schema.sql','data.sql','managed-schema-review.sql']);
  const names=new Set();
  for(const row of rows){
-  const name=row.slice(row.lastIndexOf(' ')+1),clean=name.startsWith('./')?name.slice(2):name;
+  const match=/^[-d][rwxStTs-]{9}\s+\d+\/\d+\s+\d+\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\s+(\S+)$/.exec(row);assert(match,'Unexpected archive listing');const name=match[1],clean=name.startsWith('./')?name.slice(2):name;
   if(kind==='storage'&&name==='./'&&row[0]==='d')continue;
   assert(row[0]==='-'&&!names.has(clean)&&(kind==='db'?allowedDb.has(clean):clean==='inventory.json'||hex(clean,64)),'Unsafe or unexpected archive member');
   names.add(clean);
  }
  assert(kind==='db'?names.size===4:names.has('inventory.json')&&names.size<=100001,'Incomplete archive');
  await mkdir(destination,{mode:0o700});
- await tar(['-xf',path,'-C',destination,'--no-same-owner','--no-same-permissions']);
+ await tar(['-xf',path,'-C',destination,'--no-same-owner','--no-same-permissions','--no-overwrite-dir']);
  const actual=await readdir(destination);
  assert(actual.length===names.size&&actual.every(x=>names.has(x)),'Unexpected extracted members');
  for(const name of actual){const p=join(destination,name),s=await lstat(p);assert(s.isFile()&&!s.isSymbolicLink()&&await realpath(p)===p,'Nonregular extracted artifact')}

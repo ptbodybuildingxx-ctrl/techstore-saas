@@ -1,5 +1,16 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "النتيجة المحاسبية الأولية لكل فرع": "Provisional accounting result by branch",
+  "هذه نتيجة القيود المنسوبة فقط، وليست صافي ربح نهائياً. التكاليف غير المسجلة والمصروفات المركزية والأرصدة الافتتاحية قد تغير النتيجة.": "Attributed postings only, not final net profit. Unrecorded costs, central expenses and opening balances may change the result.",
+  "قبل الضريبة المسجلة": "Before recorded tax",
+  "ضريبة الدخل المسجلة": "Recorded income tax",
+  "بعد الضريبة المسجلة": "After recorded tax",
+  "أرصدة الحسابات المنسوبة للفروع": "Attributed branch account balances",
+  "الأصول المسجلة": "Recorded assets",
+  "الالتزامات المسجلة": "Recorded liabilities",
+  "حسابات غير مسواة": "Unresolved accounts",
+  "رأس المال": "Capital",
+  "الإيرادات": "Revenue",
   "أضف تطبيق مصادقة بديلاً وفعّله قبل إزالة التطبيق الأخير.": "Add and verify a replacement authenticator before removing the last one.",
   "حذف آخر مسودة غير مرسلة": "Remove last unsent draft",
   "المسودة التي جرت محاولة إرسالها لا يمكن حذفها محلياً؛ قد تكون معتمدة في الخادم.": "An attempted draft cannot be removed locally; it may already be posted on the server.",
