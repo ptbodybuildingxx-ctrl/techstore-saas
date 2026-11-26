@@ -282,4 +282,18 @@ revoke all on function tenant_private.confirm_shop_order(uuid,uuid,text),public.
 grant execute on function tenant_private.confirm_shop_order(uuid,uuid,text),public.mt_confirm_shop_order(uuid,uuid,text) to authenticated;
 revoke all on function tenant_private.shop_order_details(uuid,uuid,text),public.mt_shop_order_details(uuid,uuid,text) from public,anon,authenticated;
 grant execute on function tenant_private.shop_order_details(uuid,uuid,text),public.mt_shop_order_details(uuid,uuid,text) to authenticated;
+CREATE OR REPLACE FUNCTION tenant_private.my_online_orders(p_slug text, p_after uuid, p_limit integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare r jsonb;t uuid;
+begin
+ if not coalesce(saas_private.live_session(),false) then raise exception 'Live account required' using errcode='42501';end if;
+ if p_slug is null or p_slug !~ '^[a-z][a-z0-9-]{2,39}$' or p_limit is null or p_limit not between 1 and 50 then raise exception 'Invalid order page' using errcode='22023';end if;
+ select id into t from public.saas_stores where slug=p_slug;
+ select coalesce(jsonb_agg(to_jsonb(x) order by id),'[]'::jsonb) into r from (select store_id,id,request_id,currency,total_minor,state,sale_id,created_at,delivery_method,delivery_state,tracking_reference,exists(select 1 from tenant_private.shop_order_confirmations c where c.store_id=mt_online_orders.store_id and c.channel='online' and c.order_id=mt_online_orders.id) as confirmed from public.mt_online_orders where store_id=t and buyer=auth.uid() and (p_after is null or id>p_after) order by id limit p_limit) x;return r;
+end $function$
+;
 commit;
