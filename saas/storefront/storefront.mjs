@@ -12,7 +12,7 @@ import {createStorefrontApi,shopSlugFromPath} from './api.mjs';
 initLocale();
 const el=id=>document.getElementById(id),message=t=>el('message').textContent=t;
 if(location.hostname.endsWith('.github.io')){message('المعاينة فقط؛ لا تسجيل دخول على GitHub Pages.');throw Error('Preview only')}
-const api=createStorefrontApi(configuration),cart=new Map(),comparison=new Map(),build=new Map();let membershipInfo=null,catalogQuery='',inboxCursor=null,library=null,reviewProduct=null,buildPending=null;let displayedProducts=[],displayedSite=emptySite(),displayedMedia=null;let slug=null,currency='USD',cursor=null,orderCursor=null,busy=false,attempt=null,deliveryAvailable=false,coupon=null,fixedSlug=null,guestEnabled=false;
+const api=createStorefrontApi(configuration),cart=new Map(),comparison=new Map(),build=new Map();let repairClaimAttempt=null,membershipInfo=null,catalogQuery='',inboxCursor=null,library=null,reviewProduct=null,buildPending=null;let displayedProducts=[],displayedSite=emptySite(),displayedMedia=null;let slug=null,currency='USD',cursor=null,orderCursor=null,busy=false,attempt=null,deliveryAvailable=false,coupon=null,fixedSlug=null,guestEnabled=false;
 const accountSecurity=mountAccountSecurity(el('accountSecurity'),{api,run,message:t=>{clearBuyerSession();message(t)}});
 const node=(tag,t)=>{const x=document.createElement(tag);x.textContent=t;return x};
 const fmt=(n,c)=>(n/100).toFixed(2)+' '+c;
@@ -95,7 +95,6 @@ fixedSlug=shopSlugFromPath(location.pathname);const customRouting=configuration.
 if(fixedSlug){el('shopSelector').hidden=true;el('catalog').elements.slug.value=fixedSlug;}el('app').hidden=false;controls();el('customerAuth').hidden=!api.customerAuthEnabled();const query=new URLSearchParams(location.search),initialShop=fixedSlug||query.get('shop'),initialCurrency=query.get('currency');if(initialShop&&/^[a-z][a-z0-9-]{2,39}$/.test(initialShop)){slug=initialShop;currency=['USD','EUR','SYP'].includes(initialCurrency)?initialCurrency:'USD';el('catalog').elements.slug.value=slug;el('catalog').elements.currency.value=currency;run(()=>catalog())}
 
 const repairLabels={received:'تم الاستلام',diagnosing:'قيد الفحص',repairing:'قيد الإصلاح',ready:'جاهز للاستلام',delivered:'تم التسليم',cancelled:'ملغى'};
-let repairClaimAttempt=null;
 async function showRepairWarranty(shop,code,result){
  const w=await api.repairBuyerWarranty(shop,code);if(shop!==slug||!api.signedIn()||!w)return;
  const labels={active:'ضمان ساري',expired:'ضمان منتهي',refunded:'فاتورة مستردة بالكامل',none:'بلا ضمان'},claimLabels={open:'مفتوحة',accepted:'مقبول',rejected:'مرفوض',resolved:'مغلقة بعد المعالجة'};
