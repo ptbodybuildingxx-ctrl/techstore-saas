@@ -1,4 +1,4 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {createTenantApi} from '../tenant/api.mjs';
+import {test} from 'node:test';import assert from 'node:assert/strict';import {createTenantApi} from './auth-fixture.mjs';
 const a='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',id='cccccccc-cccc-cccc-cccc-cccccccccccc';
 test('operational API rejects out-of-scope procurement, staff and repair requests',async()=>{
  let result=id;const calls=[];const api=createTenantApi({url:'https://mezsyzdieqmqulddcrtg.supabase.co',publishableKey:'sb_publishable_fixturefixturefixture',clock:()=>0,fetcher:async(url,opts)=>{calls.push(url);return {ok:true,status:200,json:async()=>url.includes('/auth/v1/token')?{access_token:'fixture',expires_in:60}:url.endsWith('mt_my_stores')?[{id:a,name:'A',slug:'shop-a',role:'owner',can_write:true}]:result}}});

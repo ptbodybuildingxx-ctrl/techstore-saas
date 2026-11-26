@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createTenantApi} from '../tenant/api.mjs';
+import {createTenantApi} from './auth-fixture.mjs';
 const a='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',p='cccccccc-cccc-cccc-cccc-cccccccccccc',q='dddddddd-dddd-dddd-dddd-dddddddddddd',r='eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
 function fixture(){const calls=[];let result=r;const fetcher=async(u,o)=>{const body=o.body?JSON.parse(o.body):null;calls.push({u,body});return {ok:true,status:200,json:async()=>u.includes('/auth/v1/token')?{access_token:'fixture',expires_in:60}:u.endsWith('mt_my_stores')?[{id:a,name:'Shop',slug:'shop',role:'owner',can_write:true}]:result}};return {api:createTenantApi({url:'https://mezsyzdieqmqulddcrtg.supabase.co',publishableKey:'sb_publishable_fixturefixturefixture',fetcher,clock:()=>0}),calls,set:v=>{result=v}}}
 test('purchase and supplier payment preserve request identity and reject invalid or cross tenant writes',async()=>{const f=fixture();await f.api.signIn('fixture@example.invalid','pass');const x={kind:'purchase',requestId:r,supplier:p,product:q,currency:'USD',units:3,cost:2000,paid:1000,note:'Fixture'};assert.equal(await f.api.operation(a,x),r);const body=f.calls.at(-1).body;await f.api.operation(a,x);assert.deepEqual(f.calls.at(-1).body,body);await assert.rejects(f.api.operation(a,{...x,paid:6001}));await assert.rejects(f.api.operation(b,x));assert.equal(await f.api.operation(a,{kind:'supplierPayment',requestId:r,purchase:p,currency:'USD',amount:100}),r)});

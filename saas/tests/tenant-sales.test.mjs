@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createTenantApi,saleAttempt} from '../tenant/api.mjs';
+import {createTenantApi} from './auth-fixture.mjs';import {saleAttempt} from '../tenant/api.mjs';
 const url='https://mezsyzdieqmqulddcrtg.supabase.co',key='sb_publishable_fixturefixturefixture';
 const a='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',p='cccccccc-cccc-cccc-cccc-cccccccccccc',q='dddddddd-dddd-dddd-dddd-dddddddddddd',r='eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
 const lines=[{product_id:p,units:2,expected_price_minor:1250},{product_id:q,units:1,expected_price_minor:100}];
