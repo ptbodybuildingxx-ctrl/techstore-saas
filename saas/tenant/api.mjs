@@ -74,6 +74,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   async mfaVerify(id,code){await verifyFactor(id,code);return true},
   async mfaRemove(id){if(!isId(id))throw Error('Invalid factor');await request('/auth/v1/factors/'+id,undefined,liveToken(),'DELETE')},
   async sessions(store){const r=await rpc('mt_my_staff_sessions',{p_store:store},store);if(!Array.isArray(r)||r.length>50||r.some(x=>!isId(x.id)||typeof x.current!=='boolean'||typeof x.device!=='string'))throw Error('Invalid sessions');return r},
+  async revokeSession(id){if(!isId(id)||await rpc('mt_account_revoke_session',{p_session:id})!==true)throw Error('Revocation not confirmed')},
   async signOutOthers(){await request('/auth/v1/logout?scope=others',undefined,liveToken())},
   async businessExport(store){const r=await rpc('mt_business_export',{p_store:store},store);if(!r||r.version!==1||r.scope!=='business_export_only'||r.store!==store||!int(r.rows,0,20000)||!r.tables||typeof r.tables!=='object'||Object.values(r.tables).some(x=>!Array.isArray(x)||x.length>5000)||Object.values(r.tables).reduce((n,x)=>n+x.length,0)!==r.rows)throw Error('Invalid export');return r},
   async staffSelf(store){const r=await rpc('mt_staff_self',{p_store:store},store);if(!r||!isId(r.id)||!['owner','cashier','stock','tech'].includes(r.role)||typeof r.display_name!=='string'||typeof r.photo!=='string'||r.photo.length>32000)throw Error('Invalid staff identity');return r},

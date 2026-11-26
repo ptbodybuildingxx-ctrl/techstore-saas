@@ -1,3 +1,4 @@
+import {createAccountSecurity} from '../design/account-security.mjs';
 import {validateTheme,validateSpecs,validateCatalogProfile,validCatalogPhoto} from '../design/theme.mjs';
 const validId=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 const currency=x=>['SYP','USD','EUR'].includes(x);
@@ -14,13 +15,17 @@ export function createStorefrontApi({url,publishableKey,fetcher=fetch,clock=Date
  const emailValue=x=>{if(typeof x!=='string'||x.trim().length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(x.trim()))throw Error('Invalid email');return x.trim()};
  const passwordValue=x=>{if(typeof x!=='string'||x.length<12||x.length>128)throw Error('Invalid password');return x};
  async function runEmailFlow(action){if(customerAuthEnabled!==true)throw Error('Customer email flows disabled');if(authBusy)throw Error('Customer authentication in progress');if(session&&session.expires<=clock()+5000)clear();if(session)throw Error('Sign out first');authBusy=true;try{return await action()}finally{authBusy=false}}
+ const token=()=>{if(!session||session.expires<=clock()+5000)throw Error('Sign in again');return session.token};
+ const replaceSession=r=>{if(typeof r?.access_token!=='string'||!r.access_token||!Number.isFinite(r.expires_in)||r.expires_in<=0)throw Error('Invalid session');session={token:r.access_token,expires:clock()+r.expires_in*1000}};
+ const security=createAccountSecurity({request,token,replaceSession,rpc:(name,args)=>rpc(name,args,true)});
  return {
+ security,
  customerAuthEnabled(){return customerAuthEnabled===true},
  async signUp(email,password){return runEmailFlow(async()=>{const r=await request('/auth/v1/signup',{email:emailValue(email),password:passwordValue(password)});if(r?.access_token){await request('/auth/v1/logout?scope=local',undefined,r.access_token);throw Error('Email confirmation must be enabled')}return true})},
  async confirmEmail(email,code){return runEmailFlow(async()=>{if(typeof code!=='string'||!/^\d{6,10}$/.test(code))throw Error('Invalid code');const r=await request('/auth/v1/verify',{email:emailValue(email),token:code,type:'email'});if(typeof r?.access_token!=='string'||!r.access_token)throw Error('Email not confirmed');await request('/auth/v1/logout?scope=local',undefined,r.access_token);return true})},
  async requestRecovery(email){return runEmailFlow(async()=>{await request('/auth/v1/recover',{email:emailValue(email)});return true})},
  async resetPassword(email,code,password){return runEmailFlow(async()=>{if(typeof code!=='string'||!/^\d{6,10}$/.test(code))throw Error('Invalid code');const value=passwordValue(password);const r=await request('/auth/v1/verify',{email:emailValue(email),token:code,type:'recovery'});if(typeof r?.access_token!=='string'||!r.access_token)throw Error('Recovery not verified');try{await request('/auth/v1/user',{password:value},r.access_token,'PUT')}finally{await request('/auth/v1/logout?scope=global',undefined,r.access_token)}return true})},
- async signIn(email,password){if(authBusy)throw Error('Customer authentication in progress');authBusy=true;try{clear();const e=epoch;if(typeof email!=='string'||!email.trim()||typeof password!=='string'||!password)throw Error('Credentials required');const r=await request('/auth/v1/token?grant_type=password',{email:email.trim(),password});if(e!==epoch||typeof r?.access_token!=='string'||!r.access_token||!Number.isFinite(r.expires_in)||r.expires_in<=0)throw Error('Invalid session');session={token:r.access_token,expires:clock()+r.expires_in*1000}}finally{authBusy=false}},
+ async signIn(email,password,codeProvider=null){if(authBusy)throw Error('Customer authentication in progress');authBusy=true;try{clear();const e=epoch;if(typeof email!=='string'||!email.trim()||typeof password!=='string'||!password)throw Error('Credentials required');const r=await request('/auth/v1/token?grant_type=password',{email:email.trim(),password});if(e!==epoch||typeof r?.access_token!=='string'||!r.access_token||!Number.isFinite(r.expires_in)||r.expires_in<=0)throw Error('Invalid session');replaceSession(r);try{await security.authenticate(codeProvider)}catch(err){const old=session;clear();if(old)try{await request('/auth/v1/logout?scope=local',undefined,old.token)}catch{}throw err}}finally{authBusy=false}},
  signedIn(){return !!session&&session.expires>clock()+5000},
  async signOut(){const s=session;clear();if(s)await request('/auth/v1/logout?scope=local',undefined,s.token)},
  async design(s){if(!slug(s))throw Error('Invalid shop');const r=await rpc('mt_public_design',{p_slug:s});return r===null?null:validateTheme(r)},

@@ -179,3 +179,6 @@ Explicit online preparation captures up to 100 priced catalog rows, one selected
 
 ## Branch bank accounts (079)
 New bank accounts are assigned to main or an existing branch at creation; old accounts stay central. Branch accounts require activated branch cashboxes. Deferred cash posting uses the bank account's location, and consolidated journal classification remains unchanged. Branch balance report adds bank balance, known FIFO valuation in acquisition currency, and unknown-cost units (not treated as zero). No direct bank-to-bank movement or complete independent branch general ledger; actual bank statement reconciliation and final tests still required.
+
+## Shared account session security (080)
+Development only. Global live-session predicate rejects revoked application sessions and AAL1 when verified TOTP exists. Administrator continues to require AAL2 and initial enrollment. Buyer and admin clients share TOTP challenge and settings; staff can revoke a selected other session. Revocation denies application access through the common predicate, not managed Auth refresh tokens or other projects. Audit all protected RPCs, MFA setup/recovery and cross-account isolation before release. No live migration authorized.
