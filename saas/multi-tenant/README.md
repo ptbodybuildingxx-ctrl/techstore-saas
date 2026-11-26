@@ -218,3 +218,6 @@ Online, guest and atomic trade-in sales use the canonical settlement functions a
 
 ## Buyer invoices and product claims (097)
 Authenticated buyers can read invoices only for their own fulfilled orders. Product warranty claims reserve active covered quantities, recheck returns at acceptance, and preserve transition history. Claims are not financial documents. No tests run.
+
+## POS loyalty (098)
+Buyer-authorized one-use cash POS code, exact gross amount/currency, verified current reward policy and branch stock. Net prices feed the existing sale, cash receipt, stock event and FIFO triggers. Buyers can retrieve linked POS invoices and file product claims. Online and POS points share one balance; no double-spend under tenant lock. Online only for authorization and commitment. No tests run.
