@@ -26,7 +26,7 @@ export async function loadStaffRegister({api,store,section,node,table,run,money,
   area.replaceChildren(table(['اسم الموظف','معرّف الحساب','الدور','الحالة','الفرع','الراتب الشهري','العمولة','حالة الدوام','آخر حضور','آخر انصراف','الإجراء'],rows.map(x=>{
    const button=node('button',tr('عرض سجل الموظف'));button.type='button';
    button.onclick=()=>run(async()=>{if(valid())await onSelect(x.user_id)});
-   return [x.display_name||'—',x.user_id,tr(roleNames[x.role]),tr(x.active?'نشط':'موقوف'),x.branch_name||tr('كل الفروع والمستودع الرئيسي'),x.currency&&x.salary_minor!=null?money(x.salary_minor,x.currency):'—',x.commission_bps!=null?x.commission_bps/100+'%':'—',typeof x.clock_open==='boolean'?tr(x.clock_open?'مفتوح':'لا يوجد دوام مفتوح'):'—',staffDate(x.last_started_at),staffDate(x.last_ended_at),button];
+   return [x.display_name||'—',x.user_id,tr(roleNames[x.role]),tr(x.active?'نشط':'موقوف'),Object.hasOwn(x,'branch_name')?(x.branch_name||tr('كل الفروع والمستودع الرئيسي')):'—',x.currency&&x.salary_minor!=null?money(x.salary_minor,x.currency):'—',x.commission_bps!=null?x.commission_bps/100+'%':'—',typeof x.clock_open==='boolean'?tr(x.clock_open?'مفتوح':'لا يوجد دوام مفتوح'):'—',staffDate(x.last_started_at),staffDate(x.last_ended_at),button];
   })));
   status.textContent=tr('عدد الموظفين في الصفحة')+': '+rows.length;
   first.disabled=!after;next.hidden=!cursor;exp.disabled=!rows.length;
