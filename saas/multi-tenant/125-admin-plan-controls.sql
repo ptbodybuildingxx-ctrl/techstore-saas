@@ -126,9 +126,9 @@ revoke all on function tenant_private.admin_plan_policy_review(),public.mt_admin
 grant execute on function tenant_private.admin_plan_policy_review(),public.mt_admin_plan_policy_review(),tenant_private.admin_plan_policy_change(uuid,text,bigint,jsonb,text),public.mt_admin_plan_policy_change(uuid,text,bigint,jsonb,text) to authenticated;
 
 -- Public status is only a shop's ability to accept new orders, not its subscription details.
-create function tenant_private.shop_order_intake(p_slug text) returns boolean language sql stable security definer set search_path='' as $
+create function tenant_private.shop_order_intake(p_slug text) returns boolean language sql stable security definer set search_path='' as $$
  select exists(select 1 from public.saas_stores s where s.slug=p_slug and tenant_private.storefront_active(s.id) and tenant_private.plan_shop_feature(s.id,'orders'))
-$;
+$$;
 revoke all on function tenant_private.shop_order_intake(text) from public,anon,authenticated;
 grant execute on function tenant_private.shop_order_intake(text) to anon,authenticated;
 create function public.mt_shop_order_intake(p_slug text) returns boolean language sql stable set search_path='' as $$
