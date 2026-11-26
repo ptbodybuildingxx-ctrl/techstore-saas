@@ -372,3 +372,5 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;line
 
 /* Aurora section finder and public catalog filters */
 .workspace-search{width:100%;min-width:0;margin-bottom:6px}.workspace-nav button{display:flex;align-items:center;gap:10px}.workspace-icon{width:24px;flex:0 0 24px;text-align:center;font-size:1.1rem;color:inherit}.catalog-tools{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin:12px 0}.catalog-tools label{display:grid;gap:6px;min-width:0}.catalog-tools input,.catalog-tools select{width:100%;min-width:0}@media(max-width:850px){.workspace-search{width:160px;flex:0 0 160px;margin:0}}@media(max-width:540px){.catalog-tools{grid-template-columns:1fr}}
+
+.pos-search{display:grid;gap:6px;max-width:460px;margin-bottom:10px}.pos-search input{width:100%}.pos-search + p{font-size:.85rem}
