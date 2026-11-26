@@ -1,5 +1,17 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "طريقة العرض": "Display mode",
+  "تلقائي": "Auto",
+  "حاسوب": "Desktop",
+  "موبايل": "Mobile",
+  "لا توجد صورة للمنتج": "No product image",
+  "إزالة من المقارنة": "Remove from comparison",
+  "أضف للمقارنة": "Compare",
+  "إزالة من التجميعة": "Remove from build",
+  "أضف للتجميعة": "Add to build",
+  "تنبيهات المنتج": "Product alerts",
+  "التفاصيل": "Details",
+  "عرض التفاصيل": "View details",
   "توزيع المصروفات المركزية": "Central expense allocation",
   "التوزيع إداري فقط ضمن الرصيد المتاح للشهر المفتوح، ولا يحرك النقد أو الالتزام الضريبي. القيد العكسي يسجل بتاريخ اليوم ولا يغير القيود المغلقة.": "Management allocation only, limited to available expense in the open month. No cash or tax liability movement. Reversals post today without changing closed periods.",
   "مرجع التوزيع": "Allocation reference",

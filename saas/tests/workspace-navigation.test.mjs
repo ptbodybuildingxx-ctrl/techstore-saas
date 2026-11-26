@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {tenantGroups,adminGroups,operationGroup,matchesGroup,labels} from '../design/workspace.mjs';
+import {tenantGroups,adminGroups,operationGroup,matchesGroup,labels,effectiveWorkspaceLayout} from '../design/workspace.mjs';
 test('role menus expose only assigned sections',()=>{assert.deepEqual(tenantGroups('cashier'),['sales']);assert.deepEqual(tenantGroups('stock'),['inventory']);assert.deepEqual(tenantGroups('tech'),['repairs']);assert.deepEqual(tenantGroups('king'),[]);assert.deepEqual(tenantGroups('__proto__'),[]);assert.equal(tenantGroups('owner').length,10);assert.equal(adminGroups.length,7);assert.ok(tenantGroups('owner').every(k=>Object.hasOwn(labels,k)));assert.equal(matchesGroup('inventory sales','sales'),true);assert.equal(matchesGroup('inventory sales','finance'),false);});
 test('every dynamic operation has an explicit group',async()=>{const s=await readFile(new URL('../tenant/operations.mjs',import.meta.url),'utf8');const titles=[...s.matchAll(/(?:section|listPanel)\('([^']+)'/g)].map(m=>m[1]);assert.equal(titles.length,27);assert.equal(new Set(titles).size,titles.length);for(const t of titles)assert.ok(tenantGroups('owner').includes(operationGroup(t)));assert.throws(()=>operationGroup('unknown'));});
+
+test('workspace layout follows explicit preference and original auto breakpoint behavior',()=>{assert.equal(effectiveWorkspaceLayout('auto',true),'mobile');assert.equal(effectiveWorkspaceLayout('auto',false),'desktop');assert.equal(effectiveWorkspaceLayout('desktop',true),'desktop');assert.equal(effectiveWorkspaceLayout('mobile',false),'mobile');});
