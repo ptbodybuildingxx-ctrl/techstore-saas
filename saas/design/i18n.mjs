@@ -1,5 +1,7 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "راجع حالة الإجراء قبل إعادة المحاولة": "Review action status before retrying",
+  "لم يظهر تأكيد لهذا المرجع في أحدث السجلات. راجع الحالة قبل بدء إجراء جديد.": "This reference was not confirmed in recent records. Review the current state before starting another action.",
   "إعادة تأكيد إجراء الهوية": "Retry identity action",
   "أعد تأكيد الإجراء السابق أولاً": "Confirm the previous action first",
   "هذا الإجراء يحتاج اتصالاً مباشراً": "This action requires a live connection",
