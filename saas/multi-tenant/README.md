@@ -203,3 +203,6 @@ Atomic count documents, exact-location stock events, historical count lookup, st
 
 ## Supplier statement (092)
 Read-only owner-scoped statement by supplier, currency, purchase location and Damascus dates. Includes opening and closing liability, canonical purchase/payment/return movements, noncash trade-in offsets and separate cash refunds. No balance mutation. No tests run.
+
+## Procurement profiles and grants (093)
+Add supplier contact fields, archival, idempotent profile/receipt/due requests, exact-date maturity and aging, and explicit stock employee access with scope checks. Delegated stock receipts are credit-only; owner cash operations still use canonical payment and return functions. No tests run.

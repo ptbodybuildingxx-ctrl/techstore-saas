@@ -1,6 +1,6 @@
 // Encrypted ordered operation drafts. Server is authoritative; never store auth credentials.
 import {sealOfflineVault,openOfflineVault} from '../design/theme.mjs';
-const permitted=new Set(['cashSale','supplier','purchase','purchaseBatch','supplierPayment','supplierReturn','repair','transition','repairCheckout','warrantyOpen','warrantyPart','warrantyTransition','repairRefund','voucher','mixed','tradein','tradeinExecute','campaign','stockCount']);
+const permitted=new Set(['cashSale','supplier','supplierProfile','purchase','purchaseBatch','procureReceipt','procureDue','supplierPayment','supplierReturn','repair','transition','repairCheckout','warrantyOpen','warrantyPart','warrantyTransition','repairRefund','voucher','mixed','tradein','tradeinExecute','campaign','stockCount']);
 const uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 const key=(store,actor)=>{if(!uuid(store)||!uuid(actor))throw Error('Invalid offline identity');return 'techstore-operations-v1:'+store+':'+actor};
 function assertDraft(x,store){if(!x||!permitted.has(x.kind)||x.store!==store||!uuid(x.requestId)||JSON.stringify(x).length>18000)throw Error('Operation cannot be stored offline')}

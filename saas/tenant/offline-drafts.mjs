@@ -8,6 +8,8 @@ const select=(v,choices)=>{if(!choices.includes(v))throw Error('Invalid choice')
 const field=(key,label,type='text',options)=>({key,label,type,options});
 export const draftForms=Object.freeze({
  stockCount:{label:'الجرد الفعلي للمخزون',fields:[field('product','المنتج','countProduct'),field('actual','العدد الفعلي','countNumber'),field('reason','سبب الجرد ومرجعه')]},
+ supplierProfile:{label:'إضافة مورد تفصيلي',fields:[field('name','اسم المورد'),field('contact','مرجع التواصل (اختياري)','optional'),field('phone','الهاتف','optional'),field('email','البريد الإلكتروني','optional'),field('address','العنوان','optional')]},
+ procureReceipt:{label:'تسجيل شراء مع استحقاق',fields:[field('supplier','معرّف المورد'),field('product','معرّف المنتج','product'),field('units','الكمية','number'),field('cost','تكلفة القطعة'),field('paid','المبلغ المدفوع (0 للآجل)'),field('reference','مرجع الشراء'),field('due','تاريخ الاستحقاق (اختياري)','optional')]},
  supplier:{label:'إضافة مورد',fields:[field('name','اسم المورد'),field('contact','مرجع التواصل (اختياري)','optional')]},
  purchase:{label:'تسجيل شراء',fields:[field('supplier','معرّف المورد'),field('product','معرّف المنتج','product'),field('units','الكمية','number'),field('cost','تكلفة القطعة'),field('paid','المبلغ المدفوع (0 للآجل)'),field('note','مرجع الشراء')]},
  supplierPayment:{label:'سداد مورد',fields:[field('purchase','معرّف الشراء'),field('amount','الدفعة')]},
@@ -27,6 +29,8 @@ export function createColdDraft(snapshot,kind,v,requestId=crypto.randomUUID()){
  switch(kind){
  case 'stockCount':{const product=id(v.product),p=snapshot.countProducts?.find(x=>x.id===product);if(!p||typeof v.actual!=='string'||!/^\d{1,10}$/.test(v.actual)||Number(v.actual)>1000000000)throw Error('Invalid count');return {...base,branch:b,reason:text(v.reason,160),items:[{id:product,event:crypto.randomUUID(),expected:p.expected,actual:Number(v.actual)}]}}
 
+ case 'supplierProfile':return {...base,id:null,name:text(v.name,160),contact:text(v.contact,160,true),phone:text(v.phone,80,true),email:text(v.email,160,true),address:text(v.address,300,true),archived:false};
+ case 'procureReceipt':{const product=id(v.product),u=units(v.units),cost=money(v.cost),paid=money(v.paid,true),due=text(v.due,10,true);if(!snapshot.products.some(x=>x.id===product)||cost>100000000||paid>u*cost||due&&!/^\d{4}-\d{2}-\d{2}$/.test(due))throw Error('Invalid receipt');return {...base,branch:b,currency:c,supplier:id(v.supplier),reference:text(v.reference,300),lines:[{product_id:product,units:u,unit_cost_minor:cost}],paid,due:due||null,batch:false}}
  case 'supplier':return {...base,name:text(v.name,160),contact:text(v.contact,160,true)};
  case 'purchase':{const product=id(v.product),u=units(v.units),cost=money(v.cost),paid=money(v.paid,true);if(!snapshot.products.some(x=>x.id===product)||cost>100000000||paid>u*cost)throw Error('Invalid purchase');return {...base,branch:b,currency:c,supplier:id(v.supplier),product,units:u,cost,paid,note:text(v.note,300)}}
  case 'supplierPayment':return {...base,purchase:id(v.purchase),currency:c,amount:money(v.amount)};
