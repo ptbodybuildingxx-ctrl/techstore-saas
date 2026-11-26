@@ -34,7 +34,7 @@ declare m public.mt_cash_movements%rowtype;b uuid;sid uuid;pid uuid;rid uuid;del
  elsif pid is not null then select branch_id into b from tenant_private.branch_purchases where store_id=m.store_id and purchase_id=pid;
  elsif rid is not null then select branch_id into b from tenant_private.branch_repairs where store_id=m.store_id and repair_id=rid;
  else select branch_id into b from tenant_private.branch_vouchers where store_id=m.store_id and cash_id=m.id;end if;
- delta:=case when m.kind in ('sale','funding','debt_payment','repair_receipt','mixed_receipt','supplier_refund') then m.amount_minor when m.kind in ('expense','exchange','return','supplier_payment','repair_refund') then -m.amount_minor else null end;
+ delta:=case when m.kind in ('sale','funding','debt_payment','repair_receipt','mixed_receipt','supplier_refund') then m.amount_minor when m.kind in ('expense','exchange','return','return_refund','supplier_payment','repair_refund') then -m.amount_minor else null end;
  -- Fail closed on new cash types; known sale returns may be called refund.
  if m.kind='refund' then delta:=-m.amount_minor;end if;
  if delta is null then raise exception 'Unknown cash type for branch treasury';end if;

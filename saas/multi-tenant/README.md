@@ -161,3 +161,6 @@ Explicit member/wholesale unit price per product/currency and minimum quantity; 
 
 ## Payroll adjustments and advances (075)
 Immutable additions and deductions on unpaid payroll statements; confirmed disbursed advances as employee receivables, same employee/currency/branch offsets to payroll payable, net cash settlement or zero-cash closure. All movements remain distinguishable in journals, management assets, reconciliation and branch results. No automatic labor-law deductions, partial cash payroll payments, recovery outside payroll, or reversals of finalized adjustments yet.
+
+## Branch account balances (076)
+Current location-attributed customer receivables, supplier payables, net payroll liabilities, outstanding staff advances, physical stock quantities and activated cash balances by currency. Global FIFO does not provide per-location inventory valuation; this is explicitly unavailable rather than estimated. Corrected sale-return cash movement type in the unmerged 073. No independent branch bank book or branch FIFO yet.
