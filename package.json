@@ -10,6 +10,7 @@
     "test": "node --test tests/*.test.mjs saas/tests/*.test.mjs",
     "check": "node scripts/check.mjs",
     "verify": "npm run check && npm test",
-    "build:store": "node saas/build-store.mjs"
+    "build:store": "node saas/build-store.mjs",
+    "build:cloudflare": "node saas/deploy/build-cloudflare.mjs"
   }
 }

@@ -1,7 +1,5 @@
 # TechStore SaaS
 
-Independent commercial development snapshot of TechStore 6.3.8. Not connected to the original shop; not approved for commercial deployment. The repository is currently public until its owner changes visibility.
+Independent SaaS workspace, separate from the original shop. [Operational website](https://techstore-saas.pt-bodybuildingxx.workers.dev/) · [Deployment](saas/deploy/README.md) · [Launch gates](saas/RELEASE-GATES.md).
 
-[Development guide](saas/README.md) · [Launch gates](saas/RELEASE-GATES.md) · [Import status](saas/IMPORT.md)
-
-Node.js 24: `npm run verify` and `npm run build:store -- /private/config.json /private/new-output-directory`.
+Node.js 24: `npm run verify`, `npm run build:cloudflare`. Commercial launch is not yet approved.

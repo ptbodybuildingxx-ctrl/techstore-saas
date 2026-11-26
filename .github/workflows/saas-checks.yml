@@ -68,7 +68,7 @@ jobs:
         env:
           SQL_TEST_CONTAINER: ${{ job.services.postgres.id }}
 
-  closed-pilot-package:
+  operational-package:
     needs: [verify, recovery-drill, sql-integration]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -79,10 +79,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node saas/deploy/build-pilot.mjs
+      - run: node saas/deploy/build-cloudflare.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: techstore-closed-pilot
-          path: dist-pilot/
+          name: techstore-operational
+          path: dist-cloudflare/
           if-no-files-found: error
           retention-days: 7

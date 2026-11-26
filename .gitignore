@@ -30,3 +30,4 @@ supabase/.branches/
 # Generated SaaS storefront build
 /dist-storefront/
 /dist-pilot/
+/dist-cloudflare/

@@ -1,0 +1,6 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {packageWorker,sourcePaths} from '../deploy/cloudflare-package.mjs';
+import {createWorker} from '../deploy/worker.mjs';
+test('Cloudflare deploys the operational portal, never the repository preview',async()=>{const root=new URL('../../',import.meta.url),sources=Object.fromEntries(await Promise.all(sourcePaths.map(async p=>[p,await readFile(new URL(p,root),'utf8')])));const routing=await readFile(new URL('saas/deploy/worker.mjs',root),'utf8');const commit='a'.repeat(40),b=packageWorker(sources,routing,commit);const w=createWorker(b.files,commit);for(const p of ['/','/saas/admin/','/saas/tenant/','/shop/test-shop/'])assert.equal((await w.fetch(new Request('https://platform.invalid'+p))).status,200);for(const p of ['/workspace.html','/docs/preview.mjs','/saas/deploy/worker.mjs'])assert.equal((await w.fetch(new Request('https://platform.invalid'+p))).status,404);assert.match(b.files['/index.html'],/portal-choices/);assert.equal(b.config.main,'worker.mjs');assert.equal(b.config.name,'techstore-saas');assert.throws(()=>packageWorker({...sources,'saas/deploy/portal.html':'old preview'},routing,commit));});
