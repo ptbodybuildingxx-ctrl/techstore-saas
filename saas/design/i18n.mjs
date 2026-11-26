@@ -1,5 +1,8 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "إغلاق القائمة": "Close menu",
+  "التنقل السريع": "Quick navigation",
+  "المزيد": "More",
   "TechStore SaaS | منصة إدارة المحلات": "TechStore SaaS — Store management platform",
   "منصة إدارة المحلات": "Store management platform",
   "بوابة المنصة": "Platform portal",
