@@ -1,4 +1,5 @@
 import {defaults,createDesignEditor} from '../design/theme.mjs';
+import {createWorkspace,adminGroups} from '../design/workspace.mjs';
 import {shopPath} from '../storefront/api.mjs';
 import {configuration} from './config.mjs';
 import {createAdminApi} from './api.mjs';
@@ -9,12 +10,13 @@ if(location.hostname.endsWith('.github.io')){
  throw Error('GitHub Pages is preview-only');
 }
 const api=createAdminApi(configuration),el=id=>document.getElementById(id);
+const workspace=createWorkspace(el('dashboard'),el('workspaceNav'));
 const labels={provisioning:'قيد الإعداد',ready:'جاهز',suspended:'موقوف',closed:'مغلق',pending:'قيد الانتظار',trial:'تجريبي إداري',active:'نشط',past_due:'متأخر',cancelled:'ملغى',basic:'Basic',business:'Business',pro:'Business Pro'};
 const node=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n};
 let offset=0,limit=25,busy=false;
 function setMessage(text){el('message').textContent=text}
-function loggedOut(){el('operationalMetrics').replaceChildren();el('operationalDetails').replaceChildren();el('operationalStamp').textContent='';recoveryAttempt=null;for(const id of ['sharedRequests','sharedBackups','sharedPlans'])el(id).replaceChildren();el('sharedStatus').textContent='';el('sharedRetry').hidden=true;priceAttempt=null;el('priceRows').replaceChildren();el('priceHistory').replaceChildren();el('priceForm').reset();el('priceStatus').textContent='';el('designPanel').hidden=true;el('designEditor').replaceChildren();shardPages=[null];shardNext=null;el('shardRows').replaceChildren();el('placementRows').replaceChildren();el('moveStore').replaceChildren();el('moveDestination').replaceChildren();el('shardForm').reset();el('billingRows').replaceChildren();el('billingStore').replaceChildren();el('billingMonth').textContent='';el('billingForm').reset();el('backupRows').replaceChildren();el('backupRequests').replaceChildren();el('backupStore').replaceChildren();el('backupRequest').reset();el('releaseRows').replaceChildren();el('releaseTargets').replaceChildren();el('releaseChoice').replaceChildren();el('releaseStore').replaceChildren();el('releaseRegister').reset();el('contact').reset();el('contactStatus').textContent='';el('dashboard').hidden=true;el('logout').hidden=true;el('loginPanel').hidden=false;el('rows').replaceChildren();el('metrics').replaceChildren()}
-function loggedIn(){el('loginPanel').hidden=true;el('logout').hidden=false;el('dashboard').hidden=false}
+function loggedOut(){workspace.reset();el('operationalMetrics').replaceChildren();el('operationalDetails').replaceChildren();el('operationalStamp').textContent='';recoveryAttempt=null;for(const id of ['sharedRequests','sharedBackups','sharedPlans'])el(id).replaceChildren();el('sharedStatus').textContent='';el('sharedRetry').hidden=true;priceAttempt=null;el('priceRows').replaceChildren();el('priceHistory').replaceChildren();el('priceForm').reset();el('priceStatus').textContent='';el('designPanel').hidden=true;el('designEditor').replaceChildren();shardPages=[null];shardNext=null;el('shardRows').replaceChildren();el('placementRows').replaceChildren();el('moveStore').replaceChildren();el('moveDestination').replaceChildren();el('shardForm').reset();el('billingRows').replaceChildren();el('billingStore').replaceChildren();el('billingMonth').textContent='';el('billingForm').reset();el('backupRows').replaceChildren();el('backupRequests').replaceChildren();el('backupStore').replaceChildren();el('backupRequest').reset();el('releaseRows').replaceChildren();el('releaseTargets').replaceChildren();el('releaseChoice').replaceChildren();el('releaseStore').replaceChildren();el('releaseRegister').reset();el('contact').reset();el('contactStatus').textContent='';el('dashboard').hidden=true;el('logout').hidden=true;el('loginPanel').hidden=false;el('rows').replaceChildren();el('metrics').replaceChildren()}
+function loggedIn(){el('loginPanel').hidden=true;el('logout').hidden=false;el('dashboard').hidden=false;workspace.sync(adminGroups)}
 async function run(fn){
  if(busy)return;busy=true;
  const controls=[...document.querySelectorAll('button')].map(x=>[x,x.disabled]);for(const [x] of controls)x.disabled=true;
@@ -71,7 +73,7 @@ async function openDesign(s){
  const state=await api.designRead(s.id),history=await api.designHistory(s.id);
  el('designPanel').hidden=false;el('designTitle').textContent='تصميم '+s.name;
  const change=async(action,theme=null,restore=null)=>{if(busy)throw Error('Busy');busy=true;try{await api.designChange(s.id,state,action,theme,restore);await openDesign(s)}finally{busy=false}};
- el('designEditor').replaceChildren(createDesignEditor({initial:state.theme||{...defaults,brand:s.name.slice(0,80)},revision:state.revision,publishedRevision:state.published_revision,history,onSave:t=>change('save',t),onPublish:()=>change('publish'),onRestore:r=>change('restore',null,r)}));el('designEditor').append(await originalLibrary(s,state),await domainPanel(s));el('designPanel').scrollIntoView({block:'start'});
+ el('designEditor').replaceChildren(createDesignEditor({initial:state.theme||{...defaults,brand:s.name.slice(0,80)},revision:state.revision,publishedRevision:state.published_revision,history,onSave:t=>change('save',t),onPublish:()=>change('publish'),onRestore:r=>change('restore',null,r)}));el('designEditor').append(await originalLibrary(s,state),await domainPanel(s));workspace.sync(adminGroups);workspace.select('shops');el('designPanel').scrollIntoView({block:'start'});
 }
 el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password);offset=0;await load();await loadContact();await loadPlanPrices();await loadShards();await loadBilling();await loadBackups();await loadReleases();await loadSharedRecovery();loggedIn();setMessage('تم تسجيل الدخول.')})});
 let recoveryAttempt=null;
