@@ -612,7 +612,11 @@ export const english=Object.freeze({
   "متوفر للطلب": "Available to order",
   "متابعة العميل وتوثيق الجهاز": "Customer tracking and device evidence",
   "توزيع العمل على الفنيين": "Technician assignments",
-  "الفرع الرئيسي": "Main branch"
+  "الفرع الرئيسي": "Main branch",
+  "استلام طلب صيانة": "Create repair intake",
+  "تعديل أسعار المنتجات": "Edit product prices",
+  "آخر محاولة إرسال": "Last submission attempt",
+  "تاريخ الحفظ": "Saved at"
 });
 let language='ar';
 try{if(typeof localStorage!=='undefined'&&localStorage.getItem('techstore-ui-language')==='en')language='en'}catch{}

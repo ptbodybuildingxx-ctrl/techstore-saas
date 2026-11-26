@@ -56,7 +56,7 @@ export function mountAccountSecurity(root,{api,run,message}){
  async function refresh(){
   const [factors,sessions]=await Promise.all([api.security.factors(),api.security.sessions()]);
   list.replaceChildren(node('h4','تطبيقات المصادقة'));
-  for(const f of factors){const p=node('p');p.append(document.createTextNode((f.name||'TOTP')+' — '+tr(f.status==='verified'?'مفعّل':'غير مؤكد')+' '),button('إزالة',async()=>{if(confirm(tr('إزالة تطبيق المصادقة هذا؟'))){await api.security.remove(f.id);await api.signOut();reset();message(tr('سجل الدخول مجدداً'))}}));list.append(p)}
+  for(const f of factors){const p=node('p');p.append(document.createTextNode((f.name||'TOTP')+' — '+tr(f.status==='verified'?'مفعّل':'غير مؤكد')+' '),button('إزالة',async()=>{if(confirm(tr('إزالة تطبيق المصادقة هذا؟'))){await api.security.remove(f.id);try{await api.signOut()}finally{reset();message(tr('سجل الدخول مجدداً'))}}}));list.append(p)}
   list.append(node('h4','الجلسات الحالية'));
   for(const s of sessions){const p=node('p');p.textContent=tr(s.current?'هذه الجلسة':'جلسة أخرى')+' — '+(s.device||tr('جهاز غير معروف'))+' — '+(s.created_at||'')+' ';if(!s.current)p.append(button('إلغاء وصول الجهاز',async()=>{if(confirm(tr('إلغاء وصول هذه الجلسة إلى المنصة؟'))){await api.security.revoke(s.id);await refresh()}}));list.append(p)}
  }
