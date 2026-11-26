@@ -67,3 +67,22 @@ jobs:
       - run: node saas/tests/sql-integration.mjs
         env:
           SQL_TEST_CONTAINER: ${{ job.services.postgres.id }}
+
+  closed-pilot-package:
+    needs: [verify, recovery-drill, sql-integration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node saas/deploy/build-pilot.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: techstore-closed-pilot
+          path: dist-pilot/
+          if-no-files-found: error
+          retention-days: 7

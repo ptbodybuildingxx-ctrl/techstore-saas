@@ -52,3 +52,6 @@ Integrated rollback SQL fixture: saas/tests/sql/integrated-commerce.sql. Managem
 - Dedicated development database inventory check: zero Auth users, sessions, operators, workspaces, sales, Storage objects and backup evidence; live billing false. No actual operating data or live user authorization evidence.
 - CI extends isolated recovery to full seeded SaaS schema, all application table digests, policies, restricted central RPC and synthetic Storage bytes. Concurrent central read test uses 8 independent connections, 80 calls; no production traffic or capacity claim. Results must be confirmed on the relevant CI commit.
 - Actual operational restoration requires a securely captured logical dump, Storage objects and configuration, an isolated restore target, real test accounts and measured authorization/load acceptance. Never restore over the source; never upload secrets or actual customer records to CI. No paid feature authorized.
+
+## Closed pilot distribution
+- CI packages allowlisted operational interfaces after all three verification jobs; static security headers and noindex included. No provider configured by this change. Static files alone do not establish private access or prove authenticated browser workflows. Actual isolated origin and user acceptance still required.
