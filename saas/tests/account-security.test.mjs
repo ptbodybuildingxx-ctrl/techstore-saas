@@ -22,3 +22,16 @@ test('first factor setup never exposes an administrative session and requires ve
  assert.equal(api.signedIn(),false);assert.equal(calls.at(-1),'/auth/v1/logout');assert.ok(!calls.some(x=>x.includes('/rest/')));
  existing=true;await assert.rejects(api.enrollFirstTotp('king','fixture-password',()=>{throw Error('Should not enroll')}),/already enrolled/);assert.equal(api.signedIn(),false);
 });
+
+test('King can sign in using a password when no authenticator is enrolled and server allows access',async()=>{
+ const calls=[];
+ const api=createAdminApi({url:'https://mezsyzdieqmqulddcrtg.supabase.co',publishableKey:'sb_publishable_fixturefixturefixture',clock:()=>0,fetcher:async(u,o)=>{
+  const path=new URL(u).pathname;calls.push(path);let result;
+  if(path==='/auth/v1/token')result={access_token:'password-session',expires_in:60};
+  else if(path==='/auth/v1/user')result={id:fixtureUser,factors:[]};
+  else if(path==='/rest/v1/rpc/saas_admin_overview'){assert.equal(o.headers.Authorization,'Bearer password-session');result={rows:[],total:0,ready:0,suspended:0,active_subscriptions:0,matched:0}}
+  else throw Error('Unexpected request '+path);
+  return {ok:true,status:200,json:async()=>result};
+ }});
+ await api.signInUsername('king','fixture-password',()=>{throw Error('Unexpected MFA prompt')});assert.equal(api.signedIn(),true);assert.deepEqual(calls,['/auth/v1/token','/auth/v1/user','/rest/v1/rpc/saas_admin_overview']);
+});

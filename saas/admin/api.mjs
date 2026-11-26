@@ -17,7 +17,8 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
  function token(){if(!session||session.expiresAt<=clock()+5000){session=null;throw Error('Sign in again')}return session.accessToken}
  async function rpc(name,args){try{return await request('/rest/v1/rpc/'+name,args,token())}catch(e){if(e.status===401||e.status===403)session=null;throw e}}
  const replaceSession=s=>{if(typeof s?.access_token!=='string'||!s.access_token||!Number.isFinite(s.expires_in)||s.expires_in<=0)throw Error('Invalid session');session={accessToken:s.access_token,expiresAt:clock()+s.expires_in*1000}};
- const security=createAccountSecurity({request,token,replaceSession,rpc,requireVerifiedFactor:true});
+ // Enrollment is optional; the server remains authoritative for operator MFA policy.
+ const security=createAccountSecurity({request,token,replaceSession,rpc,requireVerifiedFactor:false});
  return {
   security,
   async signInUsername(username,password,codeProvider){
@@ -114,7 +115,7 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    const s=await request('/auth/v1/token?grant_type=password',{email:email.trim(),password});
    if(typeof s?.access_token!=='string'||!s.access_token||!Number.isFinite(s.expires_in)||s.expires_in<=0)throw Error('Invalid login response');
    session={accessToken:s.access_token,expiresAt:clock()+s.expires_in*1000};
-   try{await security.authenticate(codeProvider,{required:true});await this.overview()}catch(e){const old=session;session=null;if(old)try{await request('/auth/v1/logout?scope=local',undefined,old.accessToken)}catch{}throw e}
+   try{await security.authenticate(codeProvider,{required:false});await this.overview()}catch(e){const old=session;session=null;if(old)try{await request('/auth/v1/logout?scope=local',undefined,old.accessToken)}catch{}throw e}
   },
   async signOut(){const old=session;session=null;if(old)await request('/auth/v1/logout?scope=local',undefined,old.accessToken)},
   signedIn(){return !!session&&session.expiresAt>clock()+5000},
