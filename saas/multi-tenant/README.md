@@ -158,3 +158,6 @@ Initialize at explicit cutover: existing consolidated cash assigned to main, the
 
 ## Product-tier price lists (074)
 Explicit member/wholesale unit price per product/currency and minimum quantity; requires the buyer's approved tier and minimum basket quantity. Qualifying fixed price replaces the general discount; otherwise the approved percentage applies. Quote is server-computed, revalidated and per-line prices frozen in order. Price changes in the base catalog still require existing checkout/fulfillment revalidation. Nonstacking with coupons/points. Pricing removal affects future quotes only.
+
+## Payroll adjustments and advances (075)
+Immutable additions and deductions on unpaid payroll statements; confirmed disbursed advances as employee receivables, same employee/currency/branch offsets to payroll payable, net cash settlement or zero-cash closure. All movements remain distinguishable in journals, management assets, reconciliation and branch results. No automatic labor-law deductions, partial cash payroll payments, recovery outside payroll, or reversals of finalized adjustments yet.
