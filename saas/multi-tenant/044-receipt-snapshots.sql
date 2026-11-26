@@ -21,7 +21,7 @@ end $$;
 alter table tenant_private.receipt_settings add check(tenant_private.valid_receipt_settings(settings));
 alter table tenant_private.receipt_snapshots add check(tenant_private.valid_receipt_settings(settings));
 create function tenant_private.effective_receipt_settings(p_store uuid) returns jsonb language sql stable security definer set search_path='' as $$
- select coalesce(r.settings,jsonb_build_object('brand',coalesce(v.theme->>'brand',s.name),'phone','','address','','sale_title',coalesce(v.theme->>'invoice_title','إيصال بيع'),'repair_title','إيصال صيانة','footer',coalesce(v.theme->>'invoice_footer','شكراً لتسوقكم معنا'),'format',coalesce(v.theme->>'invoice_format','a4'),'logo',coalesce(v.theme->>'logo','')))
+ select coalesce(r.settings,jsonb_build_object('brand',left(coalesce(v.theme->>'brand',s.name),80),'phone','','address','','sale_title',coalesce(v.theme->>'invoice_title','إيصال بيع'),'repair_title','إيصال صيانة','footer',coalesce(v.theme->>'invoice_footer','شكراً لتسوقكم معنا'),'format',coalesce(v.theme->>'invoice_format','a4'),'logo',coalesce(v.theme->>'logo','')))
  from public.saas_stores s left join tenant_private.receipt_settings r on r.store_id=s.id left join tenant_private.design_heads h on h.store_id=s.id left join tenant_private.design_versions v on v.store_id=h.store_id and v.revision=h.published_revision where s.id=p_store
 $$;
 create function tenant_private.receipt_config(p_store uuid,p_settings jsonb default null) returns jsonb language plpgsql security definer set search_path='' as $$

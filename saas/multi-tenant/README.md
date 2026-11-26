@@ -68,3 +68,6 @@ Server-side literal search by name/SKU across all rows with keyset pagination; p
 
 ## Receipt snapshots and work alerts (044–045)
 Owner receipt settings capture identity, logo, address, phone, titles, format and footer at issuance through insert triggers; original historical lines remain the financial authority. Pre-migration receipts have no invented historical identity. Work alerts are role-scoped derived counts (refresh on load or manually), not push delivery or durable notifications. PC builder uses public specification keys type (cpu/board/ram/gpu/storage/psu/case), socket, ram, form and watts, and reports unknown data rather than guaranteeing compatibility.
+
+## Branch allocation (046)
+Branch balances partition existing physical stock; transfers are idempotent and do not double-post cash or FIFO. Cash branch sales use the existing sale engine and branch returns restore branch stock. Main-store stock reductions and order reservations cannot consume allocated quantities. Purchases, credit/mixed sales, repair and delivery still originate in the main store, cost layers remain store-wide, and per-branch staff permissions and financial statements are not implemented. Deploy only after 044–046 pass and dedicated database migration is verified.

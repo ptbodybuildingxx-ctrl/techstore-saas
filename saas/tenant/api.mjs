@@ -63,7 +63,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   async setPrice(store,product,c,price){if(!currency(c)||!isId(product)||!int(price,1,100000000))throw Error('Invalid price');const r=await rpc('mt_set_currency_price',{p_store:store,p_product:product,p_currency:c,p_price:price},store);if(r!==price)throw Error('Price not confirmed');return r},
   async recordSale(attempt){
    const x=saleAttempt(attempt.store,attempt.lines,attempt.currency,attempt.requestId);
-   const r=await rpc('mt_record_currency_sale',{p_store:x.store,p_request:x.requestId,p_currency:x.currency,p_lines:x.lines},x.store);
+   const branch=attempt.branch??null;if(branch!==null&&!isId(branch))throw Error('Invalid branch');const r=await rpc(branch?'mt_branch_cash_sale':'mt_record_currency_sale',{p_store:x.store,p_request:x.requestId,p_currency:x.currency,p_lines:x.lines,...(branch?{p_branch:branch}:{})},x.store);
    const total=x.lines.reduce((s,l)=>s+l.units*l.expected_price_minor,0);
    if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.currency!==x.currency||r.request_id!==x.requestId||r.total_minor!==total)throw Error('Sale not confirmed');
    return r;
@@ -179,6 +179,9 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if(x.kind==='mixed'){const total=x.lines.reduce((v,l)=>v+l.units*l.expected_price_minor,0);if(!r||!isId(r.id)||!int(r.number,1,Number.MAX_SAFE_INTEGER)||r.request_id!==x.requestId||r.currency!==x.currency||r.total_minor!==total)throw Error('Sale not confirmed');return r}
    if(['transition','warrantyTransition'].includes(x.kind)?r!==x.next:!isId(r))throw Error('Operation not confirmed');return r;
   },
+  async branchOverview(store,product=null){if(product!==null&&!isId(product))throw Error('Invalid product');const r=await rpc('mt_branch_overview',{p_store:store,p_product:product},store);if(!r||!Array.isArray(r.branches)||r.branches.length>50||r.branches.some(x=>!isId(x.id)||typeof x.name!=='string')||!Array.isArray(r.stock)||r.stock.some(x=>!isId(x.branch_id)||!int(x.units,0,1000000000))||!(r.main===null||int(r.main,0,1000000000))||!Array.isArray(r.transfers)||r.transfers.length>50)throw Error('Invalid branches');return r},
+  async branchCreate(store,name){if(typeof name!=='string'||!name.trim()||name.length>120)throw Error('Invalid branch');const r=await rpc('mt_branch_create',{p_store:store,p_name:name.trim()},store);if(!isId(r))throw Error('Branch not confirmed');return r},
+  async branchTransfer(store,x){if(!isId(x.request)||!isId(x.product)||!(x.source===null||isId(x.source))||!(x.target===null||isId(x.target))||x.source===x.target||!int(x.units,1,1000000000))throw Error('Invalid transfer');const r=await rpc('mt_branch_transfer',{p_store:store,p_request:x.request,p_source:x.source,p_target:x.target,p_product:x.product,p_units:x.units},store);if(r!==x.request)throw Error('Transfer not confirmed');return r},
   async receiptConfig(store,settings=null){if(settings!==null)validateReceiptSettings(settings);return validateReceiptSettings(await rpc('mt_receipt_config',{p_store:store,p_settings:settings},store))},
   async receiptSnapshot(store,kind,document){if(!['sale','repair'].includes(kind)||!isId(document))throw Error('Invalid receipt');const r=await rpc('mt_receipt_snapshot',{p_store:store,p_kind:kind,p_document:document},store);return r===null?null:validateReceiptSettings(r)},
   async workAlerts(store){const r=await rpc('mt_work_alerts',{p_store:store},store);if(!r||typeof r!=='object'||Array.isArray(r)||Object.entries(r).some(([k,v])=>!['low_stock','repairs_ready','repairs_received','orders_pending','installments_overdue'].includes(k)||!int(v,0,Number.MAX_SAFE_INTEGER)))throw Error('Invalid alerts');return r},

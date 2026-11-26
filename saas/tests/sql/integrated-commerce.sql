@@ -139,5 +139,20 @@ if not public.mt_domain_disable(t,(v->>'id')::uuid) then raise exception 'Domain
 perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
 begin perform public.mt_design_change(t,1,1,'publish');raise exception 'Owner accessed central design';exception when insufficient_privilege then null;end;
 begin perform public.mt_domain_request(t,gen_random_uuid(),'another.example.com');raise exception 'Owner accessed central domains';exception when insufficient_privilege then null;end;
+-- Branch transfers, cash sale, return and cross-tenant denial.
+declare branch uuid;branch_product uuid;branch_request uuid:=gen_random_uuid();branch_sale uuid;branch_move uuid:=gen_random_uuid();begin
+branch:=public.mt_branch_create(t,'Fixture branch');branch_product:=public.mt_add_product(t,'BRANCH-FIXTURE','Branch fixture');
+perform public.mt_adjust_stock(t,branch_product,5,gen_random_uuid());perform public.mt_set_currency_price(t,branch_product,'USD',1000);
+perform public.mt_branch_transfer(t,branch_move,null,branch,branch_product,3);
+perform public.mt_branch_transfer(t,branch_move,null,branch,branch_product,3);
+if public.mt_branch_overview(t,branch_product)->>'main' is distinct from '2' then raise exception 'Branch transfer mismatch';end if;
+begin perform public.mt_adjust_stock(t,branch_product,-3,gen_random_uuid());raise exception 'Allocated stock consumed';exception when sqlstate '22023' then null;end;
+v:=public.mt_branch_cash_sale(t,branch,branch_request,'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)));
+branch_sale:=(v->>'id')::uuid;
+if public.mt_branch_cash_sale(t,branch,branch_request,'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)))->>'id' is distinct from branch_sale::text then raise exception 'Branch replay';end if;
+perform public.mt_record_return(t,gen_random_uuid(),branch_sale,branch_product,1,'Branch return');
+if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '3' then raise exception 'Branch return mismatch';end if;
+begin perform public.mt_branch_overview(other,null);raise exception 'Branch leak';exception when insufficient_privilege then null;end;
+end;
 reset role;raise exception using errcode='ZX001',message='rollback';
 exception when sqlstate 'ZX001' then raise notice 'Integrated commerce fixture passed; rolled back';end;end $t$;
