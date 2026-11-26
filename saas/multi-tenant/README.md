@@ -155,3 +155,6 @@ Owner assigns an active technician within branch scope and creates a bounded tas
 
 ## Opt-in branch cash subdivision (073)
 Initialize at explicit cutover: existing consolidated cash assigned to main, then allocate actual branch cash with internal transfers, per currency. New sale, collection, supplier payment/refund, repair payment/refund and voucher cash movements are attributed after all source mappings exist in the transaction; other operations use main. Branch balances reject overdrafts and reconcile to the existing consolidated ledger. No historical branch balance inferred. This is not separate bank accounts, independent branch FIFO or a branch general ledger. Activation requires opening cash counts and final integration tests; never enable automatically.
+
+## Product-tier price lists (074)
+Explicit member/wholesale unit price per product/currency and minimum quantity; requires the buyer's approved tier and minimum basket quantity. Qualifying fixed price replaces the general discount; otherwise the approved percentage applies. Quote is server-computed, revalidated and per-line prices frozen in order. Price changes in the base catalog still require existing checkout/fulfillment revalidation. Nonstacking with coupons/points. Pricing removal affects future quotes only.
