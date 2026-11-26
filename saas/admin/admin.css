@@ -451,3 +451,6 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 .workspace-shell .panel{scroll-margin-top:88px}
 @media(max-width:850px){.shop-navigation{flex-wrap:nowrap;overflow:auto;scroll-snap-type:x proximity}.shop-navigation a{flex:0 0 auto;scroll-snap-align:start}.workspace-nav{scrollbar-width:thin}.workspace-nav button{flex-direction:column;gap:4px;min-width:78px;font-size:.82rem;text-align:center}.workspace-nav .workspace-icon{font-size:1.15rem}.workspace-search{flex-basis:145px}}
 @media(max-width:540px){.storefront-page .catalog-cover{height:155px}.shop-product-actions>button{min-height:42px}.shop-navigation{margin:6px 0}.workspace-shell .scroll{overflow-x:auto}#catalogEditor,#productDetail{padding:14px}}
+
+/* Bidirectional layout, including localized workspace navigation. */
+header .locale-toggle{min-width:86px;min-height:40px;white-space:nowrap;margin-inline-start:auto}html[dir=ltr] table,html[dir=ltr] th,html[dir=ltr] td{text-align:start}html[dir=ltr]:root:not([data-design=on]) .workspace-nav button[aria-pressed=true]{box-shadow:inset 3px 0 var(--aurora-accent)}html[dir=ltr] .workspace-nav::before{content:'Sections'}

@@ -1,8 +1,10 @@
+import {initLocale,tr} from '../design/i18n.mjs';
 import {defaults,createDesignEditor} from '../design/theme.mjs';
 import {createWorkspace,adminGroups} from '../design/workspace.mjs';
 import {shopPath} from '../storefront/api.mjs';
 import {configuration} from './config.mjs';
 import {createAdminApi} from './api.mjs';
+initLocale();
 // Hosted GitHub Pages is a static showcase only, never accept credentials there.
 if(location.hostname.endsWith('.github.io')){
  document.getElementById('loginPanel').hidden=true;

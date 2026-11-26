@@ -1,3 +1,4 @@
+import {tr} from './i18n.mjs';
 // Presentation only. RPC authorization and RLS remain authoritative.
 export const labels=Object.freeze({"overview":"نظرة عامة","shops":"المحلات","plans":"الاشتراكات والأسعار","infra":"البنية والتوزيع","billing":"الفوترة","recovery":"النسخ والتحديثات","account":"حساب المدير","sales":"المبيعات","inventory":"المخزون","customers":"العملاء والديون","returns":"المرتجعات","purchases":"المشتريات والموردون","repairs":"الصيانة والضمان","finance":"المحاسبة والتقارير","online":"المتجر والطلبات","staff":"الموظفون","settings":"الإعدادات والاشتراك"});
 export const adminGroups=Object.freeze(["overview","shops","plans","infra","billing","recovery","account"]);
@@ -18,14 +19,15 @@ export function createWorkspace(root,nav){
    const visible=[...container.querySelectorAll('[data-workspace-group]')].some(p=>!p.hidden&&matchesGroup(p.dataset.workspaceGroup,active));
    container.toggleAttribute('data-workspace-inactive',!visible);
   }
-  const search=nav.ownerDocument.createElement('input');search.type='search';search.className='workspace-search';search.placeholder='ابحث في الأقسام';search.setAttribute('aria-label','بحث في الأقسام');search.value=query;
+  const search=nav.ownerDocument.createElement('input');search.type='search';search.className='workspace-search';search.placeholder=tr('ابحث في الأقسام');search.setAttribute('aria-label',tr('بحث في الأقسام'));search.value=query;
   const icons={overview:'⌂',shops:'▦',plans:'◈',infra:'⚙',billing:'▤',recovery:'↻',account:'●',sales:'▣',inventory:'▦',customers:'♙',returns:'↶',purchases:'▧',repairs:'⚒',finance:'▥',online:'◎',staff:'♟',settings:'⚙'};
-  const buttons=available.map(key=>{const b=nav.ownerDocument.createElement('button');b.type='button';const icon=nav.ownerDocument.createElement('span');icon.className='workspace-icon';icon.textContent=icons[key]||'•';icon.setAttribute('aria-hidden','true');const label=nav.ownerDocument.createElement('span');label.textContent=labels[key];b.append(icon,label);b.setAttribute('aria-pressed',String(active===key));if(active===key)b.setAttribute('aria-current','page');b.onclick=()=>select(key);return b;});
-  const filter=()=>{query=search.value;for(const [i,b] of buttons.entries())b.hidden=!labels[available[i]].includes(query.trim());};search.oninput=filter;nav.replaceChildren(search,...buttons);filter();
+  const buttons=available.map(key=>{const b=nav.ownerDocument.createElement('button');b.type='button';const icon=nav.ownerDocument.createElement('span');icon.className='workspace-icon';icon.textContent=icons[key]||'•';icon.setAttribute('aria-hidden','true');const label=nav.ownerDocument.createElement('span');label.textContent=tr(labels[key]);b.append(icon,label);b.setAttribute('aria-pressed',String(active===key));if(active===key)b.setAttribute('aria-current','page');b.onclick=()=>select(key);return b;});
+  const filter=()=>{query=search.value;for(const [i,b] of buttons.entries())b.hidden=!tr(labels[available[i]]).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());};search.oninput=filter;nav.replaceChildren(search,...buttons);filter();
   nav.hidden=!available.length;
  }
  function select(key){if(allowed.includes(key)){active=key;render();}}
  function sync(keys){allowed=[...keys].filter(key=>Object.hasOwn(labels,key));render();}
  function reset(){allowed=[];active=null;query='';render();}
+ nav.ownerDocument.addEventListener('techstore-languagechange',render);
  return {select,sync,reset};
 }

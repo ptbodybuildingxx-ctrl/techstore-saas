@@ -1,16 +1,18 @@
+import {initLocale,tr} from '../design/i18n.mjs';
 import {suggestBuild} from '../design/build-suggestions.mjs';
 import {registerPush} from './push.mjs';
 import {emptySite,renderPages,productImage} from '../design/site.mjs';
 import {applyTheme,resetTheme,brandHeader,orderSections,defaults,comparisonRows,buildCompatibility} from '../design/theme.mjs';
 import {configuration} from '../admin/config.mjs';
 import {createStorefrontApi,shopSlugFromPath} from './api.mjs';
+initLocale();
 const el=id=>document.getElementById(id),message=t=>el('message').textContent=t;
 if(location.hostname.endsWith('.github.io')){message('المعاينة فقط؛ لا تسجيل دخول على GitHub Pages.');throw Error('Preview only')}
 const api=createStorefrontApi(configuration),cart=new Map(),comparison=new Map(),build=new Map();let catalogQuery='',inboxCursor=null,library=null,reviewProduct=null,buildPending=null;let displayedProducts=[],displayedSite=emptySite(),displayedMedia=null;let slug=null,currency='USD',cursor=null,orderCursor=null,busy=false,attempt=null,deliveryAvailable=false,coupon=null,fixedSlug=null,guestEnabled=false;
 const node=(tag,t)=>{const x=document.createElement(tag);x.textContent=t;return x};
 const fmt=(n,c)=>(n/100).toFixed(2)+' '+c;
 function row(values){const r=document.createElement('tr');for(const v of values){const td=document.createElement('td');if(v instanceof Node)td.append(v);else td.textContent=String(v);r.append(td)}return r}
-function button(t,fn){const b=node('button',t);b.type='button';b.onclick=()=>run(fn);return b}
+function button(t,fn){const b=node('button',tr(t));b.type='button';b.onclick=()=>run(fn);return b}
 function discardExpiredAttempt(){if(attempt&&!attempt.guest&&!api.signedIn()){const ref=attempt.requestId;attempt=null;clearCoupon();cart.clear();el('pending').textContent='طلب غير مؤكد: '+ref+' — راجع طلبات الحساب السابق قبل إنشاء طلب جديد.';renderCart()}}
 function clearCoupon(){coupon=null;el('couponCode').value='';el('loyaltyStatus').textContent=''}
 function cartSignature(){return JSON.stringify([...cart.values()].map(l=>[l.product_id,l.units,l.expected_price_minor]).sort((a,b)=>a[0].localeCompare(b[0])))}
