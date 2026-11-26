@@ -1,6 +1,6 @@
 import {validateBillingPage,validateBillingDetails} from '../design/commercial-billing.mjs';
 import {validateShopOrder} from '../design/order-details.mjs';
-import {denialActions,validateAccessMatrix} from './staff-permissions.mjs';
+import {denialActions,validateAccessMatrix,validCentralDenials} from './staff-permissions.mjs';
 import {validateMixedRates} from './offline-mixed.mjs';
 import {validateLocalMembershipSnapshot} from './local-membership.mjs';
 import {validMembershipTier} from '../design/membership.mjs';
@@ -446,6 +446,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   },
   async commercialBilling(store,offset=0){if(!isId(store)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid invoice page');const r=await rpc('mt_offline_billing_review',{s:store,off:offset},store);return validateBillingPage(r,store)},
   async commercialBillingDetails(store,invoice,offset=0){if(!isId(store)||!isId(invoice)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid invoice');return validateBillingDetails(await rpc('mt_offline_billing_details',{s:store,i:invoice,off:offset},store))},
+  async centralActions(store){const r=await rpc('mt_member_central_actions',{s:store},store);if(!validCentralDenials(r))throw Error('Invalid central actions');return r},
   async moduleStatus(store){const r=await rpc('mt_member_module_status',{s:store},store),keys=['catalog','sales','purchases','suppliers','customers','credit','standalone_debts','repairs','quotes','stock_counts','stock_transfers','branches','payroll','tradein','coupons'];if(!r||Object.keys(r).length!==keys.length||keys.some(k=>typeof r[k]!=='boolean'))throw Error('Invalid module status');return r},
   async licenseStatus(store){
    const r=await rpc('mt_license_status',{p_store:store},store);
