@@ -177,6 +177,18 @@ estimate:=public.mt_tradein_create(t,gen_random_uuid(),null,cust,'Used device','
 perform public.mt_tradein_state(t,estimate,'offered');perform public.mt_tradein_state(t,estimate,'accepted');
 if not exists(select 1 from jsonb_array_elements(public.mt_tradein_list(t,null)) x where x->>'id'=estimate::text and x->>'state'='accepted') then raise exception 'Trade-in state missing';end if;
 begin perform public.mt_tradein_settle(t,estimate,buy,sale);raise exception 'Old unrelated documents accepted';exception when sqlstate '22023' then null;end;
+declare used_product uuid;new_product uuid;req uuid:=gen_random_uuid();result jsonb;begin
+used_product:=public.mt_add_product(t,'USED-FIXTURE','Used fixture');new_product:=public.mt_add_product(t,'NEW-FIXTURE','New fixture');
+perform public.mt_set_currency_price(t,new_product,'USD',4000);perform public.mt_adjust_stock(t,new_product,2,gen_random_uuid());
+perform public.mt_tradein_execute(t,req,estimate,used_product,'USD',jsonb_build_array(jsonb_build_object('product_id',new_product,'units',1,'expected_price_minor',4000)),2000,true);
+perform public.mt_tradein_execute(t,req,estimate,used_product,'USD',jsonb_build_array(jsonb_build_object('product_id',new_product,'units',1,'expected_price_minor',4000)),2000,true);
+result:=public.mt_tradein_result(t,estimate);
+if result->>'offset_minor' is distinct from '2000' or result->>'cash_difference_minor' is distinct from '2000' then raise exception 'Trade-in offset mismatch';end if;
+if (select remaining_minor from public.mt_debts where store_id=t and sale_id=(result->>'sale_id')::uuid)<>0 or (select paid_minor from public.mt_purchases where store_id=t and id=(result->>'purchase_id')::uuid)<>2000 then raise exception 'Trade-in unpaid';end if;
+if exists(select 1 from public.mt_cash_movements m join public.mt_debt_payments d on d.store_id=m.store_id and d.id=m.debt_payment_id where m.store_id=t and d.settlement_method='tradein_offset') then raise exception 'Fictitious cash';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_financial_reconciliation(t)->'rows') x where x->>'currency'='USD' and x->>'account'='accounts_receivable' and x->>'balanced'='true') then raise exception 'Trade-in receivable reconciliation failed';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_financial_reconciliation(t)->'rows') x where x->>'currency'='USD' and x->>'account'='accounts_payable' and x->>'balanced'='true') then raise exception 'Trade-in payable reconciliation failed';end if;
+end;
 end;
 -- Branch transfers, cash sale, return and cross-tenant denial.
 declare branch uuid;branch_product uuid;branch_request uuid:=gen_random_uuid();branch_sale uuid;branch_move uuid:=gen_random_uuid();begin

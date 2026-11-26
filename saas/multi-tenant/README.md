@@ -101,3 +101,6 @@ Optional single-branch assignment for active cashiers, stock workers and technic
 
 ## External delivery (056–057)
 Opt-in email and per-shop Web Push queues; retry leases, explicit unsubscribe, private service-only claims. The worker sends only generic account update messages. Setup and scheduling are intentionally disabled; see saas/notifications/README.md.
+
+## Trade-in net settlement (058)
+Atomic accepted-estimate settlement uses the existing credit sale and costed purchase engines; an explicit noncash offset balances payable and receivable, and only the confirmed difference posts actual cash. The used device uses a separate product; customer-to-supplier mapping is tenant scoped. Retrying the same request cannot duplicate the sale. Separate returns follow existing return rules (cash refunds may require funds; they do not undo the other leg). Legacy documentary links remain available.
