@@ -1,5 +1,10 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "مكافأة النقاط السابقة": "Legacy points reward",
+  "العضوية واستبدال النقاط حسب القيمة": "Membership and spend-value points",
+  "الحد الأقصى للنقاط المراد استبدالها": "Maximum points to redeem",
+  "سعر العضوية والنقاط يحسب من السلة عند الكاشير": "Membership and points are calculated from the cashier's cart",
+  "تظل النقاط السابقة كما هي. بعد التفعيل يصبح الاستبدال حسب القيمة في المتجر ونقطة البيع النقدي. أدخل قيمة دولار واحد بالليرة السورية واليورو حسب سياسة المحل. تُثبت هذه القيم مع المبيعات الجديدة.": "Existing point balances are retained. Spend-value redemption applies online and at cash POS after activation. Enter the store's value of one US dollar in Syrian pounds and euros. New sales freeze these rates.",
   "احتساب حسب قيمة المشتريات": "Spend-based points",
   "نقطة لكل دولار": "points per US dollar",
   "حد الاستبدال": "Redemption cap",

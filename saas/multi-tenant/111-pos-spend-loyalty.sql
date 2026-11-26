@@ -322,3 +322,27 @@ create or replace function tenant_private.pos_commit_priced(s uuid,b uuid,r uuid
 create function public.mt_pos_commit_spend(p_store uuid,p_branch uuid,p_request uuid,p_token uuid,p_currency text,p_lines jsonb,p_metadata jsonb,p_expected bigint,p_prices jsonb,p_spend jsonb) returns jsonb language sql set search_path='' as $$select tenant_private.pos_commit_mode(p_store,p_branch,p_request,p_token,p_currency,p_lines,p_metadata,p_expected,p_prices,p_spend)$$;
 revoke all on function tenant_private.pos_commit_mode(uuid,uuid,uuid,uuid,text,jsonb,jsonb,bigint,jsonb,jsonb),public.mt_pos_commit_spend(uuid,uuid,uuid,uuid,text,jsonb,jsonb,bigint,jsonb,jsonb) from public,anon,authenticated,service_role;
 grant execute on function tenant_private.pos_commit_mode(uuid,uuid,uuid,uuid,text,jsonb,jsonb,bigint,jsonb,jsonb),public.mt_pos_commit_spend(uuid,uuid,uuid,uuid,text,jsonb,jsonb,bigint,jsonb,jsonb) to authenticated;
+
+CREATE OR REPLACE FUNCTION tenant_private.buyer_pos_sales(s uuid, off integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+ if auth.uid() is null or not coalesce(saas_private.live_session(),false) or off is null or off not between 0 and 100000 then raise exception 'Buyer access denied' using errcode='42501';end if;
+ return coalesce((select jsonb_agg(to_jsonb(x) order by x.number desc) from (select a.id,a.id sale_id,a.number,a.currency,a.total_minor,a.created_at,p.points,p.discount_minor,coalesce(v.points_used,0) spend_points_used from tenant_private.pos_loyalty_sales p join public.mt_sales a on a.store_id=p.store_id and a.id=p.sale_id left join tenant_private.spend_pos_redemptions v on v.store_id=p.store_id and v.sale_id=p.sale_id where p.store_id=s and p.buyer=auth.uid() order by a.number desc offset off limit 50)x),'[]'::jsonb);
+end $function$;
+
+CREATE OR REPLACE FUNCTION tenant_private.capture_online_spend_loyalty()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+ if new.state='fulfilled' and new.sale_id is not null and (old.state is distinct from new.state or old.sale_id is distinct from new.sale_id) then perform tenant_private.capture_spend_loyalty(new.store_id,new.sale_id,new.buyer,'online');
+ update tenant_private.sale_invoice_details d set document=d.document||jsonb_build_object('combined_loyalty',jsonb_build_object('gross_minor',p.quote->'gross_minor','base_total_minor',p.quote->'base_total_minor','points_used',p.quote->'points_used','points_discount_minor',p.quote->'points_discount_minor','source',p.quote->'source','tier',p.quote->'tier')) from tenant_private.spend_checkout p where d.store_id=new.store_id and d.sale_id=new.sale_id and p.store_id=new.store_id and p.order_id=new.id;
+ end if;
+ return new;
+end $function$;
