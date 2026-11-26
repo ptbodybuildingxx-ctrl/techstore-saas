@@ -31,22 +31,7 @@ begin
     if lay ? 'position' then
      pos:=lay->'position';
      if jsonb_typeof(pos) is distinct from 'object' then return false;end if;
-     if (select count(*) from jsonb_object_keys(pos))<>4 or not(pos ?& array['desktop_column','desktop_row','mobile_column','mobile_row']) or exists(select 1 from jsonb_each(pos) x where jsonb_typeof(x.value)<>'number' or x.value#>>'{}' !~ '^[0-9]{1,2}
-   end if;
-   if (select count(*) from jsonb_object_keys(bl))<>6 or not(bl ?& array['type','title','body','image','action','tone']) or exists(select 1 from jsonb_each(bl) x where jsonb_typeof(x.value)<>'string') then return false;end if;
-   if bl->>'type' not in ('banner','text','image','cta') or length(btrim(bl->>'title')) not between 1 and 100 or length(bl->>'body')>600 or (bl->>'image'<>'' and not(bl->>'image'=any(ids))) or (bl->>'type'='image' and bl->>'image'='') or bl->>'action' not in ('none','catalog') or bl->>'tone' not in ('accent','surface') then return false;end if;
-  end loop;
- end loop;
- if total_blocks>32 then return false;end if;
- foreach k in array array['desktop','mobile'] loop
-  dev:=v->k;
-  if jsonb_typeof(dev) is distinct from 'object' then return false;end if;
-  if (select count(*) from jsonb_object_keys(dev))<>3 or not(dev ?& array['layout','columns','density']) or jsonb_typeof(dev->'layout') is distinct from 'string' or jsonb_typeof(dev->'density') is distinct from 'string' or jsonb_typeof(dev->'columns') is distinct from 'number' then return false;end if;
-  if dev->>'layout' not in ('list','cards') or dev->>'density' not in ('compact','normal','spacious') or dev->>'columns' not in ('1','2','3','4') or (k='mobile' and dev->>'columns' not in ('1','2')) then return false;end if;
- end loop;
- return true;
-end $$;
-commit;) then return false;end if;
+     if (select count(*) from jsonb_object_keys(pos))<>4 or not(pos ?& array['desktop_column','desktop_row','mobile_column','mobile_row']) or exists(select 1 from jsonb_each(pos) x where jsonb_typeof(x.value)<>'number' or x.value#>>'{}' !~ '^[0-9]{1,2}$') then return false;end if;
      foreach d in array array['desktop','mobile'] loop
       c:=(pos->>(d||'_column'))::integer;r:=(pos->>(d||'_row'))::integer;w:=(lay->>d)::integer;
       if c>13-w or r>32 or ((c=0)<>(r=0)) then return false;end if;
