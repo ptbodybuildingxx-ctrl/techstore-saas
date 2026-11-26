@@ -178,6 +178,15 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    const r=validateReceivableGrants(await rpc('mt_receivable_grant_set',{p_store:store,p_user:user,p_actions:actions},store),user);
    if([...r.granted].sort().join(',')!==[...actions].sort().join(','))throw Error('Grant not confirmed');return r;
   },
+  async resolveReceivable(store,x,mode='inspect'){
+   if(!x||x.store!==store||!isId(x.requestId)||!['customer','customerEdit','pay','credit','standaloneOpen','standalonePay'].includes(x.kind)||!['inspect','cancel','acknowledge'].includes(mode))throw Error('Invalid resolution reference');
+   let operation=x;
+   if(x.kind==='credit'&&x.sale?.store===store&&x.sale?.requestId===x.requestId){
+    try{const sale=saleAttempt(store,x.sale.lines,x.sale.currency,x.requestId);operation={...x,sale:{...sale,branch:x.sale.branch??null,...(x.sale.invoice===undefined?{}:{invoice:saleInvoiceMetadata(x.sale.invoice,sale.lines)})},terms:{customer:x.terms.customer,deposit:x.terms.deposit,count:x.terms.count,due:x.terms.due}}}catch{}
+   }
+   const r=await rpc('mt_resolve_receivable',{p_store:store,p_operation:operation,p_mode:mode},store);
+   if(!['confirmed','cancelled','not_recorded','conflict','conflict_acknowledged'].includes(r))throw Error('Resolution not confirmed');return r;
+  },
   async receivableOperation(store,x){
    if(!x||x.store!==store||!isId(x.requestId))throw Error('Invalid receivable operation');
    switch(x.kind){

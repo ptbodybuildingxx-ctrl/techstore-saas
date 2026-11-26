@@ -18,3 +18,14 @@ export async function replayQueuedOperations({store,actor,pass,send,approve,limi
 
 // Only the attempted head count can be abandoned, and only after server cancellation or confirmation.
 export async function resolveAttemptedCount({store,actor,pass,cancel,approve}){const scope=key(store,actor);return locked(scope,async()=>{const entries=await read(scope,pass,store,actor),head=entries[0];if(!head||head.operation.kind!=='stockCount'||!head.attemptedAt)throw Error('No attempted count at queue head');if(!await approve(structuredClone(head.operation)))return null;const result=await cancel(structuredClone(head.operation));if(!['confirmed','cancelled'].includes(result))throw Error('Count status unknown');await write(scope,pass,store,actor,entries.slice(1));return result})}
+
+// Only the attempted head can be resolved; the server must confirm its exact payload or record an explicit terminal decision.
+export async function resolveAttemptedReceivable({store,actor,pass,resolve}){
+ const scope=key(store,actor);return locked(scope,async()=>{
+  const entries=await read(scope,pass,store,actor),head=entries[0];
+  if(!head||!head.attemptedAt||!['customer','customerEdit','pay','credit','standaloneOpen','standalonePay'].includes(head.operation.kind))throw Error('No attempted receivable at queue head');
+  const result=await resolve(structuredClone(head.operation));if(result===null)return null;
+  if(!['confirmed','cancelled','conflict_acknowledged'].includes(result))throw Error('Receivable still unresolved');
+  await write(scope,pass,store,actor,entries.slice(1));return result;
+ });
+}

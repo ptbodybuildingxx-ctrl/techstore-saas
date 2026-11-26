@@ -1,5 +1,14 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "معالجة تعارض عملية عملاء أو ديون": "Resolve a customer or debt operation conflict",
+  "التحقق من العملية المعلقة": "Check pending operation",
+  "تأكد تسجيل العملية على الخادم. إزالة المسودة فقط؟": "The server confirms this exact operation. Remove the local draft only?",
+  "سبق إغلاق مرجع العملية. إزالة النسخة المحلية؟": "The request has already been resolved. Remove the local copy?",
+  "العملية غير مسجلة. إلغاء مرجعها نهائياً بعد مراجعة النقد الفعلي؟": "The operation is not recorded. Permanently cancel its request reference after reconciling actual cash?",
+  "المرجع مرتبط ببيانات مختلفة. راجع السجلات قبل إغلاق المسودة المتعارضة دون تعديل أي قيد مالي.": "This reference has different recorded data. Review the ledger before acknowledging the conflicting draft without altering any financial entry.",
+  "تم تأكيد تسجيل العملية": "Operation confirmed",
+  "تم إلغاء مرجع العملية غير المسجلة": "Unrecorded request permanently cancelled",
+  "تم إغلاق المسودة المتعارضة دون تعديل السجل": "Conflicting draft closed without modifying the ledger",
   "حفظ نسخة محلية مشفرة لمدة 24 ساعة؟ استخدم جهازاً خاصاً. لا تُخزن بيانات العملاء في الكتالوج.": "Save an encrypted local snapshot for 24 hours? Use a private device. Customer records are not stored in the catalog.",
   "البيع الآجل يسجل الدفعة الأولى في الصندوق والباقي كدين بعملة الفاتورة. الأقساط شهرية دون فوائد. صلاحيات الكاشير مفوضة من المالك ومقيدة بالفرع.": "Credit sales post the deposit to cash and the rest as debt in invoice currency. Interest-free monthly installments. Cashier access is delegated by the owner and branch-scoped.",
   "تفويض صلاحيات العملاء والديون": "Delegate customer and debt permissions",
