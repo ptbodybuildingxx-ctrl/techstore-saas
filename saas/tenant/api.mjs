@@ -221,6 +221,11 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    for(const c of ['USD','EUR','SYP']){const rows=r.rows.filter(x=>x.currency===c);if(rows.reduce((n,x)=>n+BigInt(x.opening),0n)!==0n||rows.reduce((n,x)=>n+BigInt(x.debit)-BigInt(x.credit),0n)!==0n)throw Error('Unbalanced ledger')}
    return r;
   },
+  async financialReconciliation(store){
+   const r=await rpc('mt_financial_reconciliation',{p_store:store},store),accounts=['cash','inventory','accounts_receivable','accounts_payable','income_tax_payable'],integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
+   if(!r||r.mode!=='current_subledger_reconciliation'||!int(r.stock_quantity_mismatches,0,Number.MAX_SAFE_INTEGER)||!Array.isArray(r.rows)||r.rows.length>15||new Set(r.rows.map(x=>x?.currency+':'+x?.account)).size!==r.rows.length||r.rows.some(x=>!x||!currency(x.currency)||!accounts.includes(x.account)||!['journal','recorded','difference'].every(k=>integer(x[k]))||BigInt(x.recorded)-BigInt(x.journal)!==BigInt(x.difference)||x.balanced!==(BigInt(x.difference)===0n))||new Set(r.rows.map(x=>x.currency)).size*accounts.length!==r.rows.length||r.balanced!==(r.stock_quantity_mismatches===0&&r.rows.every(x=>x.balanced)))throw Error('Invalid financial reconciliation');
+   return r;
+  },
   async cashReconciliation(store){
    const r=await rpc('mt_cash_reconciliation',{p_store:store},store),integer=x=>typeof x==='string'&&/^-?\d+$/.test(x);
    if(!Array.isArray(r)||r.length>3||new Set(r.map(x=>x?.currency)).size!==r.length||r.some(x=>!x||!currency(x.currency)||!['recorded','computed','difference'].every(k=>integer(x[k]))||typeof x.balanced!=='boolean'||BigInt(x.recorded)-BigInt(x.computed)!==BigInt(x.difference)||x.balanced!==(BigInt(x.difference)===0n)))throw Error('Invalid reconciliation');return r;
