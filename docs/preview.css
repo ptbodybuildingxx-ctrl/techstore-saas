@@ -57,3 +57,203 @@ html[data-design=on][data-layout=list] .grid{grid-template-columns:1fr}
 /* Typed responsive site layouts; no arbitrary CSS from tenant content. */
 .site-page-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;align-items:start}.site-page-grid>.site-block{grid-column:span 12;min-width:0;margin:0;overflow-wrap:anywhere}.site-page-grid>[data-desktop="3"]{grid-column:span 3}.site-page-grid>[data-desktop="4"]{grid-column:span 4}.site-page-grid>[data-desktop="6"]{grid-column:span 6}.site-page-grid>[data-desktop="8"]{grid-column:span 8}.site-page-grid>[data-desktop="9"]{grid-column:span 9}.site-page-grid>[data-align="start"]{text-align:start}.site-page-grid>[data-align="center"]{text-align:center}.site-page-grid>[data-align="end"]{text-align:end}.site-page-grid>[data-padding="compact"]{padding:8px}.site-page-grid>[data-padding="normal"]{padding:16px}.site-page-grid>[data-padding="spacious"]{padding:28px}.site-page-grid>[data-heading="small"] h3{font-size:1rem}.site-page-grid>[data-heading="large"] h3{font-size:1.65rem}.site-page-grid>[data-image-fit="square"] .site-image{width:100%;aspect-ratio:1;object-fit:cover;max-height:none}.site-page-grid>[data-image-fit="wide"] .site-image{width:100%;aspect-ratio:16/9;object-fit:cover;max-height:none}.site-page-grid>[data-image-fit="natural"] .site-image{max-width:100%;height:auto;object-fit:contain}.site-preview[data-preview-device="mobile"] .site-page-grid>.site-block{grid-column:span 12}.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile="6"]{grid-column:span 6}
 @media(max-width:640px){.site-page-grid>.site-block{grid-column:span 12}.site-page-grid>[data-mobile="6"]{grid-column:span 6}}
+
+/* Typed free grid placement; responsive preview and storefront share the same rules. */
+.site-page-grid>.site-block{grid-column-start:auto;grid-column-end:span 12;grid-row-start:auto}
+.site-page-grid>[data-desktop="3"]{grid-column-end:span 3}
+.site-page-grid>[data-desktop="4"]{grid-column-end:span 4}
+.site-page-grid>[data-desktop="6"]{grid-column-end:span 6}
+.site-page-grid>[data-desktop="8"]{grid-column-end:span 8}
+.site-page-grid>[data-desktop="9"]{grid-column-end:span 9}
+.site-page-grid>[data-desktop="12"]{grid-column-end:span 12}
+.site-page-grid>[data-desktop-column="1"]{grid-column-start:1}
+.site-page-grid>[data-desktop-column="2"]{grid-column-start:2}
+.site-page-grid>[data-desktop-column="3"]{grid-column-start:3}
+.site-page-grid>[data-desktop-column="4"]{grid-column-start:4}
+.site-page-grid>[data-desktop-column="5"]{grid-column-start:5}
+.site-page-grid>[data-desktop-column="6"]{grid-column-start:6}
+.site-page-grid>[data-desktop-column="7"]{grid-column-start:7}
+.site-page-grid>[data-desktop-column="8"]{grid-column-start:8}
+.site-page-grid>[data-desktop-column="9"]{grid-column-start:9}
+.site-page-grid>[data-desktop-column="10"]{grid-column-start:10}
+.site-page-grid>[data-desktop-column="11"]{grid-column-start:11}
+.site-page-grid>[data-desktop-column="12"]{grid-column-start:12}
+.site-page-grid>[data-desktop-row="1"]{grid-row-start:1}
+.site-page-grid>[data-desktop-row="2"]{grid-row-start:2}
+.site-page-grid>[data-desktop-row="3"]{grid-row-start:3}
+.site-page-grid>[data-desktop-row="4"]{grid-row-start:4}
+.site-page-grid>[data-desktop-row="5"]{grid-row-start:5}
+.site-page-grid>[data-desktop-row="6"]{grid-row-start:6}
+.site-page-grid>[data-desktop-row="7"]{grid-row-start:7}
+.site-page-grid>[data-desktop-row="8"]{grid-row-start:8}
+.site-page-grid>[data-desktop-row="9"]{grid-row-start:9}
+.site-page-grid>[data-desktop-row="10"]{grid-row-start:10}
+.site-page-grid>[data-desktop-row="11"]{grid-row-start:11}
+.site-page-grid>[data-desktop-row="12"]{grid-row-start:12}
+.site-page-grid>[data-desktop-row="13"]{grid-row-start:13}
+.site-page-grid>[data-desktop-row="14"]{grid-row-start:14}
+.site-page-grid>[data-desktop-row="15"]{grid-row-start:15}
+.site-page-grid>[data-desktop-row="16"]{grid-row-start:16}
+.site-page-grid>[data-desktop-row="17"]{grid-row-start:17}
+.site-page-grid>[data-desktop-row="18"]{grid-row-start:18}
+.site-page-grid>[data-desktop-row="19"]{grid-row-start:19}
+.site-page-grid>[data-desktop-row="20"]{grid-row-start:20}
+.site-page-grid>[data-desktop-row="21"]{grid-row-start:21}
+.site-page-grid>[data-desktop-row="22"]{grid-row-start:22}
+.site-page-grid>[data-desktop-row="23"]{grid-row-start:23}
+.site-page-grid>[data-desktop-row="24"]{grid-row-start:24}
+.site-page-grid>[data-desktop-row="25"]{grid-row-start:25}
+.site-page-grid>[data-desktop-row="26"]{grid-row-start:26}
+.site-page-grid>[data-desktop-row="27"]{grid-row-start:27}
+.site-page-grid>[data-desktop-row="28"]{grid-row-start:28}
+.site-page-grid>[data-desktop-row="29"]{grid-row-start:29}
+.site-page-grid>[data-desktop-row="30"]{grid-row-start:30}
+.site-page-grid>[data-desktop-row="31"]{grid-row-start:31}
+.site-page-grid>[data-desktop-row="32"]{grid-row-start:32}
+@media(max-width:640px){
+.site-page-grid>.site-block{grid-column-start:auto;grid-column-end:span 12;grid-row-start:auto}
+.site-page-grid>[data-mobile="6"]{grid-column-end:span 6}
+.site-page-grid>[data-mobile="12"]{grid-column-end:span 12}
+.site-page-grid>[data-mobile-column="1"]{grid-column-start:1}
+.site-page-grid>[data-mobile-column="2"]{grid-column-start:2}
+.site-page-grid>[data-mobile-column="3"]{grid-column-start:3}
+.site-page-grid>[data-mobile-column="4"]{grid-column-start:4}
+.site-page-grid>[data-mobile-column="5"]{grid-column-start:5}
+.site-page-grid>[data-mobile-column="6"]{grid-column-start:6}
+.site-page-grid>[data-mobile-column="7"]{grid-column-start:7}
+.site-page-grid>[data-mobile-column="8"]{grid-column-start:8}
+.site-page-grid>[data-mobile-column="9"]{grid-column-start:9}
+.site-page-grid>[data-mobile-column="10"]{grid-column-start:10}
+.site-page-grid>[data-mobile-column="11"]{grid-column-start:11}
+.site-page-grid>[data-mobile-column="12"]{grid-column-start:12}
+.site-page-grid>[data-mobile-row="1"]{grid-row-start:1}
+.site-page-grid>[data-mobile-row="2"]{grid-row-start:2}
+.site-page-grid>[data-mobile-row="3"]{grid-row-start:3}
+.site-page-grid>[data-mobile-row="4"]{grid-row-start:4}
+.site-page-grid>[data-mobile-row="5"]{grid-row-start:5}
+.site-page-grid>[data-mobile-row="6"]{grid-row-start:6}
+.site-page-grid>[data-mobile-row="7"]{grid-row-start:7}
+.site-page-grid>[data-mobile-row="8"]{grid-row-start:8}
+.site-page-grid>[data-mobile-row="9"]{grid-row-start:9}
+.site-page-grid>[data-mobile-row="10"]{grid-row-start:10}
+.site-page-grid>[data-mobile-row="11"]{grid-row-start:11}
+.site-page-grid>[data-mobile-row="12"]{grid-row-start:12}
+.site-page-grid>[data-mobile-row="13"]{grid-row-start:13}
+.site-page-grid>[data-mobile-row="14"]{grid-row-start:14}
+.site-page-grid>[data-mobile-row="15"]{grid-row-start:15}
+.site-page-grid>[data-mobile-row="16"]{grid-row-start:16}
+.site-page-grid>[data-mobile-row="17"]{grid-row-start:17}
+.site-page-grid>[data-mobile-row="18"]{grid-row-start:18}
+.site-page-grid>[data-mobile-row="19"]{grid-row-start:19}
+.site-page-grid>[data-mobile-row="20"]{grid-row-start:20}
+.site-page-grid>[data-mobile-row="21"]{grid-row-start:21}
+.site-page-grid>[data-mobile-row="22"]{grid-row-start:22}
+.site-page-grid>[data-mobile-row="23"]{grid-row-start:23}
+.site-page-grid>[data-mobile-row="24"]{grid-row-start:24}
+.site-page-grid>[data-mobile-row="25"]{grid-row-start:25}
+.site-page-grid>[data-mobile-row="26"]{grid-row-start:26}
+.site-page-grid>[data-mobile-row="27"]{grid-row-start:27}
+.site-page-grid>[data-mobile-row="28"]{grid-row-start:28}
+.site-page-grid>[data-mobile-row="29"]{grid-row-start:29}
+.site-page-grid>[data-mobile-row="30"]{grid-row-start:30}
+.site-page-grid>[data-mobile-row="31"]{grid-row-start:31}
+.site-page-grid>[data-mobile-row="32"]{grid-row-start:32}
+}
+.site-preview[data-preview-device="desktop"] .site-page-grid>.site-block{grid-column-start:auto;grid-column-end:span 12;grid-row-start:auto}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop="3"]{grid-column-end:span 3}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop="4"]{grid-column-end:span 4}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop="6"]{grid-column-end:span 6}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop="8"]{grid-column-end:span 8}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop="9"]{grid-column-end:span 9}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop="12"]{grid-column-end:span 12}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="1"]{grid-column-start:1}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="2"]{grid-column-start:2}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="3"]{grid-column-start:3}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="4"]{grid-column-start:4}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="5"]{grid-column-start:5}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="6"]{grid-column-start:6}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="7"]{grid-column-start:7}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="8"]{grid-column-start:8}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="9"]{grid-column-start:9}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="10"]{grid-column-start:10}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="11"]{grid-column-start:11}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-column="12"]{grid-column-start:12}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="1"]{grid-row-start:1}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="2"]{grid-row-start:2}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="3"]{grid-row-start:3}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="4"]{grid-row-start:4}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="5"]{grid-row-start:5}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="6"]{grid-row-start:6}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="7"]{grid-row-start:7}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="8"]{grid-row-start:8}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="9"]{grid-row-start:9}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="10"]{grid-row-start:10}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="11"]{grid-row-start:11}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="12"]{grid-row-start:12}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="13"]{grid-row-start:13}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="14"]{grid-row-start:14}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="15"]{grid-row-start:15}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="16"]{grid-row-start:16}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="17"]{grid-row-start:17}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="18"]{grid-row-start:18}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="19"]{grid-row-start:19}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="20"]{grid-row-start:20}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="21"]{grid-row-start:21}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="22"]{grid-row-start:22}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="23"]{grid-row-start:23}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="24"]{grid-row-start:24}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="25"]{grid-row-start:25}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="26"]{grid-row-start:26}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="27"]{grid-row-start:27}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="28"]{grid-row-start:28}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="29"]{grid-row-start:29}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="30"]{grid-row-start:30}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="31"]{grid-row-start:31}
+.site-preview[data-preview-device="desktop"] .site-page-grid>[data-desktop-row="32"]{grid-row-start:32}
+.site-preview[data-preview-device="mobile"] .site-page-grid>.site-block{grid-column-start:auto;grid-column-end:span 12;grid-row-start:auto}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile="6"]{grid-column-end:span 6}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile="12"]{grid-column-end:span 12}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="1"]{grid-column-start:1}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="2"]{grid-column-start:2}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="3"]{grid-column-start:3}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="4"]{grid-column-start:4}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="5"]{grid-column-start:5}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="6"]{grid-column-start:6}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="7"]{grid-column-start:7}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="8"]{grid-column-start:8}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="9"]{grid-column-start:9}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="10"]{grid-column-start:10}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="11"]{grid-column-start:11}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-column="12"]{grid-column-start:12}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="1"]{grid-row-start:1}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="2"]{grid-row-start:2}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="3"]{grid-row-start:3}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="4"]{grid-row-start:4}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="5"]{grid-row-start:5}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="6"]{grid-row-start:6}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="7"]{grid-row-start:7}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="8"]{grid-row-start:8}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="9"]{grid-row-start:9}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="10"]{grid-row-start:10}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="11"]{grid-row-start:11}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="12"]{grid-row-start:12}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="13"]{grid-row-start:13}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="14"]{grid-row-start:14}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="15"]{grid-row-start:15}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="16"]{grid-row-start:16}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="17"]{grid-row-start:17}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="18"]{grid-row-start:18}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="19"]{grid-row-start:19}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="20"]{grid-row-start:20}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="21"]{grid-row-start:21}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="22"]{grid-row-start:22}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="23"]{grid-row-start:23}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="24"]{grid-row-start:24}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="25"]{grid-row-start:25}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="26"]{grid-row-start:26}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="27"]{grid-row-start:27}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="28"]{grid-row-start:28}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="29"]{grid-row-start:29}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="30"]{grid-row-start:30}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="31"]{grid-row-start:31}
+.site-preview[data-preview-device="mobile"] .site-page-grid>[data-mobile-row="32"]{grid-row-start:32}
