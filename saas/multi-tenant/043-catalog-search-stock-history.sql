@@ -4,7 +4,7 @@ alter table public.mt_products add column specs jsonb not null default '{}'::jso
 create function tenant_private.valid_product_specs(p_specs jsonb) returns boolean language plpgsql immutable set search_path='' as $$
 begin
  if p_specs is null or jsonb_typeof(p_specs)<>'object' then return false;end if;
- return (select count(*)<=30 and coalesce(bool_and(length(btrim(key)) between 1 and 60 and jsonb_typeof(value)='string' and length(value#>>'{}') between 1 and 240),true) from jsonb_each(p_specs));
+ return (select count(*)<=30 and coalesce(bool_and(length(btrim(key)) between 1 and 60 and length(key)<=60 and jsonb_typeof(value)='string' and length(btrim(value#>>'{}')) between 1 and 240 and length(value#>>'{}')<=240),true) from jsonb_each(p_specs));
 end $$;
 alter table public.mt_products add constraint mt_product_specs_valid check(tenant_private.valid_product_specs(specs));
 create function public.mt_set_product_specs(p_store uuid,p_product uuid,p_specs jsonb) returns jsonb
