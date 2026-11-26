@@ -1,5 +1,5 @@
 import {chooseTotp,mountAccountSecurity} from '../design/account-security.mjs';
-import {initLocale,tr} from '../design/i18n.mjs';
+import {initLocale,tr,currentLanguage} from '../design/i18n.mjs';
 import {suggestBuild} from '../design/build-suggestions.mjs';
 import {assistantIntent,assistantPartLabel} from '../design/local-assistant.mjs';
 import {localModelReady,explainBuildLocally} from '../design/generative-assistant.mjs';
@@ -94,5 +94,6 @@ el('localAssistantForm').onsubmit=e=>{e.preventDefault();run(async()=>{if(attemp
 document.addEventListener('techstore-languagechange',()=>{paintSuggestion(el('suggestBuildResult'),buildAnswer);paintAssistant();renderBuild();renderCatalog()});
 
 // Only enable if the browser model is already available; no automatic model download.
-localModelReady().then(ready=>{el('explainLocalBuild').hidden=el('generatedBuildNotice').hidden=!ready;controls()});
-el('explainLocalBuild').onclick=()=>run(async()=>{if(attempt||!slug||!build.size)return;const shop=slug,signature=JSON.stringify([...build.keys()]),out=el('generatedBuildResult');out.textContent='';try{const result=await explainBuildLocally(buildCompatibility([...build.values()]));if(shop===slug&&signature===JSON.stringify([...build.keys()]))out.textContent=result||'Local model unavailable. Use the compatibility checks above.'}catch{out.textContent='Local explanation unavailable. Use the compatibility checks above.'}});
+async function refreshModelAvailability(){const language=currentLanguage(),ready=await localModelReady(globalThis.LanguageModel,language);if(language===currentLanguage()){el('explainLocalBuild').hidden=el('generatedBuildNotice').hidden=!ready;controls()}}
+refreshModelAvailability();document.addEventListener('techstore-languagechange',refreshModelAvailability);
+el('explainLocalBuild').onclick=()=>run(async()=>{if(attempt||!slug||!build.size)return;const shop=slug,signature=JSON.stringify([...build.keys()]),language=currentLanguage(),out=el('generatedBuildResult');out.textContent='';try{const result=await explainBuildLocally(buildCompatibility([...build.values()]),{language});if(shop===slug&&language===currentLanguage()&&signature===JSON.stringify([...build.keys()]))out.textContent=result||tr('النموذج المحلي غير متاح؛ راجع نتائج التوافق.')}catch{if(shop===slug&&language===currentLanguage())out.textContent=tr('النموذج المحلي غير متاح؛ راجع نتائج التوافق.')}});
