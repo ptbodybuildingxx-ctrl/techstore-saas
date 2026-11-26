@@ -5,6 +5,9 @@ import {join} from 'node:path';
 import {packageWorker,sourcePaths} from './cloudflare-package.mjs';
 import {createWorker} from './worker.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url));
+// Fail closed: the same command is used by Cloudflare Workers Builds on main.
+const gate=JSON.parse(await readFile(join(root,'saas/deploy/release-gate.json'),'utf8'));
+if(gate.state!=='approved')throw Error('Production deployment held: '+gate.reason);
 const commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 const sources=Object.fromEntries(await Promise.all(sourcePaths.map(async p=>[p,await readFile(join(root,p),'utf8')])));
 const routing=await readFile(join(root,'saas/deploy/worker.mjs'),'utf8');

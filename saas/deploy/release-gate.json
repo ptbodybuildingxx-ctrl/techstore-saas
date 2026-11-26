@@ -1,0 +1,12 @@
+{
+  "state": "held",
+  "reason": "Incomplete parity implementation; SQL and UI CI failures; migrations 059–071 not approved for live database",
+  "required": [
+    "Finish parity implementation",
+    "Resolve failing SQL and UI checks",
+    "Pass all integration, recovery and security checks",
+    "Verify current live schema and protected project identity",
+    "Apply approved migrations after verified recovery plan",
+    "Explicitly approve deployment and remove release hold"
+  ]
+}
