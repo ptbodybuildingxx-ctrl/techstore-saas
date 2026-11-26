@@ -146,3 +146,6 @@ Owner-scoped private storage reservations and uploads, up to four 1600px JPEG fi
 
 ## Staff TOTP and sessions (070)
 Staff account enroll/challenge/verify/remove using Supabase Auth REST, in-memory tokens only, optional TOTP enrollment with mandatory AAL2 tenant access once verified; membership RPCs reject AAL1 staff sessions. List own active sessions and user-agent descriptions when available; sign out other sessions through Auth. Not an individual-device revoke interface or buyer/admin MFA flow; no live enrollment/auth validation performed. Requires Supabase TOTP enrollment and verification enabled. Verify all staff logins, recovery and session revocation before rollout.
+
+## Encrypted business export (071)
+AAL2 owner-only consistent SQL read of a fixed allowlist of tenant business records, bounded to 20,000 rows and 8 MB approximate JSON, then browser AES-GCM encryption under an independent passphrase. The file includes sensitive business/customer records, not Auth tokens or database credentials. Local inspection authenticates ciphertext and checks store identity, but does not restore or validate business invariants. Full server capture, Storage archive, infrastructure configuration, controlled restoration and recovery evidence remain separate and mandatory.
