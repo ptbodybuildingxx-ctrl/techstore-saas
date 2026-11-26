@@ -17,7 +17,7 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
  function token(){if(!session||session.expiresAt<=clock()+5000){session=null;throw Error('Sign in again')}return session.accessToken}
  async function rpc(name,args){try{return await request('/rest/v1/rpc/'+name,args,token())}catch(e){if(e.status===401||e.status===403)session=null;throw e}}
  const replaceSession=s=>{if(typeof s?.access_token!=='string'||!s.access_token||!Number.isFinite(s.expires_in)||s.expires_in<=0)throw Error('Invalid session');session={accessToken:s.access_token,expiresAt:clock()+s.expires_in*1000}};
- const security=createAccountSecurity({request,token,replaceSession,rpc});
+ const security=createAccountSecurity({request,token,replaceSession,rpc,requireVerifiedFactor:true});
  return {
   security,
   async signInUsername(username,password,codeProvider){

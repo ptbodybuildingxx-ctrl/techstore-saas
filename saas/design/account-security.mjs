@@ -1,7 +1,7 @@
 // Shared account security. Tokens and TOTP secrets are held in memory only.
 import {tr} from './i18n.mjs';
 const id=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
-export function createAccountSecurity({request,token,replaceSession,rpc}){
+export function createAccountSecurity({request,token,replaceSession,rpc,requireVerifiedFactor=false}){
  async function factors(){
   const u=await request('/auth/v1/user',undefined,token(),'GET'),r=u?.factors??[];
   if(!u||!id(u.id)||!Array.isArray(r)||r.some(x=>!id(x.id)||typeof x.status!=='string'||typeof x.factor_type!=='string'))throw Error('Invalid factors');
@@ -20,7 +20,16 @@ export function createAccountSecurity({request,token,replaceSession,rpc}){
   if(before!==token())throw Error('Session changed');
   replaceSession(result);
  }
- async function remove(factor){if(!id(factor))throw Error('Invalid factor');await request('/auth/v1/factors/'+factor,undefined,token(),'DELETE')}
+ async function remove(factor){
+  if(!id(factor))throw Error('Invalid factor');
+  const before=token(),all=await factors();
+  if(before!==token())throw Error('Session changed');
+  const chosen=all.find(f=>f.id===factor);
+  if(!chosen)throw Error('Unknown factor');
+  if(requireVerifiedFactor&&chosen.status==='verified'&&all.filter(f=>f.status==='verified').length<=1)throw Error('Enroll and verify a replacement authenticator first');
+  await request('/auth/v1/factors/'+factor,undefined,before,'DELETE');
+ }
+ function canRemove(factor,all){return !requireVerifiedFactor||factor.status!=='verified'||all.filter(f=>f.status==='verified').length>1}
  async function authenticate(provider,{required=false}={}){
   const verified=(await factors()).filter(x=>x.status==='verified');
   if(!verified.length){if(required)throw Error('Administrator TOTP enrollment required');return}
@@ -35,7 +44,7 @@ export function createAccountSecurity({request,token,replaceSession,rpc}){
   return r;
  }
  async function revoke(session){if(!id(session)||await rpc('mt_account_revoke_session',{p_session:session})!==true)throw Error('Revocation not confirmed')}
- return {factors,enroll,verify,remove,authenticate,sessions,revoke};
+ return {factors,enroll,verify,remove,canRemove,authenticate,sessions,revoke};
 }
 export function chooseTotp(factors){
  let selected=factors[0];
@@ -51,12 +60,12 @@ export function mountAccountSecurity(root,{api,run,message}){
  const list=node('div'),secret=node('p'),form=node('form'),label=node('label','رمز المصادقة'),input=node('input'),status=node('p');
  let pending=null;
  const reset=()=>{pending=null;secret.textContent='';input.value='';form.hidden=true;list.replaceChildren();status.textContent=''};
- input.autocomplete='one-time-code';input.inputMode='numeric';input.maxLength=6;input.required=true;label.append(input);
+ input.autocomplete='one-time-code';input.inputMode='numeric';input.maxLength=6;input.pattern='[0-9]{6}';input.required=true;label.append(input);
  const submit=node('button','تأكيد');submit.type='submit';form.append(label,submit,button('إلغاء',async()=>{if(pending)await api.security.remove(pending.id);pending=null;secret.textContent='';input.value='';form.hidden=true}));
  async function refresh(){
   const [factors,sessions]=await Promise.all([api.security.factors(),api.security.sessions()]);
   list.replaceChildren(node('h4','تطبيقات المصادقة'));
-  for(const f of factors){const p=node('p');p.append(document.createTextNode((f.name||'TOTP')+' — '+tr(f.status==='verified'?'مفعّل':'غير مؤكد')+' '),button('إزالة',async()=>{if(confirm(tr('إزالة تطبيق المصادقة هذا؟'))){await api.security.remove(f.id);try{await api.signOut()}finally{reset();message(tr('سجل الدخول مجدداً'))}}}));list.append(p)}
+  for(const f of factors){const p=node('p');p.append(document.createTextNode((f.name||'TOTP')+' — '+tr(f.status==='verified'?'مفعّل':'غير مؤكد')+' '));if(api.security.canRemove(f,factors)){p.append(button('إزالة',async()=>{if(confirm(tr('إزالة تطبيق المصادقة هذا؟'))){await api.security.remove(f.id);try{await api.signOut()}finally{reset();message(tr('سجل الدخول مجدداً'))}}}))}else p.append(node('span','أضف تطبيق مصادقة بديلاً وفعّله قبل إزالة التطبيق الأخير.'));list.append(p)}
   list.append(node('h4','الجلسات الحالية'));
   for(const s of sessions){const p=node('p');p.textContent=tr(s.current?'هذه الجلسة':'جلسة أخرى')+' — '+(s.device||tr('جهاز غير معروف'))+' — '+(s.created_at||'')+' ';if(!s.current)p.append(button('إلغاء وصول الجهاز',async()=>{if(confirm(tr('إلغاء وصول هذه الجلسة إلى المنصة؟'))){await api.security.revoke(s.id);await refresh()}}));list.append(p)}
  }
