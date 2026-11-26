@@ -36,3 +36,17 @@ export async function loadStaffRegister({api,store,section,node,table,run,money,
  navigation.append(first,next,exp);section.append(status,area,navigation);
  await page(null);
 }
+
+export function payrollEventLabel(kind){
+ return tr(({partial:'دفعة راتب جزئية',final:'تسوية راتب نهائية',offset:'مقاصة سلفة',advance:'سلفة مصروفة'})[kind]||'دفعة راتب جزئية');
+}
+export function payrollEventState(x){return tr(x.reversed?'معكوس':'مسجل')}
+export function payrollHistoryTables(r,money){
+ return [
+  {headers:['معرّف السلفة','المبلغ','المتبقي','المرجع','الحالة'],rows:r.advances.map(x=>[x.id,money(x.amount_minor,x.currency),money(x.remaining_minor,x.currency),x.reference,payrollEventState(x)])},
+  {headers:['المعرّف','النوع','المبلغ','السبب','الحالة'],rows:r.adjustments.map(x=>[x.id,tr(x.kind==='bonus'?'مكافأة':'حسم'),money(x.amount_minor,x.currency),x.reason,tr(x.reverses?'قيد عكسي':x.reversed?'معكوس':'مسجل')])},
+  {headers:['المعرّف','معرّف الكشف','النوع','المبلغ','التاريخ','الحالة'],rows:r.payments.map(x=>[x.id,x.payroll_id,payrollEventLabel(x.kind),money(x.amount_minor,x.currency),staffDate(x.created_at),payrollEventState(x)])},
+  {headers:['المعرّف','معرّف الكشف','معرّف السلفة','المبلغ','التاريخ','الحالة'],rows:(r.offsets||[]).map(x=>[x.id,x.payroll_id,x.advance_id,money(x.amount_minor,x.currency),staffDate(x.created_at),payrollEventState(x)])},
+  {headers:['المعرّف','معرّف التسوية الأصلية','النوع','المبلغ','السبب','التاريخ'],rows:(r.reversals||[]).map(x=>[x.id,x.original_id,payrollEventLabel(x.kind),money(x.amount_minor,x.currency),x.reason,staffDate(x.created_at)])}
+ ];
+}
