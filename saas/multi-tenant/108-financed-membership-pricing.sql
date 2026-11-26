@@ -263,3 +263,25 @@ end $$;
 create function public.mt_pos_membership_financed(p_store uuid,p_branch uuid,p_request uuid,p_token uuid,p_currency text,p_lines jsonb,p_metadata jsonb,p_terms jsonb,p_expected bigint,p_prices jsonb) returns jsonb language sql set search_path='' as $$select tenant_private.pos_membership_financed(p_store,p_branch,p_request,p_token,p_currency,p_lines,p_metadata,p_terms,p_expected,p_prices)$$;
 revoke all on function tenant_private.pos_membership_financed(uuid,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,bigint,jsonb),public.mt_pos_membership_financed(uuid,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,bigint,jsonb) from public,anon,authenticated,service_role;
 grant execute on function tenant_private.pos_membership_financed(uuid,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,bigint,jsonb),public.mt_pos_membership_financed(uuid,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,bigint,jsonb) to authenticated;
+
+CREATE OR REPLACE FUNCTION tenant_private.buyer_invoice(s uuid, o uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare a public.mt_sales%rowtype;doc jsonb;settings jsonb;lines jsonb;sid uuid;
+begin
+ if auth.uid() is null or not coalesce(saas_private.live_session(),false) then raise exception 'Live buyer required' using errcode='42501';end if;
+ select sale_id into sid from public.mt_online_orders where store_id=s and id=o and buyer=auth.uid() and state='fulfilled';
+ if not found then select sale_id into sid from tenant_private.pos_loyalty_sales where store_id=s and sale_id=o and buyer=auth.uid();end if;
+ if sid is null then raise exception 'Invoice unavailable' using errcode='42501';end if;
+ select * into strict a from public.mt_sales where store_id=s and id=sid;
+ select d.document into doc from tenant_private.sale_invoice_details d where store_id=s and sale_id=sid;
+ -- A buyer token authorizes pricing, not disclosure of a separate local debtor's identity.
+ if a.payment_mode='credit' and doc is not null then doc:=doc||jsonb_build_object('customer','','phone','');end if;
+ select r.settings into settings from tenant_private.receipt_snapshots r where store_id=s and kind='sale' and document_id=sid;
+ select coalesce(jsonb_agg(jsonb_build_object('product_id',l.product_id,'product_name',l.product_name,'sku',l.sku,'units',l.units,'unit_price_minor',l.unit_price_minor,'line_total_minor',l.line_total_minor) order by l.product_id),'[]') into lines from public.mt_sale_lines l where l.store_id=s and l.sale_id=sid;
+ if doc is not null then doc:=doc||jsonb_build_object('returned',coalesce((select jsonb_agg(jsonb_build_object('product_id',x.product_id,'units',x.units)) from (select product_id,sum(units)::bigint units from public.mt_returns where store_id=s and sale_id=sid group by product_id)x),'[]'::jsonb));end if;
+ return jsonb_build_object('sale',jsonb_build_object('id',a.id,'number',a.number,'currency',a.currency,'total_minor',a.total_minor,'payment_mode',a.payment_mode,'created_at',a.created_at,'request_id',a.request_id),'identity',settings,'invoice',doc,'lines',lines);
+end $function$;
