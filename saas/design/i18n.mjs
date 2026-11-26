@@ -1,5 +1,15 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "قراءة الباركود بالكاميرا": "Scan barcode with camera",
+  "إيقاف الكاميرا": "Stop camera",
+  "قراءة الباركود بالكاميرا غير مدعومة؛ استخدم الماسح أو أدخل الرمز.": "Camera scanning is unsupported; use a scanner or enter the code.",
+  "وجّه الكاميرا نحو الباركود": "Point the camera at the barcode",
+  "انتهت مهلة الكاميرا": "Camera timed out",
+  "تمت قراءة الباركود": "Barcode scanned",
+  "تعذرت قراءة الباركود بالكاميرا": "Unable to read barcode with camera",
+  "تعذر فتح الكاميرا؛ تحقق من إذن المتصفح.": "Unable to open camera; check browser permission.",
+  "تصدير الصفحة الحالية CSV": "Export current page as CSV",
+  "تصدير السجلات المعروضة إلى هذا الجهاز؟": "Export displayed records to this device?",
   "إعداد المصادقة لأول مرة": "Set up authenticator for the first time",
   "إعداد المصادقة لأول مرة يتطلب كلمة المرور ورمزاً صحيحاً من تطبيق المصادقة، ولا يمنح جلسة إدارة.": "Initial authenticator setup requires the password and a valid authenticator code, and does not create an administrative session.",
   "أضف هذا المفتاح يدوياً إلى تطبيق المصادقة ثم أدخل الرمز الحالي من 6 أرقام. لا تشارك المفتاح.": "Enter this key manually in your authenticator app, then enter its current six-digit code. Do not share the key.",

@@ -15,6 +15,6 @@ export function createWorker(files,commit){
   const match=/^\/shop\/([a-z][a-z0-9-]{2,39})(\/?)$/.exec(p);
   if(match){if(!match[2])return redirect(p+'/');const html=files['/saas/storefront/index.html'].replace('href="../admin/admin.css"','href="/saas/admin/admin.css"').replace('src="storefront.mjs"','src="/saas/storefront/storefront.mjs"');return new Response(request.method==='HEAD'?null:html,{headers:{...headers,'Content-Type':types.html}});}
   if(p.endsWith('/'))p+='index.html';let status=200;if(!Object.hasOwn(files,p)||p==='/404.html'){p='/404.html';status=404;}
-  return new Response(request.method==='HEAD'?null:files[p],{status,headers:{...headers,'Content-Type':types[p.split('.').pop()]||'text/plain; charset=utf-8'}});
+  return new Response(request.method==='HEAD'?null:files[p],{status,headers:{...headers,...(p==='/saas/tenant/index.html'?{'Permissions-Policy':'camera=(self), microphone=(), geolocation=()'}:{}),'Content-Type':types[p.split('.').pop()]||'text/plain; charset=utf-8'}});
  }};
 }

@@ -1,4 +1,5 @@
 import {tr} from '../design/i18n.mjs';
+import {downloadVisibleTable} from './csv-export.mjs';
 import {summarizeBranchJournal,branchClearingTotals} from './branch-finance.mjs';
 import {operationGroup} from '../design/workspace.mjs';
 export function createOperationsPanel({api,run,showRepairReceipt,refresh,blocked,getCart,clearCart,message,queueOperation,queuedOps}){
@@ -25,7 +26,7 @@ export function createOperationsPanel({api,run,showRepairReceipt,refresh,blocked
  // Every list is a bounded keyset page. Reference forms accept exact IDs, including records beyond the first page.
  async function listPanel(title,kind,headers,rows){const sec=section(title),area=node('div'),pager=node('div'),next=node('button','التالي'),first=node('button','الأولى');first.type=next.type='button';let after=null;
  async function page(cursor){const r=await api.operationsList(s.id,kind,cursor,50);if(store?.id!==s.id)return;if(Object.values(referenceKinds).includes(kind))referenceOptions(kind,r);after=r.length===50?(kind==='staff'?r.at(-1).user_id:r.at(-1).id):null;area.replaceChildren(table(headers,r.map(rows)));next.hidden=!after}
- next.addEventListener('click',()=>run(()=>page(after)));first.addEventListener('click',()=>run(()=>page(null)));pager.append(first,next);sec.append(area,pager);await page(null);return sec}
+ next.addEventListener('click',()=>run(()=>page(after)));first.addEventListener('click',()=>run(()=>page(null)));pager.append(first,next);if(s.role==='owner'){const exp=node('button',tr('تصدير الصفحة الحالية CSV'));exp.type='button';exp.onclick=()=>{if(store?.id!==s.id||store.role!=='owner'||!area.isConnected)return;if(confirm(tr('تصدير السجلات المعروضة إلى هذا الجهاز؟')))downloadVisibleTable(area.querySelector('table'),'techstore-'+kind+'.csv')};pager.append(exp)}sec.append(area,pager);await page(null);return sec}
  if(owner){
  const license=await api.licenseStatus(s.id),licensePanel=section('حالة الاشتراك');licensePanel.append(node('p','الخطة: '+license.plan+' — الحالة: '+license.state+' — صلاحية التشغيل: '+(license.write_entitlement?'سارية':'غير متاحة')),node('p','الانتهاء: '+(license.valid_until||'—')+' — الدفع الحقيقي: '+(license.live_billing_enabled?'مهيأ':'غير مفعل')));
  const suppliers=await listPanel('الموردون','suppliers',['الاسم','التواصل','المعرّف'],x=>[x.name,x.contact,x.id]);
