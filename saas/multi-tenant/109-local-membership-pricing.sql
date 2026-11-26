@@ -1,3 +1,5 @@
+alter table tenant_private.receivable_resolutions drop constraint receivable_resolutions_kind_check;
+alter table tenant_private.receivable_resolutions add constraint receivable_resolutions_kind_check check(kind in ('customer','customerEdit','pay','credit','standaloneOpen','standalonePay','cashSale','mixed'));
 
 -- Locally registered customers have separate merchant-approved membership terms.
 -- No online buyer identity or points balance is inferred from a local customer ID.
@@ -102,7 +104,7 @@ begin
  elsif terms ? 'tenders' then if tenant_private.member_role(s) is distinct from 'owner' then raise exception 'Owner required';end if;
  else raise exception 'Invalid terms';end if;end if;
  perform 1 from public.saas_stores where id=s for update;
- if terms ? 'customer' then perform tenant_private.assert_receivable_live(s,r,'credit');end if;
+ perform tenant_private.assert_receivable_live(s,r,case when terms ? 'customer' then 'credit' when terms ? 'tenders' then 'mixed' else 'cashSale' end);
  payload:=jsonb_build_object('branch',b,'customer',u,'currency',c,'lines',items,'meta',meta,'terms',terms,'expected',expected,'prices',prices);
  select * into old from tenant_private.local_membership_sales where store_id=s and request_id=r;
  if found then if old.actor<>auth.uid() or old.payload is distinct from payload then raise exception 'Conflicting local membership request';end if;return old.result;end if;
@@ -171,7 +173,7 @@ begin
  if u is null or tenant_private.member_role(s) is null then raise exception 'Active membership required' using errcode='42501';end if;
  if jsonb_typeof(op) is distinct from 'object' or octet_length(op::text)>100000 or (op->>'store')::uuid is distinct from s or mode is null or mode not in ('inspect','cancel','acknowledge') then raise exception 'Invalid resolution request' using errcode='22023';end if;
  r:=(op->>'requestId')::uuid;k:=op->>'kind';
- if r is null or k is null or k not in ('customer','customerEdit','pay','credit','standaloneOpen','standalonePay') then raise exception 'Invalid resolution reference' using errcode='22023';end if;
+ if r is null or k is null or k not in ('customer','customerEdit','pay','credit','standaloneOpen','standalonePay','cashSale','mixed') or (k in ('cashSale','mixed') and jsonb_typeof(op->'localPricing') is distinct from 'object') then raise exception 'Invalid resolution reference' using errcode='22023';end if;
  perform 1 from public.saas_stores where id=s for update;
  if tenant_private.member_role(s) is null then raise exception 'Membership ended' using errcode='42501';end if;
  select outcome into prior from tenant_private.receivable_resolutions where store_id=s and actor=u and request_id=r and kind=k;
@@ -201,6 +203,13 @@ begin
   select to_jsonb(p) into v from tenant_private.standalone_debt_payments p where p.store_id=s and p.id=r and p.actor=u;
   found_record:=found;
   if found_record then same:=(v->>'debt_id')::uuid=(x->>'debt')::uuid and (v->>'amount_minor')::bigint=(x->>'amount')::bigint and v->>'memo'=btrim(x->>'memo');end if;
+ when 'cashSale','mixed' then
+  x:=op;terms:=case when k='mixed' then jsonb_build_object('tenders',op->'tenders','refund_policy',op->>'refundPolicy') else null end;
+  select a.id,to_jsonb(a) into sid,v from public.mt_sales a where a.store_id=s and a.request_id=r and a.actor=u;
+  found_record:=found;
+  if found_record and v->>'payment_mode'=(case when k='mixed' then 'mixed' else 'cash' end) then
+   same:=exists(select 1 from tenant_private.local_membership_sales p where p.store_id=s and p.sale_id=sid and p.actor=u and p.payload=jsonb_build_object('branch',(x->>'branch')::uuid,'customer',(x->'localPricing'->>'customer')::uuid,'currency',x->>'currency','lines',x->'lines','meta',x->'invoice','terms',terms,'expected',(x->'localPricing'->>'expected')::bigint,'prices',x->'localPricing'->'prices'));
+  end if;
  when 'credit' then
   x:=op->'sale';terms:=op->'terms';
   select a.id,to_jsonb(a) into sid,v from public.mt_sales a where a.store_id=s and a.request_id=r and a.actor=u;

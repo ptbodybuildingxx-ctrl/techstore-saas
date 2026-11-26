@@ -1,5 +1,6 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "التحقق من البيع المحلي المعلق": "Check pending local priced sale",
   "عضويات العملاء المحليين": "Local customer memberships",
   "تسعيرة مستقلة لعميل مسجل في المحل دون اشتراط حساب إلكتروني. اختر المنتج أعلاه لتخصيص سعره.": "Separate pricing for registered in-store customers without an online account. Select a product above to customize its price.",
   "بحث باسم العميل أو الهاتف": "Search customer name or phone",

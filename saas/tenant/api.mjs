@@ -210,11 +210,12 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
    if([...r.granted].sort().join(',')!==[...actions].sort().join(','))throw Error('Grant not confirmed');return r;
   },
   async resolveReceivable(store,x,mode='inspect'){
-   if(!x||x.store!==store||!isId(x.requestId)||!['customer','customerEdit','pay','credit','standaloneOpen','standalonePay'].includes(x.kind)||!['inspect','cancel','acknowledge'].includes(mode))throw Error('Invalid resolution reference');
+   if(!x||x.store!==store||!isId(x.requestId)||(!['customer','customerEdit','pay','credit','standaloneOpen','standalonePay'].includes(x.kind)&&!(['cashSale','mixed'].includes(x.kind)&&x.localPricing))||!['inspect','cancel','acknowledge'].includes(mode))throw Error('Invalid resolution reference');
    let operation=x;
    if(x.kind==='credit'&&x.sale?.store===store&&x.sale?.requestId===x.requestId){
     try{const sale=saleAttempt(store,x.sale.lines,x.sale.currency,x.requestId);operation={...x,sale:{...sale,branch:x.sale.branch??null,...(x.sale.invoice===undefined?{}:{invoice:saleInvoiceMetadata(x.sale.invoice,sale.lines)}),...(x.sale.membership===undefined?{}:{membership:x.sale.membership}),...(x.sale.localPricing===undefined?{}:{localPricing:x.sale.localPricing})},terms:{customer:x.terms.customer,deposit:x.terms.deposit,count:x.terms.count,due:x.terms.due}}}catch{}
    }
+   if(['cashSale','mixed'].includes(x.kind)&&x.localPricing){const sale=saleAttempt(store,x.lines,x.currency,x.requestId);operation={...x,...sale,branch:x.branch??null,invoice:saleInvoiceMetadata(x.invoice,sale.lines)}}
    const r=await rpc('mt_resolve_receivable',{p_store:store,p_operation:operation,p_mode:mode},store);
    if(!['confirmed','cancelled','not_recorded','conflict','conflict_acknowledged'].includes(r))throw Error('Resolution not confirmed');return r;
   },
