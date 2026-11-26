@@ -25,7 +25,7 @@ export function renderShopOrder(root,r,{money,action=null}={}){
  head.append(hr);table.append(head,body);wrap.append(table);
  for(const x of r.items){const row=n('tr');for(const v of [x.name+(x.snapshot?'':' — '+tr('اسم حالي، طلب تاريخي')),x.sku,x.units,money(x.unit_minor,r.currency),money(x.net_minor,r.currency),money(x.net_minor*x.units,r.currency)])row.append(n('td',String(v)));body.append(row)}
  root.append(wrap,pair('الإجمالي قبل الخصم',money(r.gross_minor,r.currency)),pair('الخصم',money(r.discount_minor,r.currency)),pair('الإجمالي',money(r.total_minor,r.currency)),n('h4',tr('سجل حالات الطلب')));
- if(r.history.length){const list=n('ol');for(const e of r.history)list.append(n('li',tr(states[e.event])+' — '+when(e.created_at)));root.append(list)}else root.append(n('p',tr('طلب تاريخي؛ لا يوجد سجل حالات محفوظ قبل هذا التحديث.')));
+ if(r.history.length){if(!r.history.some(e=>e.event==='pending'))root.append(n('p',tr('لم يتم تسجيل جميع الحالات التاريخية قبل هذا التحديث.')));const list=n('ol');for(const e of r.history)list.append(n('li',tr(states[e.event])+' — '+when(e.created_at)));root.append(list)}else root.append(n('p',tr('طلب تاريخي؛ لا يوجد سجل حالات محفوظ قبل هذا التحديث.')));
  if(r.state==='pending'&&r.delivery_state!=='dispatched')root.append(n('p',tr('تأكيد المحل لا يحجز البضاعة ولا يثبت دفعاً. يعاد التحقق من السعر والمخزون عند التسليم أو الإرسال.')));
  if(action)root.append(action);
 }
