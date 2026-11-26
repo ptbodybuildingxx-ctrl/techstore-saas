@@ -182,3 +182,6 @@ New bank accounts are assigned to main or an existing branch at creation; old ac
 
 ## Shared account session security (080)
 Development only. Global live-session predicate rejects revoked application sessions and AAL1 when verified TOTP exists. Administrator continues to require AAL2 and initial enrollment. Buyer and admin clients share TOTP challenge and settings; staff can revoke a selected other session. Revocation denies application access through the common predicate, not managed Auth refresh tokens or other projects. Audit all protected RPCs, MFA setup/recovery and cross-account isolation before release. No live migration authorized.
+
+## Branch journal projection (081)
+Owner-only period trial-balance projection from canonical journal pairs. Attribution follows existing document/branch relationships and known internal cash/FIFO transfers. Central and unallocated entries are deliberately grouped, not distributed. Historical opening allocations, cross-branch payroll offsets, unassigned overhead/tax and unknown cost still require reconciliation before independent accounting can be approved. No statutory accounting claim or live migration.

@@ -4,7 +4,7 @@ Baseline main includes 059–071; production release held. Draft PR #10 contains
 
 | Requested area | Implemented in development | Open work |
 |---|---|---|
-| Branch independence | 073 optional branch cash ledgers, internal transfers; 076 document-attributed receivables/payables/payroll/advances and quantities; previous branch operating reports | 078 opt-in location FIFO and 079 branch bank/cash legs implemented but unvalidated; audited opening allocations, full independent branch general ledger, all unallocated overhead/tax attribution and complete branch P&L remain open |
+| Branch independence | 073 optional branch cash ledgers, internal transfers; 076 document-attributed receivables/payables/payroll/advances and quantities; previous branch operating reports | 078 location FIFO, 079 branch bank/cash legs and 081 branch journal projection (attributed source pairs, central/unallocated bucket, cash/known-cost internal transfers) implemented but unvalidated; audited opening allocations, explicit overhead/tax distribution, unknown cost and complete independent branch P&L remain open |
 | Employee permissions | 067 operation restrictions, 077 catalog/stock/sales/repair read and metadata/task edit restrictions | Audit every callable RPC, complete per-role read/create/edit/cancel matrix and UI controls. Immutable financial and stock documents are intentionally never physically deleted |
 | Pricing | 074 per-product member/wholesale prices, quantity minima, frozen order line prices | End-to-end invoice/replay tests; full tier administration usability |
 | Payroll | 075 advances, bonuses, deductions, noncash offsets and net settlement | Reversals, partial payments, legal payroll policy, employee self-service adjustment view |

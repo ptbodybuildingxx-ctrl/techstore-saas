@@ -1,5 +1,14 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "ميزان مراجعة الفروع حسب القيود": "Branch journal trial balance",
+  "تظهر القيود المركزية وغير الموزعة منفصلة. الأرصدة الافتتاحية التاريخية لم تعتمد بعد، ولا يمثل التقرير ميزانية قانونية مستقلة.": "Central and unallocated entries are shown separately. Historical opening balances are not approved; this is not an independent statutory statement.",
+  "عرض ميزان مراجعة الفروع": "View branch trial balance",
+  "عدد القيود المركزية وغير الموزعة": "Central and unallocated journal pairs",
+  "وحدات نقل مجهولة التكلفة": "Transferred units with unknown cost",
+  "المركزي / غير الموزع": "Central / unallocated",
+  "افتتاحي": "Opening",
+  "ختامي": "Closing",
+  "interbranch_clearing": "Interbranch clearing",
   "المصادقة الثنائية وإدارة الأجهزة": "Two-factor authentication and devices",
   "إلغاء وصول الجهاز يتطلب المصادقة الثنائية ويمنع وصول الجلسة إلى المنصة.": "Device access revocation requires two-factor authentication and blocks the session from the platform.",
   "إلغاء وصول الجهاز": "Revoke device access",
