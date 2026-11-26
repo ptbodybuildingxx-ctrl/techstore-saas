@@ -128,3 +128,6 @@ Per-store profile display name and compressed avatar, authenticated password cha
 
 ## Guest pickup checkout (065)
 Owner opt-in (off by default), bounded guest order queue with random tracking codes, private name/contact and order lines, live price/availability validation, manual cancellation or actual pickup fulfillment through the existing cash sale engine. No stock reservation, delivery, membership or points for guests. Per-store/per-phone limits reduce abuse but are not bot protection; production enablement requires abuse testing and an appropriate rate-limit/CAPTCHA boundary. No external messages sent.
+
+## Build suggestions and storefront polish
+Bounded deterministic suggestions over up to 250 currently listed products and five least-expensive options per required part type, constrained by budget and existing compatibility rules. Does not claim exhaustive optimization or performance/BIOS validation. Added responsive public navigation and card/evidence/editor styling. Dedicated authenticated-page visual parity, full bilingual UI and device tests remain pending.
