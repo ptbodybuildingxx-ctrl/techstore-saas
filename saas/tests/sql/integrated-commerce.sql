@@ -27,7 +27,7 @@ begin perform public.mt_set_product_specs(other,pr,'{}');raise exception 'Cross 
 
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
 ord:=public.mt_delivery_order('a-'||tag,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',pr,'units',2,'expected_price_minor',5000)),'Fixture address','000000000');
-if jsonb_array_length(public.mt_buyer_inbox('a-'||tag))<>1 then raise exception 'Order notification missing';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_buyer_inbox('a-'||tag)) x where x->>'kind'='order' and x->>'reference'=ord::text and x->>'detail'='requested') then raise exception 'Delivery request notification missing';end if;
 if not public.mt_watch_product('a-'||tag,pr,'USD','price_drop',true) then raise exception 'Watch failed';end if;
 if not public.mt_buyer_read('a-'||tag,(public.mt_buyer_inbox('a-'||tag)->0->>'id')::uuid) then raise exception 'Read state failed';end if;
 
