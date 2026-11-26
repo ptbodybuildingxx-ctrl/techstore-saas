@@ -140,3 +140,6 @@ Owner-managed per-user denials layered over existing roles, licenses and branch 
 
 ## Member/wholesale buyer pricing (068)
 Owner-approved per-buyer percentage terms with minimum basket quantity, limited to buyers with prior orders in the same shop. Explicit application at checkout, exclusive of coupons and points; server recomputes and snapshots the discount before the existing discounted fulfillment engine posts sales and inventory. No separate per-product wholesale price lists or paid membership billing.
+
+## Product high-resolution images (069)
+Owner-scoped private storage reservations and uploads, up to four 1600px JPEG files per product, 2 MB/file, bounded reservations. Explicit publication, shop visibility check and existing byte-validating storefront media gateway. Public gallery uses the existing `publicMediaEnabled` feature flag; deployment/configuration of the gateway is still required. Retired or abandoned reserved files require a controlled cleanup procedure. No change to the original repository.
