@@ -1,5 +1,12 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "تأكيد دفعة راتب جزئية": "Confirm partial payroll payment",
+  "هل تم دفع المبلغ فعلياً؟": "Was the money actually disbursed?",
+  "معرّف التسوية الأصلية": "Original adjustment ID",
+  "عكس مكافأة أو حسم": "Reverse a bonus or deduction",
+  "عرض تفاصيل مستحقاتي": "View my payroll details",
+  "المدفوع": "Paid",
+  "مسجل": "Recorded",
   "طريقة العرض": "Display mode",
   "تلقائي": "Auto",
   "حاسوب": "Desktop",
