@@ -1,5 +1,11 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "ربط حساب الزبون والعضوية ونقاط الولاء": "Link customer account, membership and loyalty points",
+  "للبيع النقدي المتصل فقط. اطلب من الزبون إصدار رمز للمبلغ والعملة واختيار العضوية أو مكافأة النقاط. اترك الحقل فارغاً للبيع العادي.": "Online cash sales only. Ask the customer for a code for the amount and currency, selecting membership pricing or a points reward. Leave empty for a regular sale.",
+  "طريقة التسعير": "Pricing method",
+  "ربط الفاتورة دون خصم": "Link invoice without discount",
+  "سعر العضوية أو الجملة": "Membership or wholesale price",
+  "سعر العضوية يحسب من السلة عند الكاشير": "Membership prices are calculated from the cashier's cart",
   "عادي": "Standard",
   "فضي": "Silver",
   "ذهبي": "Gold",
