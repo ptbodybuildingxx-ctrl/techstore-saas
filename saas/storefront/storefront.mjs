@@ -95,7 +95,22 @@ fixedSlug=shopSlugFromPath(location.pathname);const customRouting=configuration.
 if(fixedSlug){el('shopSelector').hidden=true;el('catalog').elements.slug.value=fixedSlug;}el('app').hidden=false;controls();el('customerAuth').hidden=!api.customerAuthEnabled();const query=new URLSearchParams(location.search),initialShop=fixedSlug||query.get('shop'),initialCurrency=query.get('currency');if(initialShop&&/^[a-z][a-z0-9-]{2,39}$/.test(initialShop)){slug=initialShop;currency=['USD','EUR','SYP'].includes(initialCurrency)?initialCurrency:'USD';el('catalog').elements.slug.value=slug;el('catalog').elements.currency.value=currency;run(()=>catalog())}
 
 const repairLabels={received:'تم الاستلام',diagnosing:'قيد الفحص',repairing:'قيد الإصلاح',ready:'جاهز للاستلام',delivered:'تم التسليم',cancelled:'ملغى'};
-async function showRepairStatus(code){const result=el('repairTrackingResult'),r=await api.repairStatus(slug,code);result.replaceChildren();if(!r){result.append(node('p','لا يوجد طلب مطابق لهذا الرمز'));return}result.append(node('h3',r.device),node('p',repairLabels[r.state]),node('p',r.created_at));const e=r.estimate;if(e){result.append(node('strong',fmt(e.amount_minor,e.currency)),node('p',e.description),node('p',({offered:'بانتظار الموافقة',approved:'مقبول',rejected:'مرفوض',superseded:'ملغى'})[e.state]));if(e.state==='offered'&&!r.can_decide)result.append(node('p',tr('الموافقة تحتاج حساب العميل المرتبط.')));if(e.state==='offered'&&r.can_decide&&api.signedIn())for(const [label,accept] of [['أوافق على التكلفة',true],['أرفض التكلفة',false]])result.append(button(label,async()=>{if(!confirm(label+'؟'))return;await api.repairDecide(slug,code,e.id,accept);await showRepairStatus(code)}))}}
+async function showRepairStatus(code){
+ const result=el('repairTrackingResult'),shop=slug,r=await api.repairStatus(shop,code);if(shop!==slug)return;
+ result.replaceChildren();if(!r){result.append(node('p',tr('لا يوجد طلب مطابق لهذا الرمز')));return}
+ result.append(node('h3',tr(r.device)),node('p',tr(repairLabels[r.state])),node('p',new Date(r.created_at).toLocaleString(currentLanguage()==='en'?'en-GB':'ar-SY',{timeZone:'Asia/Damascus'})));
+ if(r.linked_account===false)result.append(node('p',tr('التفاصيل والتقدير والصور متاحة للحساب المؤكد المرتبط بالطلب فقط.')));
+ const e=r.estimate;
+ if(e){
+  result.append(node('strong',fmt(e.amount_minor,e.currency)),node('p',e.description),node('p',tr(({offered:'بانتظار الموافقة',approved:'مقبول',rejected:'مرفوض',superseded:'ملغى'})[e.state])));
+  if(e.state==='offered'&&!r.can_decide)result.append(node('p',tr('الموافقة تحتاج حساب العميل المرتبط.')));
+  if(e.state==='offered'&&r.can_decide&&api.signedIn())for(const [label,accept] of [['أوافق على التكلفة',true],['أرفض التكلفة',false]])result.append(button(label,async()=>{if(shop!==slug||!confirm(tr(label)+' — '+fmt(e.amount_minor,e.currency)+'؟'))return;await api.repairDecide(shop,code,e.id,accept);await showRepairStatus(code)}));
+ }
+ if(r.linked_account&&api.signedIn()&&r.shared_evidence?.length){
+  result.append(node('h3',tr('صور الجهاز المشتركة')));
+  for(const photo of r.shared_evidence){const box=node('div',''),label=tr(photo.kind==='before'?'قبل الإصلاح':'بعد الإصلاح'),img=document.createElement('img');img.src='data:image/jpeg;base64,'+photo.photo;img.alt=label;img.loading='lazy';img.style.maxWidth='100%';img.style.maxHeight='320px';box.append(node('p',label),img,node('small',new Date(photo.created_at).toLocaleString(currentLanguage()==='en'?'en-GB':'ar-SY',{timeZone:'Asia/Damascus'})));result.append(box)}
+ }
+}
 el('repairPairing').onclick=()=>run(async()=>{if(!api.signedIn()||!slug)return;const s=slug,r=await api.repairPairingCode(s);if(s===slug&&api.signedIn())el('repairPairingCode').textContent=r+' — '+tr('صالح عشر دقائق؛ سلّمه لصاحب المحل فقط.')});
 el('repairTrackingForm').onsubmit=e=>{e.preventDefault();run(()=>showRepairStatus(el('repairTrackingCode').value.trim()))};
 
