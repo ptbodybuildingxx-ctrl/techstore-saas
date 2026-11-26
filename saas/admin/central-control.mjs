@@ -51,3 +51,28 @@ export function createCentralControl({api,root,run,refresh}){
  }
  return {show,reset(){pending=null;selected=null;if(dialog.open)dialog.close();body.replaceChildren();footer.replaceChildren()}}
 }
+
+const policyLabels={enrollment:'قبول محلات جديدة في الباقة',storefront:'إتاحة المتجر الإلكتروني',orders:'استقبال طلبات جديدة',guest:'طلبات الزوار',delivery:'التوصيل اليدوي'};
+export function createPlanControl({api,root,run,onPolicies}){
+ const n=(tag,text)=>{const a=document.createElement(tag);if(text!==undefined)a.textContent=text;return a},t=(tag,text)=>n(tag,tr(text));
+ const area=n('div'),refresh=t('button','تحديث صلاحيات الباقات');refresh.type='button';root.append(refresh,area);
+ let pending=null;
+ const button=(label,fn)=>{const b=t('button',label);b.type='button';b.onclick=()=>run(fn);return b};
+ const describe=x=>Object.entries(policyLabels).map(([k,label])=>tr(label)+': '+tr(x[k]?'نعم':'لا')).join(' · ');
+ async function send(){if(!pending||!api.signedIn())return;const p=pending;await api.planPolicyChange(p.request,p.plan,p.expected,p.flags,p.reference);pending=null;await load()}
+ async function load(){
+  const r=await api.planPolicyReview();if(!api.signedIn())return;
+  onPolicies(r.plans);if(pending&&r.history.some(x=>x.request_id===pending.request))pending=null;
+  area.replaceChildren(t('p','تغيير سياسة الباقة يؤثر في جميع المحلات التابعة لها. إغلاق التسجيل لا يلغي اشتراكاتها الحالية. إيقاف استقبال الطلبات لا يلغي الطلبات السابقة.'));
+  if(pending)area.append(t('p','إجراء غير مؤكد؛ استخدم إعادة الطلب نفسه.'),n('code',pending.request),button('إعادة الطلب نفسه',send),button('مراجعة حالة الإجراء',load),button('ترك الطلب غير المؤكد بعد المراجعة',async()=>{if(confirm(tr('راجع السجل والحالة قبل بدء إجراء جديد. هل تريد ترك المرجع غير المؤكد؟'))){pending=null;await load()}}));
+  for(const p of r.plans){
+   const f=n('form'),fields=n('fieldset'),legend=n('legend',p.name),ref=n('input'),submit=t('button','حفظ سياسة الباقة');submit.type='submit';ref.required=true;ref.maxLength=200;
+   fields.append(legend,n('p',tr('المحلات المشتركة في الباقة')+': '+p.subscribers+' — '+tr('تراخيص تشغيل سارية')+': '+p.licensed));
+   const inputs={};for(const [k,label] of Object.entries(policyLabels)){const l=t('label',label),i=n('input');i.type='checkbox';i.checked=p[k];inputs[k]=i;l.prepend(i);fields.append(l)}
+   const note=t('label','سبب الإجراء أو مرجع الموافقة');note.append(ref);fields.append(note,submit);fields.disabled=!!pending;f.append(fields);f.onsubmit=e=>{e.preventDefault();run(async()=>{if(pending||!ref.value.trim())return;const flags=Object.fromEntries(Object.keys(policyLabels).map(k=>[k,inputs[k].checked]));if(Object.keys(flags).every(k=>flags[k]===p[k]))return;if(!confirm(tr('تأكيد تغيير صلاحيات جميع محلات هذه الباقة؟')+' — '+p.name+' ('+p.subscribers+')'))return;pending={request:crypto.randomUUID(),plan:p.plan_code,expected:p.revision,flags,reference:ref.value.trim()};area.replaceChildren(t('p','إجراء غير مؤكد؛ استخدم إعادة الطلب نفسه.'),n('code',pending.request),button('إعادة الطلب نفسه',send),button('مراجعة حالة الإجراء',load));await send()})};area.append(f)
+  }
+  area.append(t('h3','سجل تعديلات صلاحيات الباقات'));for(const h of r.history){const d=n('div');d.className='panel';d.append(n('strong',h.plan_code+' — '+when(h.created_at)),n('p',h.reference+' — '+h.actor),n('p',tr('قبل')+': '+describe(h.before_state)),n('p',tr('بعد')+': '+describe(h.after_state)));area.append(d)}
+ }
+ refresh.onclick=()=>run(load);
+ return {load,reset(){pending=null;area.replaceChildren()}}
+}
