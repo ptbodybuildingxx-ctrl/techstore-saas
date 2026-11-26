@@ -1,5 +1,16 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+ "كشف حساب المورد":"Supplier statement",
+ "عرض كشف حساب المورد":"Show supplier statement",
+ "الرصيد الافتتاحي للفترة":"Period opening balance",
+ "الرصيد الختامي للفترة":"Period closing balance",
+ "المسدد نقداً وغير نقدي":"Cash and non-cash payments",
+ "تخفيض الذمة بالمرتجعات":"Liability reduction from returns",
+ "تغير الذمة":"Payable movement",
+ "مرجع الحركة":"Movement reference",
+ "تسوية استبدال غير نقدية":"Non-cash trade-in settlement",
+ "كل المواقع":"All locations",
+ "كشف حسب العملة وموقع الشراء بتوقيت دمشق. الرصيد الموجب مستحق للمورد؛ الاسترداد النقدي يعرض منفصلاً ولا يخصم مرتين.":"Statement by currency and purchase location in Damascus time. Positive balances are payable to the supplier; cash refunds are shown separately and not deducted twice.",
  "مسودات البيع والجرد دون اتصال":"Offline sales and count drafts",
  "مزامنة المسودات المحفوظة":"Sync saved drafts",
  "حل تعارض الجرد المعلق":"Resolve pending count conflict",
