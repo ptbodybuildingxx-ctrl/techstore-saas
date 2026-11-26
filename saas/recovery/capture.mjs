@@ -8,6 +8,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {join,resolve,relative,isAbsolute} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {packRecovery,verifyRecovery} from './bundle.mjs';
+import {replicateRecovery} from './replicate.mjs';
 const repo=fileURLToPath(new URL('../..',import.meta.url));
 const expected='mezsyzdieqmqulddcrtg';
 const assert=(ok,msg)=>{if(!ok)throw Error(msg)};
@@ -28,7 +29,7 @@ async function inventory(env){
 }
 async function capture(){
  process.umask(0o077);
- const {RECOVERY_ROOT,RECOVERY_DB_URL,RECOVERY_SERVICE_KEY,RECOVERY_KEY_HEX,RECOVERY_CONFIG_FILE,RECOVERY_WRITE_FREEZE}=process.env;
+ const {RECOVERY_ROOT,RECOVERY_DB_URL,RECOVERY_SERVICE_KEY,RECOVERY_KEY_HEX,RECOVERY_CONFIG_FILE,RECOVERY_WRITE_FREEZE,RECOVERY_MIRROR_ROOT}=process.env;
  assert(RECOVERY_WRITE_FREEZE==='confirmed'&&RECOVERY_ROOT&&RECOVERY_CONFIG_FILE&&RECOVERY_DB_URL&&RECOVERY_SERVICE_KEY&&/^[a-f0-9]{64}$/.test(RECOVERY_KEY_HEX||''),'Missing private configuration or write freeze confirmation');
  checkSource(RECOVERY_DB_URL);
  const root=resolve(RECOVERY_ROOT),cfg=resolve(RECOVERY_CONFIG_FILE);
@@ -62,7 +63,9 @@ async function capture(){
  const config=JSON.parse(await readFile(cfg,'utf8'));assert(config&&config.source_project===expected&&config.application_commit&&/^[a-f0-9]{40}$/.test(config.application_commit),'Invalid config snapshot');
  await writeFile(join(work,'config.json'),JSON.stringify({version:1,capturedAt,source_project:expected,mode:'logical_cli_capture',config,storage_objects:index.length,consistency:'operator_confirmed_write_freeze'}),{flag:'wx',mode:0o600});
  const name='backup-'+capturedAt.replace(/[:.]/g,'-')+'-'+randomUUID(),out=join(root,name);staged=join(root,'.pending-'+name);await packRecovery({source:work,out:staged,key,capturedAt});const verified=await verifyRecovery({out:staged,key});await rename(staged,out);staged=null;
- console.log(JSON.stringify({id:verified.id,capturedAt,storageObjects:index.length,integrityVerified:true,restoreVerified:false}));
+ let mirror=null;
+ if(RECOVERY_MIRROR_ROOT){try{mirror=await replicateRecovery({source:out,mirrorRoot:RECOVERY_MIRROR_ROOT,key})}catch{console.error('Local encrypted backup preserved; replica failed.');throw Error('Replica failed')}}
+ console.log(JSON.stringify({id:verified.id,capturedAt,storageObjects:index.length,integrityVerified:true,mirrorVerified:!!mirror,distinctMirrorFilesystem:mirror?.distinctFilesystem??null,restoreVerified:false}));
  }finally{if(staged)await rm(staged,{recursive:true,force:true});if(work)await rm(work,{recursive:true,force:true});await rm(lock,{recursive:true,force:true});key.fill(0)}
 }
 capture().catch(()=>{console.error('Recovery capture failed. No successful backup or restore evidence recorded.');process.exitCode=1});
