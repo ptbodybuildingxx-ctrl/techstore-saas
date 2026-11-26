@@ -1,3 +1,4 @@
+import {createAccountSecurity} from '../design/account-security.mjs';
 import {validateTheme,designResponse} from '../design/theme.mjs';
 const allowedOrigin='https://mezsyzdieqmqulddcrtg.supabase.co';
 const states=['','provisioning','ready','suspended','closed'];
@@ -7,18 +8,21 @@ const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}) {
  if(url!==allowedOrigin||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey)) throw Error('Invalid control-plane configuration');
  let session=null;
- async function request(path,body,token) {
-  const res=await fetcher(url+path,{method:'POST',headers:{apikey:publishableKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',redirect:'error',credentials:'omit'});
+ async function request(path,body,token,method='POST') {
+  const res=await fetcher(url+path,{method,headers:{apikey:publishableKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',redirect:'error',credentials:'omit'});
   if(!res.ok){const e=Error(res.status===401||res.status===403?'Access denied':res.status===409?'Store identifier already exists':'Request failed');e.status=res.status;throw e}
   if(res.status===204)return null;
   return res.json();
  }
  function token(){if(!session||session.expiresAt<=clock()+5000){session=null;throw Error('Sign in again')}return session.accessToken}
  async function rpc(name,args){try{return await request('/rest/v1/rpc/'+name,args,token())}catch(e){if(e.status===401||e.status===403)session=null;throw e}}
+ const replaceSession=s=>{if(typeof s?.access_token!=='string'||!s.access_token||!Number.isFinite(s.expires_in)||s.expires_in<=0)throw Error('Invalid session');session={accessToken:s.access_token,expiresAt:clock()+s.expires_in*1000}};
+ const security=createAccountSecurity({request,token,replaceSession,rpc});
  return {
-  async signInUsername(username,password){
+  security,
+  async signInUsername(username,password,codeProvider){
    if(typeof username!=='string'||username.trim().toLowerCase()!=='king')throw Error('Invalid username');
-   return this.signIn('king@techstore-admin.invalid',password);
+   return this.signIn('king@techstore-admin.invalid',password,codeProvider);
   },
   async domains(store){
    if(!uuid.test(store))throw Error('Invalid store');const r=await rpc('mt_domain_list',{p_store:store});
@@ -78,13 +82,13 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(!r||r.username!=='king'||r.verified!==false||!(r.contact_email===null||typeof r.contact_email==='string'))throw Error('Invalid contact response');
    return r;
   },
-  async signIn(email,password){
+  async signIn(email,password,codeProvider=null){
    session=null;
    if(typeof email!=='string'||!email.trim()||typeof password!=='string'||!password)throw Error('Email and password required');
    const s=await request('/auth/v1/token?grant_type=password',{email:email.trim(),password});
    if(typeof s?.access_token!=='string'||!s.access_token||!Number.isFinite(s.expires_in)||s.expires_in<=0)throw Error('Invalid login response');
    session={accessToken:s.access_token,expiresAt:clock()+s.expires_in*1000};
-   try{await this.overview()}catch(e){session=null;throw e}
+   try{await security.authenticate(codeProvider,{required:true});await this.overview()}catch(e){const old=session;session=null;if(old)try{await request('/auth/v1/logout?scope=local',undefined,old.accessToken)}catch{}throw e}
   },
   async signOut(){const old=session;session=null;if(old)await request('/auth/v1/logout?scope=local',undefined,old.accessToken)},
   signedIn(){return !!session&&session.expiresAt>clock()+5000},

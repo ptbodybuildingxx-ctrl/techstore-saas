@@ -70,7 +70,7 @@ begin
  if not exists(select 1 from public.mt_repairs where store_id=t and id=r and state in ('received','diagnosing','repairing')) then return false;end if;
  select state into st from tenant_private.repair_estimates where store_id=t and repair_id=r and id=p_estimate;
  if not found then return false;end if;
- if st=case when p_accept then 'approved' else 'rejected' end then return true;end if;
+ if st=(case when p_accept then 'approved' else 'rejected' end) then return true;end if;
  update tenant_private.repair_estimates set state=case when p_accept then 'approved' else 'rejected' end,decided_at=now() where store_id=t and repair_id=r and id=p_estimate and state='offered';return found;
 end
 $$;

@@ -1,15 +1,19 @@
-# TechStore → TechStore SaaS — remaining parity
-Development branch: saas/full-catalog-parity. Implementation phase only. Do not merge or apply 059–071 to production before final migration, security, integration, restore and live UI validation.
- 
-| Area | Implemented on branch (not validated) | Still open |
+# Remaining implementation and release register (branch saas/final-operations-parity)
+
+Baseline main includes 059–071; production release held. Draft PR #10 contains 072–082 plus recovery capture, encrypted operation queue, localization and responsive navigation. No live migration or release authorized. Do not treat a committed function as operational validation.
+
+| Requested area | Implemented in development | Open work |
 |---|---|---|
-| Catalog/shop | 059 catalog editor, photos, bulk and CSV; 060 availability and search facets; 065 optional guest pickup, tracking; budget suggestions | Full-resolution media deployment (069), exact category filters, guest delivery, spam protection, product-specific wholesale lists (068 adds basket-level tiers), actual customer mail and account registration, payment gateway configuration |
-| POS/invoices | Exact SKU scanning, Code 39 labels, existing historical receipts | Camera/hardware scanning and label validation, invoice templates and full original visual match |
-| Repair | 061 private thumbnails, intake slip, tracking and cost acceptance | Full-resolution private media, customer identity-linked approvals, dedicated task assignments, approval checkout enforcement, warranty branch inventory |
-| Staff | 062 shifts, fixed monthly terms and commission snapshot, paid voucher; 064 profile/password | 066 accrual, 067 staff restrictions and 070 staff TOTP/session list implemented but unvalidated; payroll adjustments, full permission matrix, per-device revocation and buyer/admin MFA still open |
-| Accounting | 063 manual bank account transfers, journal/reconciliation | Branch-level independent FIFO and treasury, direct bank payments/fees, reconciliation with bank statement, statutory tax validation |
-| Professional tools | Rule-based build suggestions, existing compatibility, reviews, favorites, trade-in | Full AI assistant, server capture and restoration; 071 adds bounded encrypted owner business export, 068 adds approved price tiers |
-| Offline | 064 one encrypted cash-sale pending request and explicit retry | Offline reload/login, offline full catalog and multi-operation queue, device provisioning, conflict resolution and recovery |
-| Design | Responsive nav, cards, editors and product details | Full original side-by-side authenticated visual review and bilingual UI |
- 
-Do not count the existence of a screen or function as proof of operation. Final test suite must cover both older and new workflows, cross-tenant/branch denial, historical document stability, recovery, duplicate replay, concurrent operations and production deployment compatibility. Original repository is read-only; no paid provider activation.
+| Branch independence | 073 optional branch cash ledgers, internal transfers; 076 document-attributed receivables/payables/payroll/advances and quantities; previous branch operating reports | 078 location FIFO, 079 branch bank/cash legs and 081 branch journal projection (attributed source pairs, central/unallocated bucket, cash/known-cost internal transfers) implemented but unvalidated; audited opening allocations, explicit overhead/tax distribution, unknown cost and complete independent branch P&L remain open |
+| Employee permissions | 067 operation restrictions, 077 catalog/stock/sales/repair read and metadata/task edit restrictions; 082 independent repair intake and product-price write restrictions | Audit every callable RPC, complete per-role read/create/edit/cancel matrix and UI controls. Immutable financial and stock documents are intentionally never physically deleted |
+| Pricing | 074 per-product member/wholesale prices, quantity minima, frozen order line prices | End-to-end invoice/replay tests; full tier administration usability |
+| Payroll | 075 advances, bonuses, deductions, noncash offsets and net settlement | Reversals, partial payments, legal payroll policy, employee self-service adjustment view |
+| Repairs | 072 technician assignment, task completion and approval gates | Identity-verified customer approval, evidence media, legacy migration review |
+| Accounts | 070 staff TOTP; 080 shared buyer/admin challenge and account controls, AAL2 enforcement for enrolled users, individual application-session revocation | Unvalidated; admin requires initially enrolled TOTP; audit every authenticated endpoint, recovery, managed Auth settings and actual multi-device behavior |
+| Recovery | Private automated capture pipeline with role/schema/data exports, storage object archive, encryption and verification; example timer; per-object SHA-256 and atomic publication of verified encrypted captures | Real private host and secrets, coordinated write freeze, complete managed-platform settings, isolated verified restore, off-site retention |
+| Offline | Encrypted FIFO draft queue for selected request-id operations plus previous single cash sale envelope | Encrypted local workbench with up to 2,000 catalog rows, backward-readable bounded vault and persisted replay-attempt timestamp; larger catalogs, all other mutations, device enrollment/revocation, dependency/conflict resolution and server-authoritative reauthentication remain open |
+| Arabic/English | Shared locale resources and UI switch across portal, admin, workspace and storefront; static labels mapped; navigation/form headings | Additional security/offline/permission labels; dynamic status/receipt/designer labels and accessibility translation; language-switch and layout review |
+| Design | Original Aurora tokens, responsive cards, mobile workspace drawer/quick navigation and bidirectional layout | Page-by-page comparison against original TechStore main f0b680ca309c8e9fac82ad365809d057a7116b99, all authenticated states, mobile/desktop, print, designer and storefront |
+| Professional tools | Existing rules-based build advisor | Integrated AI assistant with approved provider and privacy boundary |
+
+Final gates: correct existing CI SQL/UI failures and migration compatibility, implement all remaining features, test cross-store and branch isolation, finance consistency, retries/concurrency and recovery; do not apply live migrations until a verified backup and explicit approval. Never modify the original TechStore repository or enable paid providers without approval.

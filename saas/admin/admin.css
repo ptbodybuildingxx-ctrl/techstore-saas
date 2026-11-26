@@ -451,3 +451,31 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 .workspace-shell .panel{scroll-margin-top:88px}
 @media(max-width:850px){.shop-navigation{flex-wrap:nowrap;overflow:auto;scroll-snap-type:x proximity}.shop-navigation a{flex:0 0 auto;scroll-snap-align:start}.workspace-nav{scrollbar-width:thin}.workspace-nav button{flex-direction:column;gap:4px;min-width:78px;font-size:.82rem;text-align:center}.workspace-nav .workspace-icon{font-size:1.15rem}.workspace-search{flex-basis:145px}}
 @media(max-width:540px){.storefront-page .catalog-cover{height:155px}.shop-product-actions>button{min-height:42px}.shop-navigation{margin:6px 0}.workspace-shell .scroll{overflow-x:auto}#catalogEditor,#productDetail{padding:14px}}
+
+/* Bidirectional layout, including localized workspace navigation. */
+header .locale-toggle{min-width:86px;min-height:40px;white-space:nowrap;margin-inline-start:auto}html[dir=ltr] table,html[dir=ltr] th,html[dir=ltr] td{text-align:start}html[dir=ltr]:root:not([data-design=on]) .workspace-nav button[aria-pressed=true]{box-shadow:inset 3px 0 var(--aurora-accent)}html[dir=ltr] .workspace-nav::before{content:'Sections'}
+
+/* Original TechStore Aurora navigation pattern: desktop sidebar, mobile drawer and quick bar.
+   No external assets, no role changes. Custom published design tokens remain authoritative. */
+.workspace-mobile-bar,.workspace-backdrop,.workspace-quick-nav,.workspace-drawer-heading{display:none}
+@media(max-width:850px){
+ .workspace-mobile-bar:not([hidden]){display:flex;align-items:center;gap:12px;padding:10px 0 14px}
+ .workspace-mobile-bar .workspace-active-label{font-size:1rem;overflow-wrap:anywhere}
+ .workspace-menu-toggle{min-height:44px;white-space:nowrap}
+ .workspace-nav:not([hidden]){position:fixed;inset-block:0;inset-inline-start:0;inset-inline-end:auto;z-index:41;width:min(320px,86vw);max-width:86vw;max-height:100dvh;height:100dvh;display:flex;flex-direction:column;align-items:stretch;gap:6px;overflow-y:auto;overflow-x:hidden;margin:0;padding:max(14px,env(safe-area-inset-top)) 14px max(18px,env(safe-area-inset-bottom));border-radius:0;box-shadow:0 0 36px #101a3533;transform:translateX(-105%);visibility:hidden;transition:transform .2s,visibility .2s}
+ html[dir=rtl] .workspace-nav:not([hidden]){transform:translateX(105%)}
+ .workspace-nav[data-drawer-open=true]:not([hidden]),html[dir=rtl] .workspace-nav[data-drawer-open=true]:not([hidden]){visibility:visible;transform:translateX(0)}
+ .workspace-nav .workspace-drawer-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+ .workspace-nav .workspace-drawer-close{display:grid;place-items:center;width:42px;min-width:42px;min-height:42px;padding:4px;font-size:1.6rem}
+ .workspace-nav .workspace-search{flex:0 0 auto;width:100%;min-height:44px;margin-bottom:5px}
+ .workspace-nav .workspace-nav-item{flex:0 0 auto;width:100%;min-height:46px;min-width:0;flex-direction:row;align-items:center;justify-content:flex-start;text-align:start;font-size:.9rem;white-space:normal;gap:10px}
+ .workspace-backdrop:not([hidden]){display:block;position:fixed;inset:0;z-index:40;background:#101a3566;border:0;border-radius:0;width:100%;height:100%;padding:0}
+ .workspace-quick-nav:not([hidden]){display:flex;position:fixed;bottom:0;inset-inline:0;z-index:30;padding:8px 8px max(8px,env(safe-area-inset-bottom));gap:4px;align-items:stretch;background:var(--design-surface,#fff);border-top:1px solid var(--line);box-shadow:0 -5px 24px #101a3514;overflow-x:auto}
+ .workspace-quick-nav .workspace-quick-item{flex:1 0 0;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;padding:7px 4px;min-height:52px;font-size:.72rem;background:transparent;color:var(--design-text,var(--aurora-ink,#19263c));border-color:transparent;border-radius:10px;text-align:center;white-space:normal}
+ .workspace-quick-nav .workspace-quick-item[aria-current=page]{color:var(--design-accent,var(--aurora-accent,#3859d6));background:color-mix(in srgb,var(--design-accent,var(--aurora-accent,#3859d6)) 12%,transparent)}
+ .workspace-quick-nav .workspace-item-label{overflow-wrap:anywhere;line-height:1.2}
+ .workspace-quick-nav .workspace-icon{height:21px;font-size:1.15rem}
+ .workspace-shell:has(.workspace-quick-nav:not([hidden])){padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+}
+@media(prefers-reduced-motion:reduce){.workspace-nav{transition:none!important}}
+@media print{.workspace-mobile-bar,.workspace-backdrop,.workspace-quick-nav,.workspace-drawer-heading{display:none!important}}

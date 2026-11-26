@@ -1,0 +1,11 @@
+// Cache only the fixed static offline workbench. Never cache authenticated HTML, RPCs or responses.
+const paths=['/saas/tenant/offline.html','/saas/tenant/offline-workbench.mjs','/saas/tenant/offline-device.mjs','/saas/tenant/offline-queue.mjs','/saas/tenant/api.mjs','/saas/design/theme.mjs','/saas/design/site.mjs','/saas/admin/admin.css'];
+const prefix='techstore-offline-static-',marker='/saas/tenant/offline.html';let version=null;
+async function cacheName(){if(version)return prefix+version;const r=await fetch(marker,{cache:'no-store',credentials:'omit',redirect:'error'});const sha=r.headers.get('X-TechStore-Commit');if(!r.ok||!/^[a-f0-9]{40}$/.test(sha||''))throw Error('Unversioned shell');version=sha;return prefix+sha}
+self.addEventListener('install',e=>e.waitUntil((async()=>{const name=await cacheName(),cache=await caches.open(name);try{for(const path of paths){const r=await fetch(path,{cache:'no-store',credentials:'omit',redirect:'error'});if(!r.ok||r.headers.get('X-TechStore-Commit')!==version)throw Error('Mixed release');await cache.put(path,r)}await self.skipWaiting()}catch(err){await caches.delete(name);throw err}})()));
+self.addEventListener('activate',e=>e.waitUntil((async()=>{const keys=(await caches.keys()).filter(k=>k.startsWith(prefix));if(version){for(const k of keys)if(k!==prefix+version)await caches.delete(k)}await self.clients.claim()})()));
+async function offlineResponse(path){const keys=(await caches.keys()).filter(k=>k.startsWith(prefix));const name=version?prefix+version:keys.length===1?keys[0]:null;if(!name)return Response.error();const c=await caches.open(name);return await c.match(path)||Response.error()}
+self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET'||u.origin!==self.location.origin||u.search||r.headers.has('authorization'))return;
+ if(r.mode==='navigate'&&['/saas/tenant/','/saas/tenant/index.html',marker].includes(u.pathname)){e.respondWith(fetch(r).catch(()=>offlineResponse(marker)));return}
+ if(paths.includes(u.pathname)){e.respondWith(fetch(r).catch(()=>offlineResponse(u.pathname)))}
+});

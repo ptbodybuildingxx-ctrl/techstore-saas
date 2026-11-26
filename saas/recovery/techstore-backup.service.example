@@ -1,0 +1,12 @@
+[Unit]
+Description=TechStore private encrypted recovery capture
+[Service]
+Type=oneshot
+User=techstore-recovery
+WorkingDirectory=/opt/techstore
+EnvironmentFile=/etc/techstore/recovery.env
+ExecStart=/usr/bin/node /opt/techstore/saas/recovery/capture.mjs
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=6h
