@@ -62,3 +62,48 @@ Source-bound append-only reclassifications for capital, loans, standalone stock 
 
 ## Central operational monitoring (039)
 Operator-only control-plane summary counts actual shared entitlement, trial/paid, blocked, seven-day expiry, domain registry status, queued recovery/release and local shards with recent verified restore evidence. Up to 100 store IDs per detail request, only aggregate pending/dispatched orders and status flags; no buyer data, transaction values or provider identifiers. SQL rollback verifies trial/pending states and owner denial. Manual refresh; no uptime or real load claim.
+
+## Catalog search and stock history (043)
+Server-side literal search by name/SKU across all rows with keyset pagination; public projection includes only listed in-stock products with prices and public string specifications. Owners and stock staff can edit specs under existing write entitlements. Low-stock filter uses a fixed five-unit threshold. Stock history is read-only for owner/stock roles. Deploy migration 043 to the dedicated SaaS database before deploying the matching UI. No branch inventory allocation or external notification delivery is implemented by this migration.
+
+## Receipt snapshots and work alerts (044–045)
+Owner receipt settings capture identity, logo, address, phone, titles, format and footer at issuance through insert triggers; original historical lines remain the financial authority. Pre-migration receipts have no invented historical identity. Work alerts are role-scoped derived counts (refresh on load or manually), not push delivery or durable notifications. PC builder uses public specification keys type (cpu/board/ram/gpu/storage/psu/case), socket, ram, form and watts, and reports unknown data rather than guaranteeing compatibility.
+
+## Branch allocation (046)
+Branch balances partition existing physical stock; transfers are idempotent and do not double-post cash or FIFO. Cash branch sales use the existing sale engine and branch returns restore branch stock. Main-store stock reductions and order reservations cannot consume allocated quantities. Purchases, credit/mixed sales, repair and delivery still originate in the main store, cost layers remain store-wide, and per-branch staff permissions and financial statements are not implemented. Deploy only after 044–046 pass and dedicated database migration is verified.
+
+## Branch revenue and repair receipts (047)
+Owner-only, original sale and return records aggregated by branch/currency and Damascus calendar dates. This is net sales revenue, not profit; no branch-specific expenses or inventory valuation. Repair receipts read original parts, service charges, warranty and issuance identity from the authoritative records.
+
+## Buyer in-app notifications (048)
+Live-account scoped inbox records order state transitions and one-shot price-drop/restock watches for listed products, with read state and bounded pages. Watch caps: 30 per buyer/store and 1000 per store. No email, SMS or push transport, no real-time websocket delivery; refresh reads the persisted inbox. Old orders are not backfilled.
+
+## Price quotations (049)
+Owner/cashier can save immutable current-price quotes from the POS, valid up to 90 Damascus-calendar days. Server checks product prices, captures receipt identity and retries, and does not post stock or cash. Owner sees all quotes; cashiers see their own. A quote is not a reservation or an issued sale.
+
+## Branch operations (050)
+Owner-only branch purchases (single/batch), credit/mixed sales, and repair intake with stock-aware checkout. Supplier returns draw from the original purchase branch. Underlying finance and FIFO engines remain store-wide; online orders and warranty replacement parts still use main stock. No per-branch stock cost valuation.
+
+## Branch cashier scopes and vouchers (051)
+Optional single-branch restriction for active cashiers, enforced at sale insertion and branch selection. Unassigned cashiers retain existing store access; stock and technician branch scopes are not implemented. Paid salary, commission, bonus and documented operating expense vouchers post to the existing cash ledger and classification exactly once. Receipt vouchers are explicitly unclassified funding; debt and supplier collections remain in their own flows. No payroll accrual or automatic bank payment.
+
+## Branch management result (052)
+Attributed sales, repairs, returns, repair refunds, historical FIFO/FX cost postings, and paid branch operating vouchers by Damascus calendar period and currency. Unknown costs suppress cost and result. Store-wide FIFO, unallocated overhead and tax remain outside branch result; not a statutory branch net profit or separate treasury.
+
+## Customer library (053)
+Account/store-scoped favorites and up to 20 saved builds with server-validated snapshot prices and specs. Verified fulfilled online-order customers can submit one review per product; owner moderation is required before public publication. Saved builds are informational snapshots, not reservations. No guest review submissions.
+
+## Marketing and trade-in (054)
+Draft/published/completed store campaigns render only during the configured Damascus-calendar dates. Trade-in estimates retain device, condition, accepted value and branch, and can link an actual matching single-unit purchase and sale after acceptance. Linking is documentary, not automatic net settlement or an inventory adjustment. No external campaign delivery.
+
+## Branch staff assignments (055)
+Optional single-branch assignment for active cashiers, stock workers and technicians. Assigned cashier/stock catalog reads use own branch balances, direct aggregate product/stock-event access is denied; scoped technicians read/transition own repair tickets. Scoped stock workers may release stock from their assigned branch to main, not allocate from main or modify global products/stock. Owners allocate and adjust. Unassigned staff retain existing store-level roles. Role changes/deactivation clear assignments.
+
+## External delivery (056–057)
+Opt-in email and per-shop Web Push queues; retry leases, explicit unsubscribe, private service-only claims. The worker sends only generic account update messages. Setup and scheduling are intentionally disabled; see saas/notifications/README.md.
+
+## Trade-in net settlement (058)
+Atomic accepted-estimate settlement uses the existing credit sale and costed purchase engines; an explicit noncash offset balances payable and receivable, and only the confirmed difference posts actual cash. The used device uses a separate product; customer-to-supplier mapping is tenant scoped. Retrying the same request cannot duplicate the sale. Separate returns follow existing return rules (cash refunds may require funds; they do not undo the other leg). Legacy documentary links remain available.
+
+## Visual verification
+The actual allowlisted portal, admin/tenant sign-in pages and shop route are exercised in Chromium on desktop/mobile with a synthetic catalog transport. This is not a pixel-by-pixel visual match of all authenticated pages, nor a live login or delivery test. Original TechStore remains read-only.

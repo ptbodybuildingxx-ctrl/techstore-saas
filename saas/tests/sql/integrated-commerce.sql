@@ -17,11 +17,49 @@ if (select paid_minor from public.mt_list_purchase_batches(t) where id=batch) is
 select id into strict buy from public.mt_purchases where store_id=t and batch_id=batch and product_id=pr;
 perform public.mt_set_currency_price(t,pr,'USD',5000);perform public.mt_set_currency_price(t,part,'USD',3000);
 perform public.mt_storefront_enable(t,true);perform public.mt_storefront_list_product(t,pr,true);perform public.mt_delivery_enable(t,true);
+perform public.mt_set_product_specs(t,pr,'{"RAM":"8GB"}'::jsonb);
+if (select specs->>'RAM' from public.mt_search_products(t,'USD','DEVICE',null,50,false)) is distinct from '8GB' then raise exception 'Search/specifications mismatch';end if;
+if exists(select 1 from public.mt_search_products(t,'USD','missing',null,50,false)) then raise exception 'Search false positive';end if;
+if jsonb_array_length(public.mt_search_catalog('a-'||tag,'USD','PART',null,50)->'products')<>0 then raise exception 'Unpublished product leaked';end if;
+if public.mt_search_catalog('a-'||tag,'USD','device',null,50)->'products'->0->'specs'->>'RAM' is distinct from '8GB' then raise exception 'Public specifications missing';end if;
+if not exists(select 1 from public.mt_stock_history(t,pr) where delta=5 and balance=5) then raise exception 'Stock history missing';end if;
+begin perform public.mt_set_product_specs(other,pr,'{}');raise exception 'Cross tenant mutation accepted';exception when insufficient_privilege then null;end;
+
 perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if public.mt_email_enabled('a-'||tag) then raise exception 'Email default not off';end if;
+perform public.mt_email_preference('a-'||tag,true);
+perform public.mt_push_register('a-'||tag,'https://fcm.googleapis.com/fcm/send/fixture-'||tag,repeat('A',87),repeat('B',22),true);
+begin perform public.mt_email_claim(gen_random_uuid());raise exception 'Buyer read delivery queue';exception when insufficient_privilege then null;end;
+begin perform public.mt_push_claim(gen_random_uuid());raise exception 'Buyer read push queue';exception when insufficient_privilege then null;end;
 ord:=public.mt_delivery_order('a-'||tag,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',pr,'units',2,'expected_price_minor',5000)),'Fixture address','000000000');
+if not exists(select 1 from jsonb_array_elements(public.mt_buyer_inbox('a-'||tag)) x where x->>'kind'='order' and x->>'reference'=ord::text and x->>'detail'='requested') then raise exception 'Delivery request notification missing';end if;
+declare lease_id uuid:=gen_random_uuid();emails jsonb;pushes jsonb;job jsonb;begin
+reset role;set local role service_role;
+emails:=public.mt_email_claim(lease_id);pushes:=public.mt_push_claim(lease_id);
+if not exists(select 1 from jsonb_array_elements(emails) x where x->>'store'=t::text and x->>'buyer'=buyer::text) or not exists(select 1 from jsonb_array_elements(pushes) x where x->>'store'=t::text and x->>'buyer'=buyer::text) then raise exception 'External queue missing';end if;
+job:=emails->0;
+if not public.mt_delivery_still_allowed('email',lease_id,t,buyer,(job->>'id')::uuid,null) then raise exception 'Email lease not allowed';end if;
+reset role;set local role authenticated;
+perform public.mt_email_preference('a-'||tag,false);
+perform public.mt_push_register('a-'||tag,'https://fcm.googleapis.com/fcm/send/fixture-'||tag,'','',false);
+reset role;set local role service_role;
+if public.mt_delivery_still_allowed('email',lease_id,t,buyer,(job->>'id')::uuid,null) then raise exception 'Email optout ignored';end if;
+job:=pushes->0;
+if public.mt_delivery_still_allowed('push',lease_id,t,buyer,(job->>'id')::uuid,(job->>'device')::uuid) then raise exception 'Push optout ignored';end if;
+reset role;set local role authenticated;
+end;
+if not public.mt_watch_product('a-'||tag,pr,'USD','price_drop',true) then raise exception 'Watch failed';end if;
+if not public.mt_buyer_read('a-'||tag,(public.mt_buyer_inbox('a-'||tag)->0->>'id')::uuid) then raise exception 'Read state failed';end if;
+
 if exists(select 1 from public.mt_list_purchase_batches(t)) then raise exception 'Purchase leaked';end if;
 perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_receipt_config(t,jsonb_build_object('brand','Original identity','phone','123','address','Fixture','sale_title','Sale','repair_title','Repair','footer','Thanks','format','thermal','logo',''));
 perform public.mt_dispatch_delivery(t,ord,'FIXTURE');sale:=public.mt_finish_order(t,ord,'fulfill');
+if public.mt_receipt_snapshot(t,'sale',sale)->>'brand' is distinct from 'Original identity' then raise exception 'Receipt snapshot missing';end if;
+perform public.mt_receipt_config(t,jsonb_build_object('brand','New identity','phone','','address','','sale_title','Sale','repair_title','Repair','footer','','format','a4','logo',''));
+if public.mt_receipt_snapshot(t,'sale',sale)->>'brand' is distinct from 'Original identity' then raise exception 'Historical identity changed';end if;
+if (public.mt_work_alerts(t)->>'low_stock')::int<1 then raise exception 'Low stock alert missing';end if;
+
 if (select sum(line_total_minor) from public.mt_sale_receipt_lines(t,sale)) is distinct from 10000::numeric then raise exception 'Receipt mismatch';end if;
 perform public.mt_record_return(t,gen_random_uuid(),sale,pr,1,'Customer return');
 perform public.mt_supplier_return(t,gen_random_uuid(),buy,1,'Supplier return',true);
@@ -125,5 +163,115 @@ if not public.mt_domain_disable(t,(v->>'id')::uuid) then raise exception 'Domain
 perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
 begin perform public.mt_design_change(t,1,1,'publish');raise exception 'Owner accessed central design';exception when insufficient_privilege then null;end;
 begin perform public.mt_domain_request(t,gen_random_uuid(),'another.example.com');raise exception 'Owner accessed central domains';exception when insufficient_privilege then null;end;
+perform public.mt_set_currency_price(t,pr,'USD',4000);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if not exists(select 1 from jsonb_array_elements(public.mt_buyer_inbox('a-'||tag)) x where x->>'kind'='price_drop') then raise exception 'Price notification missing';end if;
+declare review_id uuid;build_id uuid:=gen_random_uuid();begin
+perform public.mt_favorite_set('a-'||tag,pr,true);perform public.mt_build_save('a-'||tag,build_id,'Fixture build','USD',array[pr]);
+if jsonb_array_length(public.mt_buyer_library('a-'||tag)->'favorites')<>1 or jsonb_array_length(public.mt_buyer_library('a-'||tag)->'builds')<>1 then raise exception 'Buyer library missing';end if;
+review_id:=public.mt_review_submit('a-'||tag,pr,5,'Fixture review');
+if jsonb_array_length(public.mt_public_reviews('a-'||tag,pr))<>0 then raise exception 'Pending review leaked';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+if jsonb_array_length(public.mt_buyer_library('a-'||tag)->'favorites')<>0 then raise exception 'Favorite leaked';end if;
+perform public.mt_review_moderate(t,review_id,'published');
+if jsonb_array_length(public.mt_public_reviews('a-'||tag,pr))<>1 then raise exception 'Published review missing';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_build_delete('a-'||tag,build_id);
+end;
+
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+if jsonb_array_length(public.mt_buyer_inbox('a-'||tag))<>0 then raise exception 'Buyer inbox leaked';end if;
+declare quote_id uuid;quote_request uuid:=gen_random_uuid();q_before bigint;q_lines jsonb:=jsonb_build_array(jsonb_build_object('product_id',pr,'units',1,'expected_price_minor',4000));begin
+select quantity into q_before from public.mt_products where store_id=t and id=pr;
+quote_id:=public.mt_quote_create(t,quote_request,'Fixture customer','USD',(now() at time zone 'Asia/Damascus')::date+7,q_lines);
+if public.mt_quote_create(t,quote_request,'Fixture customer','USD',(now() at time zone 'Asia/Damascus')::date+7,q_lines) is distinct from quote_id then raise exception 'Quote replay';end if;
+if public.mt_quote_read(t,quote_id)->>'total_minor' is distinct from '4000' or (select quantity from public.mt_products where store_id=t and id=pr) is distinct from q_before then raise exception 'Quote changed stock or amount';end if;
+begin perform public.mt_quote_read(other,quote_id);raise exception 'Quote leaked';exception when insufficient_privilege then null;end;
+end;
+declare campaign uuid;estimate uuid;d date:=(now() at time zone 'Asia/Damascus')::date;begin
+campaign:=public.mt_campaign_create(t,gen_random_uuid(),'Fixture campaign','Fixture content',d,d+1);
+if jsonb_array_length(public.mt_public_campaigns('a-'||tag))<>0 then raise exception 'Draft campaign leaked';end if;
+perform public.mt_campaign_state(t,campaign,'published');
+if jsonb_array_length(public.mt_public_campaigns('a-'||tag))<>1 then raise exception 'Campaign missing';end if;
+estimate:=public.mt_tradein_create(t,gen_random_uuid(),null,cust,'Used device','SERIAL','Working','USD',2000);
+perform public.mt_tradein_state(t,estimate,'offered');perform public.mt_tradein_state(t,estimate,'accepted');
+if not exists(select 1 from jsonb_array_elements(public.mt_tradein_list(t,null)) x where x->>'id'=estimate::text and x->>'state'='accepted') then raise exception 'Trade-in state missing';end if;
+begin perform public.mt_tradein_settle(t,estimate,buy,sale);raise exception 'Old unrelated documents accepted';exception when sqlstate '22023' then null;end;
+declare used_product uuid;new_product uuid;req uuid:=gen_random_uuid();result jsonb;begin
+used_product:=public.mt_add_product(t,'USED-FIXTURE','Used fixture');new_product:=public.mt_add_product(t,'NEW-FIXTURE','New fixture');
+perform public.mt_set_currency_price(t,new_product,'USD',4000);perform public.mt_adjust_stock(t,new_product,2,gen_random_uuid());
+perform public.mt_tradein_execute(t,req,estimate,used_product,'USD',jsonb_build_array(jsonb_build_object('product_id',new_product,'units',1,'expected_price_minor',4000)),2000,true);
+perform public.mt_tradein_execute(t,req,estimate,used_product,'USD',jsonb_build_array(jsonb_build_object('product_id',new_product,'units',1,'expected_price_minor',4000)),2000,true);
+result:=public.mt_tradein_result(t,estimate);
+if result->>'offset_minor' is distinct from '2000' or result->>'cash_difference_minor' is distinct from '2000' then raise exception 'Trade-in offset mismatch';end if;
+if (select remaining_minor from public.mt_debts where store_id=t and sale_id=(result->>'sale_id')::uuid)<>0 or (select paid_minor from public.mt_purchases where store_id=t and id=(result->>'purchase_id')::uuid)<>2000 then raise exception 'Trade-in unpaid';end if;
+if exists(select 1 from public.mt_cash_movements m join public.mt_debt_payments d on d.store_id=m.store_id and d.id=m.debt_payment_id where m.store_id=t and d.settlement_method='tradein_offset') or exists(select 1 from public.mt_cash_movements m join public.mt_supplier_payments d on d.store_id=m.store_id and d.id=m.supplier_payment_id where m.store_id=t and d.settlement_method='tradein_offset') then raise exception 'Fictitious cash';end if;
+if (select sum(m.amount_minor) from public.mt_cash_movements m join public.mt_debt_payments p on p.store_id=m.store_id and p.id=m.debt_payment_id join public.mt_debts d on d.store_id=p.store_id and d.id=p.debt_id where d.store_id=t and d.sale_id=(result->>'sale_id')::uuid) is distinct from 2000::numeric then raise exception 'Actual trade-in cash mismatch';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_financial_reconciliation(t)->'rows') x where x->>'currency'='USD' and x->>'account'='accounts_receivable' and x->>'balanced'='true') then raise exception 'Trade-in receivable reconciliation failed';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_financial_reconciliation(t)->'rows') x where x->>'currency'='USD' and x->>'account'='accounts_payable' and x->>'balanced'='true') then raise exception 'Trade-in payable reconciliation failed';end if;
+end;
+end;
+-- Branch transfers, cash sale, return and cross-tenant denial.
+declare branch uuid;branch_product uuid;branch_request uuid:=gen_random_uuid();branch_sale uuid;branch_move uuid:=gen_random_uuid();begin
+branch:=public.mt_branch_create(t,'Fixture branch');branch_product:=public.mt_add_product(t,'BRANCH-FIXTURE','Branch fixture');
+perform public.mt_adjust_stock(t,branch_product,5,gen_random_uuid());perform public.mt_set_currency_price(t,branch_product,'USD',1000);
+perform public.mt_branch_transfer(t,branch_move,null,branch,branch_product,3);
+perform public.mt_branch_transfer(t,branch_move,null,branch,branch_product,3);
+if public.mt_branch_overview(t,branch_product)->>'main' is distinct from '2' then raise exception 'Branch transfer mismatch';end if;
+begin perform public.mt_adjust_stock(t,branch_product,-3,gen_random_uuid());raise exception 'Allocated stock consumed';exception when sqlstate '22023' then null;end;
+v:=public.mt_branch_cash_sale(t,branch,branch_request,'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)));
+branch_sale:=(v->>'id')::uuid;
+if public.mt_branch_cash_sale(t,branch,branch_request,'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)))->>'id' is distinct from branch_sale::text then raise exception 'Branch replay';end if;
+perform public.mt_record_return(t,gen_random_uuid(),branch_sale,branch_product,1,'Branch return');
+if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '3' then raise exception 'Branch return mismatch';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_branch_sales_report(t,today-1,today+1)) x where x->>'branch'=branch::text and x->>'gross'='1000' and x->>'returns'='1000' and x->>'net'='0') then raise exception 'Branch accounting report mismatch';end if;
+if (select sum(units*unit_price_minor) from public.mt_repair_receipt_lines(t,inv)) is distinct from 3000::numeric then raise exception 'Repair receipt lines mismatch';end if;
+declare bp uuid;rr uuid;ri uuid;rq uuid:=gen_random_uuid();begin
+bp:=public.mt_branch_purchase(t,branch,rq,sup,branch_product,'USD',2,500,0,'Branch purchase');
+if public.mt_branch_purchase(t,branch,rq,sup,branch_product,'USD',2,500,0,'Branch purchase') is distinct from bp then raise exception 'Branch purchase replay';end if;
+perform public.mt_supplier_return(t,gen_random_uuid(),bp,1,'Branch supplier return',false);
+rr:=public.mt_branch_add_repair(t,branch,gen_random_uuid(),cust,'Branch device',null,'Fault');
+perform public.mt_repair_transition(t,gen_random_uuid(),rr,'diagnosing','A');perform public.mt_repair_transition(t,gen_random_uuid(),rr,'repairing','B');perform public.mt_repair_transition(t,gen_random_uuid(),rr,'ready','C');
+ri:=public.mt_repair_checkout(t,gen_random_uuid(),rr,'USD',100,jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)),90);
+if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '3' then raise exception 'Branch operation balances';end if;
+v:=public.mt_branch_credit_sale(t,branch,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)),cust,0,2,today+10);
+if public.mt_branch_overview(t,branch_product)->'stock'->0->>'units' is distinct from '2' then raise exception 'Branch credit balance';end if;
+declare vr uuid:=gen_random_uuid();voucher uuid;begin
+voucher:=public.mt_branch_voucher(t,vr,branch,'salary','USD',100,'Employee','Salary fixture');
+if public.mt_branch_voucher(t,vr,branch,'salary','USD',100,'Employee','Salary fixture') is distinct from voucher then raise exception 'Voucher replay';end if;
+if not exists(select 1 from public.mt_accounting_adjustments where store_id=t and source_request=vr and kind='expense_payroll' and amount_minor=100) then raise exception 'Payroll not classified';end if;
+if not exists(select 1 from jsonb_array_elements(public.mt_branch_operating_result(t,today-1,today+1)) x where x->>'branch'=branch::text and x->>'expenses'='100' and (x->>'unknown')::int>0 and x->>'result' is null) then raise exception 'Branch cost uncertainty not preserved';end if;
+end;
+end;
+-- Assign existing synthetic buyer as employee of this store (their other-store ownership remains independent).
+declare other_branch uuid;tech_repair uuid;begin
+other_branch:=public.mt_branch_create(t,'Second fixture branch');
+perform public.mt_staff_set(t,gen_random_uuid(),buyer,'cashier',true);
+perform public.mt_staff_scope_set(t,buyer,branch);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if (select quantity from public.mt_search_products(t,'USD','BRANCH-FIXTURE')) is distinct from 2::bigint or exists(select 1 from public.mt_products where store_id=t) then raise exception 'Scoped stock leaked';end if;
+begin perform public.mt_record_currency_sale(t,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)));raise exception 'Main cashier sale bypass';exception when insufficient_privilege then null;end;
+begin perform public.mt_branch_cash_sale(t,other_branch,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)));raise exception 'Other branch sale bypass';exception when insufficient_privilege then null;end;
+perform public.mt_branch_cash_sale(t,branch,gen_random_uuid(),'USD',jsonb_build_array(jsonb_build_object('product_id',branch_product,'units',1,'expected_price_minor',1000)));
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_staff_set(t,gen_random_uuid(),buyer,'tech',true);
+perform public.mt_staff_scope_set(t,buyer,branch);
+tech_repair:=public.mt_branch_add_repair(t,branch,gen_random_uuid(),cust,'Tech fixture',null,'Fault');
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+if exists(select 1 from public.mt_repairs where store_id=t and id=rep) or not exists(select 1 from public.mt_repairs where store_id=t and id=tech_repair) then raise exception 'Repair scope leak';end if;
+begin perform public.mt_repair_transition(t,gen_random_uuid(),rep,'repairing','Denied');raise exception 'Repair branch bypass';exception when insufficient_privilege then null;end;
+perform public.mt_repair_transition(t,gen_random_uuid(),tech_repair,'diagnosing','Allowed');
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_staff_set(t,gen_random_uuid(),buyer,'stock',true);
+perform public.mt_staff_scope_set(t,buyer,branch);
+perform set_config('request.jwt.claims',jsonb_build_object('sub',buyer,'session_id',sb,'aal','aal1','role','authenticated')::text,true);
+begin perform public.mt_adjust_stock(t,branch_product,1,gen_random_uuid());raise exception 'Stock adjustment bypass';exception when insufficient_privilege then null;end;
+perform public.mt_branch_transfer(t,gen_random_uuid(),branch,null,branch_product,1);
+if public.mt_branch_overview(t,branch_product)->>'main' is not null then raise exception 'Main stock disclosed';end if;
+perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'session_id',sa,'aal','aal1','role','authenticated')::text,true);
+perform public.mt_staff_set(t,gen_random_uuid(),buyer,'stock',false);
+end;
+begin perform public.mt_branch_overview(other,null);raise exception 'Branch leak';exception when insufficient_privilege then null;end;
+end;
 reset role;raise exception using errcode='ZX001',message='rollback';
 exception when sqlstate 'ZX001' then raise notice 'Integrated commerce fixture passed; rolled back';end;end $t$;
