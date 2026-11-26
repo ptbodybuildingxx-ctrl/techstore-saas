@@ -1,5 +1,17 @@
 // Shared bilingual UI strings. Arabic source labels are stable identifiers for presentation only.
 export const english=Object.freeze({
+  "صلاحيات الباقات": "Plan permissions",
+  "قبول محلات جديدة في الباقة": "Accept new stores into plan",
+  "إتاحة المتجر الإلكتروني": "Enable online storefront",
+  "استقبال طلبات جديدة": "Accept new orders",
+  "التوصيل اليدوي": "Manual delivery",
+  "تحديث صلاحيات الباقات": "Refresh plan permissions",
+  "تغيير سياسة الباقة يؤثر في جميع المحلات التابعة لها. إغلاق التسجيل لا يلغي اشتراكاتها الحالية. إيقاف استقبال الطلبات لا يلغي الطلبات السابقة.": "Plan policy changes affect every store on that plan. Closing enrollment does not cancel existing subscriptions. Pausing order intake does not cancel previous orders.",
+  "حفظ سياسة الباقة": "Save plan policy",
+  "المحلات المشتركة في الباقة": "Stores on this plan",
+  "تأكيد تغيير صلاحيات جميع محلات هذه الباقة؟": "Confirm permission changes for all stores on this plan?",
+  "سجل تعديلات صلاحيات الباقات": "Plan policy audit history",
+  "استقبال الطلبات الجديدة متوقف حالياً.": "New order intake is currently paused.",
   "إصدار ترخيص يدوي": "Issue manual license",
   "تجديد الترخيص اليدوي": "Renew manual license",
   "إلغاء الترخيص اليدوي": "Revoke manual license",
