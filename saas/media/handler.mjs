@@ -43,4 +43,14 @@ export function jpegDimensions(b){
 const common={'Cache-Control':'no-store, max-age=0','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Cross-Origin-Resource-Policy':'cross-origin'};
 const missing=()=>new Response(null,{status:404,headers:common});
 export async function serveMedia(req,{lookup,read}){try{if(req.method!=='GET')return new Response(null,{status:405,headers:{...common,Allow:'GET'}});const q=new URL(req.url).searchParams,s=q.get('shop'),i=q.get('image');if(!s||!slug.test(s)||!i||!id.test(i)||q.size!==2)return missing();const path=await lookup(s,i);if(typeof path!=='string'||!pathPattern.test(path))return missing();const bytes=await read(path);if(!jpegDimensions(bytes))return missing();return new Response(bytes,{status:200,headers:{...common,'Content-Type':'image/jpeg','Content-Length':String(bytes.length),'Content-Disposition':'inline; filename="image.jpg"'}})}catch{return missing()}}
-export async function boundedBytes(r){if(!r.ok||r.headers.get('content-type')?.split(';')[0]!=='image/jpeg'||!r.body||Number(r.headers.get('content-length'))>2000000)return null;const reader=r.body.getReader(),chunks=[];let total=0;try{while(true){const {value,done}=await reader.read();if(done)break;total+=value.length;if(total>2000000){await reader.cancel();return null}chunks.push(value)}}finally{reader.releaseLock()}const result=new Uint8Array(total);let offset=0;for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.length}return result}
+export async function boundedBytes(r){
+ const cap=2000000,declared=r.headers.get('content-length'),length=declared===null?null:Number(declared);
+ const reject=async()=>{try{await r.body?.cancel()}catch{}return null};
+ if(r.status!==200||r.headers.get('content-type')?.split(';')[0]!=='image/jpeg'||!r.body||(declared!==null&&(!/^\d{1,7}$/.test(declared)||!Number.isSafeInteger(length)||length<12||length>cap))||(r.headers.get('content-encoding')??'identity')!=='identity')return reject();
+ const reader=r.body.getReader(),buffer=new Uint8Array(length??cap);let total=0,complete=false;
+ try{
+  while(true){const {value,done}=await reader.read();if(done){complete=true;break}if(!(value instanceof Uint8Array)||total+value.length>buffer.length)return null;buffer.set(value,total);total+=value.length}
+  if(total<12||(length!==null&&total!==length))return null;
+  return total===buffer.length?buffer:buffer.slice(0,total);
+ }catch{return null}finally{if(!complete)try{await reader.cancel()}catch{}reader.releaseLock()}
+}

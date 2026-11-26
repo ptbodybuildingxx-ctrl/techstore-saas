@@ -12,3 +12,13 @@ test('JPEG framing rejects header-only, truncated scan and trailing bytes',()=>{
  const large=bytes.slice(),sof=large.findIndex((x,i)=>x===255&&large[i+1]===192);large[sof+7]=7;large[sof+8]=0;
  assert.equal(jpegDimensions(large),null);
 });
+
+test('bounded media rejects partial, encoded, malformed and inconsistent responses',async()=>{
+ const h={'content-type':'image/jpeg'};
+ for(const headers of [{'content-length':'NaN'},{'content-length':'0'},{'content-length':'2000001'},{'content-length':String(bytes.length+1)},{'content-length':String(bytes.length-1)},{'content-encoding':'gzip'}])assert.equal(await boundedBytes(new Response(bytes,{headers:{...h,...headers}})),null);
+ assert.equal(await boundedBytes(new Response(bytes,{status:206,headers:h})),null);
+ assert.deepEqual(await boundedBytes(new Response(bytes,{headers:{...h,'content-length':String(bytes.length)}})),bytes);
+ assert.deepEqual(await boundedBytes(new Response(bytes,{headers:h})),bytes);
+ let cancelled=false;const stream=new ReadableStream({pull(c){c.enqueue(new Uint8Array(2000001))},cancel(){cancelled=true}});
+ assert.equal(await boundedBytes(new Response(stream,{headers:h})),null);assert.equal(cancelled,true);
+});
