@@ -554,3 +554,58 @@ header .locale-toggle{min-width:86px;min-height:40px;white-space:nowrap;margin-i
 @media(prefers-reduced-motion:reduce){.storefront-page #products>tr{transition:none!important}}
 /* Keep paper independent of screen chrome, including custom dark themes. */
 @media print{.design-receipt{color:#182235!important;background:#fff!important;box-shadow:none!important}.design-receipt table{border-collapse:collapse!important}.design-receipt :is(th,td){text-align:start!important;white-space:normal!important}.design-receipt tr{break-inside:avoid}.design-receipt thead{display:table-header-group}}
+
+/* Aurora workspace parity 142 — source-derived icons, grouped menu and default appearance.
+   Scope local appearance to platform defaults; persisted tenant design tokens win. */
+.workspace-nav::before,html[dir=ltr] .workspace-nav::before{display:none!important}
+:root[data-workspace-layout=desktop] .workspace-nav .workspace-drawer-heading{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px}
+:root[data-workspace-layout=desktop] .workspace-nav .workspace-drawer-close{display:none}
+.workspace-nav .workspace-drawer-heading strong{font-size:.92rem;color:var(--design-text,var(--aurora-ink))}
+.workspace-search-label{display:grid;gap:5px;margin:0 5px 10px;color:var(--design-text,var(--aurora-muted));font-size:12px;font-weight:650;min-width:0}
+.workspace-nav .workspace-search-label .workspace-search{width:100%;margin:0;min-height:43px;max-width:100%;font-size:13px}
+.workspace-nav-groups{display:flex;flex-direction:column;gap:6px;min-width:0}
+.workspace-nav-group{display:flex;flex-direction:column;gap:3px;border-block-end:1px solid var(--design-text,var(--line));border-color:color-mix(in srgb,var(--design-text,var(--aurora-ink)) 14%,transparent);padding:5px 0 10px}
+.workspace-nav-group:last-child{border:0}
+.workspace-nav .workspace-nav-group h2{font-size:11px;color:var(--design-text,var(--aurora-muted));margin:2px 8px 3px;font-weight:700;letter-spacing:.02em}
+:root[data-workspace-layout] .workspace-nav .workspace-nav-group button.workspace-nav-item{width:100%;min-height:44px;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:9px;padding:8px 10px;text-align:start;font-size:13px;white-space:normal;line-height:1.45;border-radius:11px}
+.workspace-nav .workspace-icon,.workspace-quick-nav .workspace-icon{width:21px;height:21px;flex:0 0 21px;display:inline-flex;align-items:center;justify-content:center}
+.workspace-icon svg{display:block;width:20px;height:20px;flex:none}
+.workspace-search-empty{font-size:13px;color:var(--design-text,var(--aurora-muted));padding:8px;overflow-wrap:anywhere}
+.workspace-page-head{margin:0 0 18px;padding:4px 0 0;min-width:0}
+.workspace-page-caption{font-size:11px;font-weight:750;color:var(--design-text,var(--aurora-muted))}
+.workspace-shell .workspace-page-title{font-size:clamp(24px,3vw,34px);line-height:1.35;font-weight:800;letter-spacing:-.025em;margin:4px 0 0;overflow-wrap:anywhere;color:var(--design-text,var(--aurora-ink))}
+.workspace-connection{padding:3px clamp(14px,3vw,30px);text-align:end;font-size:11px;background:var(--design-surface,var(--aurora-soft,#f7f9fe));border-block-end:1px solid var(--line);color:var(--design-text,var(--aurora-green,#08794e))}
+.workspace-connection[data-offline=true]{font-weight:700;text-align:center;padding:8px 12px;color:var(--design-text,var(--aurora-warm,#9a4b0d))}
+.workspace-theme-toggle{min-height:36px;font-size:13px;white-space:nowrap}
+:root:not([data-design=on]) .workspace-shell .scroll{border-radius:13px}
+:root:not([data-design=on]) .workspace-shell th,:root:not([data-design=on]) .workspace-shell td{text-align:start;padding:12px 14px}
+:root:not([data-design=on]) .workspace-shell tbody tr:nth-child(even){background:color-mix(in srgb,var(--aurora-soft,#f7f9fe) 65%,var(--panel))}
+:root:not([data-design=on]) .workspace-shell tbody tr:hover{background:color-mix(in srgb,var(--aurora-accent) 6%,var(--panel))}
+:root:not([data-design=on]) .workspace-shell input:not([type=checkbox]):not([type=radio]),:root:not([data-design=on]) .workspace-shell select,:root:not([data-design=on]) .workspace-shell textarea{min-height:43px;padding:10px 12px;border-radius:10px}
+:root:not([data-design=on]) .workspace-shell button{border-radius:11px}
+:root:not([data-design=on]) .workspace-shell form button[type=submit],:root:not([data-design=on]) .workspace-shell button.primary,:root:not([data-design=on]) #sell{background:linear-gradient(135deg,var(--aurora-accent),color-mix(in srgb,var(--aurora-accent),#7959db 30%));color:white}
+:root:not([data-design=on]) .workspace-nav button[aria-current=page]{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--aurora-accent) 20%,transparent)}
+:root[data-workspace-appearance=dark]:not([data-design=on]){color-scheme:dark;--aurora-bg:#0d1425;--aurora-ink:#edf2ff;--aurora-muted:#a5b4ce;--aurora-line:#2b3b56;--aurora-soft:#1b2840;--aurora-green:#70ddb1;--aurora-warm:#ffc280;--aurora-shadow:0 8px 26px #0003;--panel:#151f33}
+:root[data-workspace-appearance=dark]:not([data-design=on]) .panel,:root[data-workspace-appearance=dark]:not([data-design=on]) .metric,:root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-nav,:root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-quick-nav,:root[data-workspace-appearance=dark]:not([data-design=on]) .platform-nav,:root[data-workspace-appearance=dark]:not([data-design=on]) .platform-nav a,:root[data-workspace-appearance=dark]:not([data-design=on]) .site-block:not(.accent){background:var(--panel);color:var(--aurora-ink)}
+:root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-nav{background:#111b2d}
+:root[data-workspace-appearance=dark]:not([data-design=on]) input,:root[data-workspace-appearance=dark]:not([data-design=on]) select,:root[data-workspace-appearance=dark]:not([data-design=on]) textarea,:root[data-workspace-appearance=dark]:not([data-design=on]) th,:root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-shell th{background:var(--aurora-soft);color:var(--aurora-ink);border-color:var(--line)}
+:root[data-workspace-appearance=dark]:not([data-design=on]) button{background:var(--aurora-soft);color:var(--aurora-ink);border-color:var(--line)}
+:root[data-workspace-appearance=dark]:not([data-design=on]) header button{background:#ffffff14;color:#fff;border-color:#ffffff2c}
+:root[data-workspace-appearance=dark]:not([data-design=on]) a,:root[data-workspace-appearance=dark]:not([data-design=on]) .platform-nav a{color:#b9c7ff!important}
+:root[data-workspace-appearance=dark]:not([data-design=on]) .platform-nav a[aria-current=page],:root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-nav button[aria-current=page],:root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-quick-nav button[aria-current=page]{background:#253656;color:#b9c7ff!important;border-color:var(--line)}
+:root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-nav button:hover{background:var(--aurora-soft)}
+:root[data-workspace-appearance=dark]:not([data-design=on]) .notice{background:#30271b;border-color:#614723;color:#ffc280}
+:root[data-workspace-appearance=dark]:not([data-design=on]) dialog{color:var(--aurora-ink);background:var(--panel);border-color:var(--line)}
+:root[data-workspace-appearance=dark]:not([data-design=on]) form button,:root[data-workspace-appearance=dark]:not([data-design=on]) button.primary,:root[data-workspace-appearance=dark]:not([data-design=on]) #sell{background:var(--aurora-accent);color:white;border-color:var(--aurora-accent)}
+:root:not([data-design=on]) .design-receipt{background:#fff;color:#111;box-shadow:none}
+:root:not([data-design=on]) .design-receipt th{background:#fff!important;color:#111!important}
+:root:not([data-design=on]) .design-receipt tbody tr{background:white!important}
+@media(max-width:860px){.workspace-page-head{margin-bottom:14px}.workspace-shell .workspace-page-title{font-size:24px}:root[data-workspace-layout=mobile] .workspace-nav .workspace-search-label{margin:0 0 8px}:root[data-workspace-layout=mobile] .workspace-nav .workspace-search-label .workspace-search{flex:none}:root[data-workspace-layout=mobile] .workspace-quick-nav .workspace-icon{flex:0 0 21px}}
+@media print{.workspace-connection,.workspace-theme-toggle,.workspace-page-head{display:none!important}}
+
+/* Preserve concurrent Aurora component refinements in default dark mode. */
+:root[data-workspace-appearance=dark]:not([data-design=on]) .panel table:not(:has(>#products)) tbody tr:nth-child(even){background:color-mix(in srgb,var(--aurora-soft) 65%,var(--panel))}
+@media(hover:hover) and (pointer:fine){:root[data-workspace-appearance=dark]:not([data-design=on]) .panel table:not(:has(>#products)) tbody tr:hover{background:color-mix(in srgb,var(--aurora-accent) 10%,var(--panel))}}
+:root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-layout-control select{background:var(--aurora-soft);color:var(--aurora-ink);border-color:var(--line)}
+:root[data-workspace-appearance=dark]:not([data-design=on]) .design-receipt :is(th,td){background:#fff!important;color:#111!important;border-color:#bbb!important}
+:root[data-workspace-appearance=dark]:not([data-design=on]) .design-receipt tbody tr{background:#fff!important}

@@ -15,3 +15,7 @@ This is source-level implementation, not pixel parity. Capture synthetic fixture
 ## Component parity follow-up
 
 The default SaaS workspace, central admin, and public shop now share the original Aurora control styling, metric typography, logical table alignment, row treatments, and responsive card spacing. The workspace navigation uses the original static SVG path artwork mapped to existing authorized SaaS groups. Published custom themes are not replaced; the navigation authorization, RPCs, and data model are unchanged. Receipt print styling is kept independent of the screen theme. Original source was read only. Browser/pixel comparison and cross-device validation remain outstanding; no test suite was run for this change.
+
+## Revision 142
+
+Adapted the original Aurora SVG navigation geometry and grouped section finder to SaaS role-filtered sections; added a localized page heading, actual browser connectivity indicator and a device-local default workspace light/dark switch. Custom tenant themes remain authoritative, no database changes. Original source was read only. Browser/pixel comparison, public shop refinements and editor verification remain outstanding.
