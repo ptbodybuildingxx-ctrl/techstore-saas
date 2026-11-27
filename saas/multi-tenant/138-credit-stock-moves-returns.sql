@@ -123,6 +123,10 @@ begin
  -- net return with the same rounding, rather than independently rounding the discount.
  select cp.invoice_cost_minor into strict original_cost from tenant_private.cost_postings cp where cp.store_id=new.store_id and cp.product_id=new.product_id and cp.event_id=new.event_id and cp.layer_id=new.layer_id;
  invoice_share:=new.invoice_cost_minor-(round((original_cost-r.invoice_amount)*(used+new.units)/r.units)-round((original_cost-r.invoice_amount)*used/r.units));
+ -- A one-minor-unit rounding difference can make a partial net return nonmonotone.
+ -- Bound the current share by the returned gross and reserve only what future gross can carry.
+ invoice_share:=greatest(0,r.invoice_amount-invoice_before-(original_cost-round(original_cost*(used+new.units)/r.units)),
+   least(invoice_share,new.invoice_cost_minor,r.invoice_amount-invoice_before));
  select x.unit_cost_minor::numeric*new.units into strict gross_source from tenant_private.stock_layers x where x.store_id=new.store_id and x.product_id=new.product_id and x.id=new.layer_id;
  if r.currency=r.invoice_currency then
   -- Same-currency inventory and cost legs must match exactly.
