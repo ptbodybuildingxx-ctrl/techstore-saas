@@ -65,12 +65,32 @@ export async function forgetOriginalDraft(scope,requestId){const base=originalBa
 export async function sendOfflineOriginal(api,scope,pass,device,x){
  if(x.kind==='originalDelete'){const r=await api.offlineOriginalDeleteBegin(scope.store,device,x);if(r.status==='conflict'){const e=Error('Image changed');e.status=409;throw e}if(r.status==='confirmed')return r;if(r.uploaded)await api.deleteReservedOriginal(scope.store,r);const done=await api.offlineOriginalDeleteFinish(scope.store,device,x);if(done.status!=='confirmed')throw Error('Image deletion unconfirmed');return done}
  const reserved=await api.offlineOriginalReserve(scope.store,device,x);if(reserved.status==='confirmed'){await forgetOriginalDraft(scope,x.requestId).catch(()=>{});return reserved}
- const bytes=await loadOriginal(scope,pass,x);
- if(!reserved.uploaded){await api.offlineDeviceRequire(scope.store,device);await api.uploadProductOriginal(scope.store,reserved,new Blob([bytes],{type:'image/jpeg'}))}
+ if(!reserved.uploaded){const bytes=await loadOriginal(scope,pass,x);await api.offlineDeviceRequire(scope.store,device);await api.uploadProductOriginal(scope.store,reserved,new Blob([bytes],{type:'image/jpeg'}))}
  // A retry never overwrites an existing object. Compare the authenticated read-back.
  await api.offlineDeviceRequire(scope.store,device);const actual=await api.readProductOriginal(scope.store,reserved);
  if(actual.byteLength!==x.bytes||await sha(actual)!==x.digest)throw Error('Original differs; review manually');
  const r=await api.offlineOriginalFinish(scope.store,device,x);await forgetOriginalDraft(scope,x.requestId).catch(()=>{});return r
+}
+
+// Resume a server-reserved image without inventing a new request. An uploaded
+// object is verified against the reservation even if the local encrypted bytes
+// have disappeared. Missing uploads still require the original local file.
+export async function recoverOfflineImage(api,scope,device,requestId,kind,approve){
+ const r=await api.offlineImageRecovery(scope.store,device,requestId,kind);
+ if(['confirmed','conflict','metadata_missing','upload_pending'].includes(r.status))return r;
+ if(!await approve(r))return {status:'cancelled',requestId};
+ if(r.status==='verification_pending'){
+  const actual=await api.readProductOriginal(scope.store,r),op=r.operation;
+  if(actual.byteLength!==op.bytes||await sha(actual)!==op.digest)throw Error('Reserved image checksum differs; do not publish');
+  const done=await api.offlineOriginalFinish(scope.store,device,op);if(done.status!=='confirmed')throw Error('Image unconfirmed');return done;
+ }
+ if(r.status==='storage_mismatch'){
+  await api.deleteReservedOriginal(scope.store,{...r,status:'reserved'});
+  const done=await api.offlineImageRecovery(scope.store,device,requestId,kind);if(done.status!=='confirmed')throw Error('Retired file still present');return done;
+ }
+ if(r.status==='delete_pending')await api.deleteReservedOriginal(scope.store,{...r,status:'reserved'});
+ const done=await api.offlineOriginalDeleteFinish(scope.store,device,r.operation);
+ if(done.status!=='confirmed')throw Error('Image deletion unconfirmed');return done;
 }
 
 export function mountOfflineInventory({root,context,save,message}){

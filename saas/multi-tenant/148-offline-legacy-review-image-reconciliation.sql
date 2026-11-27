@@ -10,9 +10,72 @@ create index mt_product_original_product_idx on tenant_private.product_originals
 
 -- The preview is not a historical snapshot. It binds the exact serialized request
 -- to the current store revision and live access scope. Never returns private rows.
+
+create function tenant_private.offline_legacy_current(s uuid,method text,args jsonb) returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+declare out_data jsonb:='{}';ids uuid[];target uuid;v jsonb;branch uuid;
+begin
+ if tenant_private.member_role(s) is distinct from 'owner' then return jsonb_build_object('manual_review',true,'reason','staff_scope');end if;
+ -- All values below are narrowly selected fields from referenced records.
+ if tenant_private.central_read_permitted(s,'all_catalog_read') then
+  select coalesce(array_agg(distinct id),'{}'::uuid[]) into ids from (
+   select (args->>'p_product')::uuid id where args->>'p_product' is not null
+   union all select (args->>'p_used_product')::uuid where args->>'p_used_product' is not null
+   union all select (x->>'product_id')::uuid from jsonb_array_elements(case when jsonb_typeof(args->'p_lines')='array' then args->'p_lines' else '[]'::jsonb end) x where x->>'product_id' is not null
+   union all select (x->>'product_id')::uuid from jsonb_array_elements(case when jsonb_typeof(args->'p_items')='array' then args->'p_items' else '[]'::jsonb end) x where x->>'product_id' is not null
+  ) z;
+  if cardinality(ids)>100 then raise exception 'Too many reviewed products' using errcode='22023';end if;
+  if cardinality(ids)>0 then
+   branch:=coalesce((args->>'p_branch')::uuid,case when method='mt_branch_transfer' then (args->>'p_source')::uuid end);
+   select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'sku',p.sku,'name',p.name,'quantity',case when branch is null then p.quantity else coalesce((select b.units from tenant_private.branch_stock b where b.store_id=s and b.branch_id=branch and b.product_id=p.id),0) end,'prices',coalesce((select jsonb_agg(jsonb_build_object('currency',q.currency,'price_minor',q.price_minor) order by q.currency) from public.mt_product_prices q where q.store_id=s and q.product_id=p.id),'[]'::jsonb)) order by p.id),'[]'::jsonb) into v from public.mt_products p where p.store_id=s and p.id=any(ids);
+   out_data:=out_data||jsonb_build_object('products',v,'requested_products',to_jsonb(ids));
+  end if;
+ end if;
+ if args->>'p_customer' is not null and method<>'mt_quote_create' and tenant_private.central_read_permitted(s,'all_customer_read') then
+  select jsonb_build_object('id',c.id,'name',c.name,'phone',c.phone) into v from public.mt_customers c where c.store_id=s and c.id=(args->>'p_customer')::uuid;out_data:=out_data||jsonb_build_object('customer',v);
+ end if;
+ if args->>'p_supplier' is not null and tenant_private.central_read_permitted(s,'all_supplier_read') then
+  select jsonb_build_object('id',r.id,'name',r.name,'archived',r.archived,'contact',r.contact,'phone',r.phone,'email',r.email,'address',r.address) into v from public.mt_suppliers r where r.store_id=s and r.id=(args->>'p_supplier')::uuid;out_data:=out_data||jsonb_build_object('supplier',v);
+ end if;
+ if args->>'p_purchase' is not null and tenant_private.central_read_permitted(s,'all_purchase_read') then
+  select jsonb_build_object('id',p.id,'currency',p.currency,'total_minor',p.total_minor,'paid_minor',p.paid_minor,'units',p.units,'returned_units',p.returned_units,'refunded_minor',p.refunded_minor,'due_date',p.due_date) into v from public.mt_purchases p where p.store_id=s and p.id=(args->>'p_purchase')::uuid;out_data:=out_data||jsonb_build_object('purchase',v);
+ end if;
+ if args->>'p_debt' is not null and tenant_private.central_read_permitted(s,'all_debt_read') then
+  if method='mt_standalone_pay' then select jsonb_build_object('id',r.id,'currency',r.currency,'remaining_minor',r.remaining_minor,'direction',r.direction,'branch',r.branch_id) into v from tenant_private.standalone_debts r where r.store_id=s and r.id=(args->>'p_debt')::uuid;
+  else select jsonb_build_object('id',r.id,'currency',r.currency,'remaining_minor',r.remaining_minor) into v from public.mt_debts r where r.store_id=s and r.id=(args->>'p_debt')::uuid;end if;
+  out_data:=out_data||jsonb_build_object('debt',v);
+ end if;
+ if args->>'p_repair' is not null and tenant_private.central_read_permitted(s,'all_repair_read') then
+  select jsonb_build_object('id',r.id,'state',r.state,'device',r.device) into v from public.mt_repairs r where r.store_id=s and r.id=(args->>'p_repair')::uuid;out_data:=out_data||jsonb_build_object('repair',v);
+ end if;
+ if args->>'p_invoice' is not null and tenant_private.central_read_permitted(s,'all_repair_read') then
+  select jsonb_build_object('id',r.id,'currency',r.currency,'total_minor',r.total_minor,'warranty_until',r.warranty_until) into v from public.mt_repair_invoices r where r.store_id=s and r.id=(args->>'p_invoice')::uuid;out_data:=out_data||jsonb_build_object('invoice',v);
+ end if;
+ if args->>'p_claim' is not null and tenant_private.central_read_permitted(s,'all_warranty_read') then
+  if method='mt_sale_claim_transition' then select jsonb_build_object('id',r.id,'state',r.state,'units',r.units) into v from tenant_private.sale_warranty_claims r where r.store_id=s and r.id=(args->>'p_claim')::uuid;
+  else select jsonb_build_object('id',r.id,'state',r.state) into v from public.mt_warranty_claims r where r.store_id=s and r.id=(args->>'p_claim')::uuid;end if;
+  out_data:=out_data||jsonb_build_object('claim',v);
+ end if;
+ if args->>'p_sale' is not null and tenant_private.central_read_permitted(s,'all_sales_read') then
+  select jsonb_build_object('id',r.id,'number',r.number,'currency',r.currency,'total_minor',r.total_minor) into v from public.mt_sales r where r.store_id=s and r.id=(args->>'p_sale')::uuid;out_data:=out_data||jsonb_build_object('sale',v);
+ end if;
+ if method in ('mt_payroll_adjust','mt_payroll_partial','mt_payroll_adjust_reverse') and tenant_private.central_read_permitted(s,'all_finance_read') then
+  target:=coalesce((args->>'p_payroll')::uuid,case when method='mt_payroll_partial' then (args->>'p_id')::uuid end,(select r.payroll_id from tenant_private.staff_payroll_adjustments r where r.store_id=s and r.id=(args->>'p_original')::uuid));
+  select jsonb_build_object('id',r.id,'currency',r.currency,'total_minor',r.total_minor,'paid_at',r.paid_at,'period',r.period) into v from tenant_private.staff_payroll r where r.store_id=s and r.id=target;out_data:=out_data||jsonb_build_object('payroll',v);
+ end if;
+ if method in ('mt_tradein_execute','mt_tradein_execute_invoice') and tenant_private.central_read_permitted(s,'all_customer_read') then
+  select jsonb_build_object('id',r.id,'state',r.state,'currency',r.currency,'amount_minor',r.amount_minor) into v from tenant_private.tradein_estimates r where r.store_id=s and r.id=(args->>'p_id')::uuid;out_data:=out_data||jsonb_build_object('tradein',v);
+ end if;
+ if method in ('mt_record_cash','mt_branch_voucher','mt_accounting_adjust') and tenant_private.central_read_permitted(s,'all_finance_read') then
+  select coalesce(jsonb_agg(jsonb_build_object('currency',r.currency,'balance_minor',r.balance_minor) order by r.currency),'[]') into v from tenant_private.cash_balances r where r.store_id=s;out_data:=out_data||jsonb_build_object('main_cash',v);
+ end if;
+ return out_data||jsonb_build_object('manual_review',true);
+end $$;
+revoke all on function tenant_private.offline_legacy_current(uuid,text,jsonb) from public,anon,authenticated,service_role;
+
 create function tenant_private.offline_legacy_review(s uuid,d uuid,secret uuid,req uuid,method text,args jsonb) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare stamp jsonb;prior tenant_private.offline_reviewed_requests%rowtype;payload jsonb;digest text;
+declare stamp jsonb;prior tenant_private.offline_reviewed_requests%rowtype;payload jsonb;digest text;current_values jsonb;
 begin
  perform tenant_private.offline_device_require(s,d,secret);
  if req is null or method is null or method not in ('mt_accounting_adjust','mt_add_customer','mt_add_repair','mt_add_supplier','mt_branch_add_repair','mt_branch_cash_sale','mt_branch_credit_sale','mt_branch_mixed_sale','mt_branch_purchase','mt_branch_purchase_batch','mt_branch_transfer','mt_branch_voucher','mt_campaign_create','mt_count_commit','mt_edit_customer','mt_issue_sale_invoice','mt_local_membership_sale','mt_pay_debt','mt_pay_supplier','mt_payroll_adjust','mt_payroll_adjust_reverse','mt_payroll_partial','mt_procurement_due','mt_procurement_receive','mt_purchase','mt_purchase_batch','mt_quote_create','mt_receive_costed_stock','mt_record_cash','mt_record_credit_sale','mt_record_currency_sale','mt_record_mixed_sale','mt_repair_checkout','mt_repair_refund','mt_repair_transition','mt_sale_claim_open','mt_sale_claim_transition','mt_standalone_open','mt_standalone_pay','mt_supplier_return','mt_supplier_save','mt_tradein_create','mt_tradein_execute','mt_tradein_execute_invoice','mt_warranty_open','mt_warranty_part','mt_warranty_transition') or jsonb_typeof(args) is distinct from 'object' or octet_length(args::text)>100000 or (args->>'p_store')::uuid is distinct from s then raise exception 'Invalid legacy review' using errcode='22023';end if;
@@ -23,8 +86,9 @@ begin
   return jsonb_build_object('status','existing','requestId',req,'receiptStatus',case when prior.result->>'status'='conflict' then 'conflict' else 'confirmed' end);
  end if;
  stamp:=tenant_private.offline_snapshot_stamp(s,d,secret);
- digest:=tenant_private.finance_review_digest(jsonb_build_object('store',s,'actor',auth.uid(),'device',d,'requestId',req,'payload',payload,'revision',stamp->>'revision','access',stamp->>'access','originals',stamp->'originals'));
- return jsonb_build_object('status','review','requestId',req,'digest',digest,'revision',stamp->>'revision','capturedAt',stamp->>'captured_at');
+ current_values:=tenant_private.offline_legacy_current(s,method,args);
+ digest:=tenant_private.finance_review_digest(jsonb_build_object('store',s,'actor',auth.uid(),'device',d,'requestId',req,'payload',payload,'revision',stamp->>'revision','access',stamp->>'access','originals',stamp->'originals','current',current_values));
+ return jsonb_build_object('status','review','requestId',req,'digest',digest,'revision',stamp->>'revision','capturedAt',stamp->>'captured_at','current',current_values);
 end $$;
 create function tenant_private.offline_dispatch_v3(s uuid,d uuid,secret uuid,req uuid,method text,args jsonb,review_digest text) returns jsonb
 language plpgsql security definer set search_path='' set lock_timeout='1500ms' as $$
@@ -224,6 +288,8 @@ create function public.mt_offline_dispatch_v3(s uuid,d uuid,secret uuid,req uuid
 revoke all on function tenant_private.offline_legacy_review(uuid,uuid,uuid,uuid,text,jsonb),tenant_private.offline_dispatch_v3(uuid,uuid,uuid,uuid,text,jsonb,text),public.mt_offline_legacy_review(uuid,uuid,uuid,uuid,text,jsonb),public.mt_offline_dispatch_v3(uuid,uuid,uuid,uuid,text,jsonb,text) from public,anon,authenticated,service_role;
 grant execute on function tenant_private.offline_legacy_review(uuid,uuid,uuid,uuid,text,jsonb),tenant_private.offline_dispatch_v3(uuid,uuid,uuid,uuid,text,jsonb,text),public.mt_offline_legacy_review(uuid,uuid,uuid,uuid,text,jsonb),public.mt_offline_dispatch_v3(uuid,uuid,uuid,uuid,text,jsonb,text) to authenticated;
 
+revoke execute on function public.mt_offline_dispatch(uuid,uuid,uuid,uuid,text,jsonb),public.mt_offline_dispatch_v2(uuid,uuid,uuid,uuid,text,jsonb),tenant_private.offline_dispatch(uuid,uuid,uuid,uuid,text,jsonb),tenant_private.offline_dispatch_v2(uuid,uuid,uuid,uuid,text,jsonb) from public,anon,authenticated,service_role;
+
 -- Serialize metadata insertion permission with the deletion reservation's row
 -- lock. Restrict pending offline uploads to the reserving live approved device's
 -- actor. This does not claim atomicity of the underlying object-store bytes.
@@ -289,4 +355,59 @@ end $$;
 create function public.mt_offline_image_jobs(s uuid,d uuid,secret uuid,after_id uuid) returns jsonb language sql security invoker set search_path='' as $$select tenant_private.offline_image_jobs(s,d,secret,after_id)$$;
 revoke all on function tenant_private.offline_image_jobs(uuid,uuid,uuid,uuid),public.mt_offline_image_jobs(uuid,uuid,uuid,uuid) from public,anon,authenticated,service_role;
 grant execute on function tenant_private.offline_image_jobs(uuid,uuid,uuid,uuid),public.mt_offline_image_jobs(uuid,uuid,uuid,uuid) to authenticated;
+-- Recovery is explicit and scoped to the original approved device/actor.
+-- Retired IDs remain permanently fenced. Object bytes are changed only by the
+-- Storage API, never by SQL DELETE on storage.objects.
+create function tenant_private.offline_image_recovery(s uuid,d uuid,secret uuid,req uuid,job_kind text) returns jsonb
+language plpgsql security definer set search_path='' set lock_timeout='1500ms' as $$
+declare u tenant_private.offline_original_uploads%rowtype;x tenant_private.offline_original_deletions%rowtype;r tenant_private.offline_reviewed_requests%rowtype;m tenant_private.product_originals%rowtype;payload jsonb;path text;present boolean;
+begin
+ perform tenant_private.owner_write(s);
+ perform tenant_private.offline_device_require(s,d,secret);
+ if auth.jwt()->>'aal' is distinct from 'aal2' or not coalesce(tenant_private.central_read_permitted(s,'all_catalog_read'),false) or tenant_private.central_action_denied(s,'product_profile_edit') then raise exception 'Owner AAL2 required' using errcode='42501';end if;
+ if req is null or job_kind not in ('upload','delete') or job_kind is null then raise exception 'Invalid recovery reference' using errcode='22023';end if;
+ select * into r from tenant_private.offline_reviewed_requests where store_id=s and request_id=req;
+ if job_kind='upload' then
+  select * into u from tenant_private.offline_original_uploads where store_id=s and request_id=req and actor=auth.uid() and device_id=d;
+  if not found then raise exception 'Original installation required' using errcode='42501';end if;
+  if r.request_id is not null then return jsonb_build_object('status',case when r.result->>'status'='conflict' then 'conflict' else 'confirmed' end,'requestId',req);end if;
+  select * into m from tenant_private.product_originals where store_id=s and id=req and product_id=u.product_id for update;
+  if not found or exists(select 1 from tenant_private.offline_original_deletions where store_id=s and asset_id=req) then return jsonb_build_object('status','metadata_missing','requestId',req);end if;
+  path:=m.object_path;
+  present:=exists(select 1 from storage.objects o where o.bucket_id='saas-design-originals' and o.name=path);
+  -- Canonical payload of the existing offline client. A noncanonical historic
+  -- client may require status-only reconciliation instead of detail replay.
+  payload:=jsonb_build_object('kind','originalUpload','store',s,'product',u.product_id,'requestId',req,'bytes',u.bytes,'digest',u.digest,'alt',u.alt);
+  return jsonb_build_object('status',case when present then 'verification_pending' else 'upload_pending' end,'requestId',req,'id',req,'path',path,'operation',payload);
+ else
+  select * into x from tenant_private.offline_original_deletions where store_id=s and request_id=req and actor=auth.uid() and device_id=d;
+  if not found then raise exception 'Original installation required' using errcode='42501';end if;
+  path:=s::text||'/'||x.asset_id::text||'.jpg';
+  present:=exists(select 1 from storage.objects o where o.bucket_id='saas-design-originals' and o.name=path);
+  if x.state='deleted' and not present then return jsonb_build_object('status','confirmed','requestId',req);end if;
+  return jsonb_build_object('status',case when x.state='deleted' then 'storage_mismatch' when present then 'delete_pending' else 'finalization_pending' end,'requestId',req,'id',x.asset_id,'path',path,'operation',x.payload);
+ end if;
+end $$;
+-- Tombstone-only cleanup is authorized only for the exact originally approved
+-- installation/account and explicit existing deletion request. No new asset
+-- can reuse this ID (product_original_reserve checks the tombstone).
+create function tenant_private.offline_retired_original_access(p_path text) returns boolean
+language plpgsql volatile security definer set search_path='' set lock_timeout='1500ms' as $$
+declare x tenant_private.offline_original_deletions%rowtype;
+begin
+ if auth.uid() is null or auth.jwt()->>'aal' is distinct from 'aal2' or p_path is null or p_path !~ '^[a-f0-9-]{36}/[a-f0-9-]{36}\.jpg$' then return false;end if;
+ select * into x from tenant_private.offline_original_deletions where store_id=split_part(p_path,'/',1)::uuid and asset_id=split_part(split_part(p_path,'/',2),'.',1)::uuid and state='deleted' and actor=auth.uid() for share;
+ if not found or tenant_private.member_role(x.store_id) is distinct from 'owner' or not coalesce(tenant_private.shared_licensed(x.store_id),false) or not coalesce(tenant_private.central_read_permitted(x.store_id,'all_catalog_read'),false) or tenant_private.central_action_denied(x.store_id,'product_profile_edit') or exists(select 1 from tenant_private.product_originals m where m.store_id=x.store_id and m.id=x.asset_id) or exists(select 1 from tenant_private.design_originals m where m.object_path=p_path) then return false;end if;
+ perform 1 from tenant_private.offline_devices where store_id=x.store_id and id=x.device_id and actor=auth.uid() and state='approved' for share;
+ return found;
+exception when invalid_text_representation then return false;
+end $$;
+revoke all on function tenant_private.offline_retired_original_access(text) from public,anon,authenticated,service_role;
+grant execute on function tenant_private.offline_retired_original_access(text) to authenticated;
+create policy mt_offline_retired_original_read on storage.objects for select to authenticated using(bucket_id='saas-design-originals' and tenant_private.offline_retired_original_access(name));
+create policy mt_offline_retired_original_delete on storage.objects for delete to authenticated using(bucket_id='saas-design-originals' and tenant_private.offline_retired_original_access(name));
+create function public.mt_offline_image_recovery(s uuid,d uuid,secret uuid,req uuid,job_kind text) returns jsonb language sql security invoker set search_path='' as $$select tenant_private.offline_image_recovery(s,d,secret,req,job_kind)$$;
+revoke all on function tenant_private.offline_image_recovery(uuid,uuid,uuid,uuid,text),public.mt_offline_image_recovery(uuid,uuid,uuid,uuid,text) from public,anon,authenticated,service_role;
+grant execute on function tenant_private.offline_image_recovery(uuid,uuid,uuid,uuid,text),public.mt_offline_image_recovery(uuid,uuid,uuid,uuid,text) to authenticated;
+
 commit;
