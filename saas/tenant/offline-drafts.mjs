@@ -22,6 +22,14 @@ function productLines(snapshot,raw,{cost=false,optional=false,max=100}={}){
 }
 const day=v=>{if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v))||new Date(v+'T00:00:00Z').toISOString().slice(0,10)!==v)throw Error('Invalid date');return v};
 export const draftForms=Object.freeze({
+ reviewedPrice:{label:'تعديل سعر منتج مع مقارنة السعر السابق',fields:[field('product','المنتج','product'),field('price','السعر الجديد')]},
+ payrollFinal:{label:'التسوية النهائية للراتب',fields:[field('payroll','معرّف مسير الراتب'),field('expected','المبلغ المتبقي الذي تم صرفه'),field('confirmed','تأكيد الصرف الفعلي','select',[['no','لا'],['yes','نعم']])]},
+ payrollAdvance:{label:'سلفة موظف',fields:[field('user','معرّف الموظف'),field('amount','المبلغ'),field('reference','مرجع السلفة'),field('confirmed','تأكيد الصرف الفعلي','select',[['no','لا'],['yes','نعم']])]},
+ payrollOffset:{label:'تسوية سلفة مع الراتب',fields:[field('payroll','معرّف مسير الراتب'),field('advance','معرّف السلفة'),field('amount','المبلغ')]},
+ orderConfirm:{label:'مسودة تأكيد طلب متجر',fields:[field('order','معرّف الطلب'),field('channel','قناة الطلب','select',[['online','حساب عميل'],['guest','ضيف']])]},
+ branchApproval:{label:'مسودة اعتماد النتيجة المالية المراجعة',fields:[field('from','من','date'),field('to','إلى','date'),field('previous','مرجع الاعتماد السابق (اختياري)','optional'),field('digest','بصمة المراجعة المالية'),field('proof','مرجع مراجعة المحاسب'),field('confirmed','تأكيد المراجعة','select',[['no','لا'],['yes','نعم']])]},
+ taxFiling:{label:'مسودة توثيق الإقرار الضريبي الخارجي',fields:[field('taxKind','نوع الضريبة','select',[['income','ضريبة الدخل'],['indirect','ضريبة غير مباشرة']]),field('from','من','date'),field('to','إلى','date'),field('previous','مرجع الإقرار السابق (اختياري)','optional'),field('digest','بصمة مراجعة التسوية'),field('filedOn','تاريخ الإقرار الخارجي','date'),field('authority','الجهة'),field('reference','مرجع الإقرار'),field('legal','المرجع القانوني'),field('declared','المبلغ المصرح به'),field('explanation','التوضيح (اختياري)','optional'),field('confirmed','تأكيد الإقرار الخارجي الفعلي','select',[['no','لا'],['yes','نعم']])]},
+
  purchaseBatch:{label:'فواتير المشتريات متعددة المنتجات',fields:[field('supplier','معرّف المورد'),field('reference','مرجع الشراء'),field('lines','معرّف المنتج,الكمية,تكلفة الوحدة؛ سطر لكل منتج','multiline'),field('paid','المبلغ المدفوع (0 للآجل)'),field('due','تاريخ الاستحقاق (اختياري)','optional')]},
  repairCheckout:{label:'إصدار فاتورة صيانة',fields:[field('repair','معرّف الصيانة الجاهزة'),field('service','أجرة الخدمة (0 مسموح)'),field('lines','معرّف المنتج,الكمية؛ سطر لكل قطعة (اختياري)','optionalMultiline'),field('warranty','أيام الضمان (0–730)','countNumber')]},
  quote:{label:'عروض الأسعار',fields:[field('customer','اسم العميل'),field('until','صالح حتى','date'),field('lines','معرّف المنتج,الكمية؛ سطر لكل منتج','multiline')]},
@@ -71,6 +79,17 @@ export function createColdDraft(snapshot,kind,v,requestId=crypto.randomUUID()){
  if(!coldDraftAllowed(snapshot,kind)||!uuid(snapshot.store)||!uuid(requestId)||!Object.hasOwn(draftForms,kind)||!['SYP','USD','EUR'].includes(snapshot.currency)||!(snapshot.branch===null||uuid(snapshot.branch)))throw Error('Invalid draft scope');
  const base={kind,store:snapshot.store,requestId},c=snapshot.currency,b=snapshot.branch;
  switch(kind){
+ case 'reviewedPrice':{const product=id(v.product),p=snapshot.products.find(x=>x.id===product),price=money(v.price);if(!p||price>100000000||price===p.price)throw Error('Invalid price change');return {...base,product,currency:c,expected:p.price,price}}
+ case 'payrollFinal':if(v.confirmed!=='yes')throw Error('Confirm actual payment');return {...base,payroll:id(v.payroll),expected:money(v.expected,true),currency:c,confirm:true};
+ case 'payrollAdvance':if(v.confirmed!=='yes')throw Error('Confirm actual advance');return {...base,user:id(v.user),branch:b,currency:c,amount:money(v.amount),reference:text(v.reference,160),confirm:true};
+ case 'payrollOffset':return {...base,payroll:id(v.payroll),advance:id(v.advance),amount:money(v.amount)};
+ case 'orderConfirm':return {...base,order:id(v.order),channel:select(v.channel,['online','guest'])};
+ case 'branchApproval':case 'taxFiling':{
+ const from=day(v.from),to=day(v.to),digest=text(v.digest,64);if(from>to||!(/^[a-f0-9]{64}$/).test(digest)||v.confirmed!=='yes')throw Error('Reviewed evidence required');
+ const common={...base,from,to,previous:v.previous?id(v.previous):null,digest,confirm:true};
+ if(kind==='branchApproval')return {...common,proof:text(v.proof,160)};
+ return {...common,taxKind:select(v.taxKind,['income','indirect']),currency:c,filedOn:day(v.filedOn),authority:text(v.authority,120),reference:text(v.reference,160),legal:text(v.legal,200),declared:money(v.declared,true),explanation:text(v.explanation,500,true)};
+ }
  case 'purchaseBatch':{const lines=productLines(snapshot,v.lines,{cost:true}),paid=money(v.paid,true),total=lines.reduce((n,x)=>n+x.units*x.unit_cost_minor,0);if(paid>total)throw Error('Invalid paid amount');return {...base,kind:'procureReceipt',branch:b,currency:c,supplier:id(v.supplier),reference:text(v.reference,160),lines,paid,due:v.due?day(v.due):null,batch:true}}
  case 'repairCheckout':{const warranty=Number(v.warranty);if(!/^\d{1,3}$/.test(v.warranty)||warranty>730)throw Error('Invalid warranty');return {...base,repair:id(v.repair),currency:c,service:money(v.service,true),lines:productLines(snapshot,v.lines,{optional:true,max:50}),warranty}}
  case 'quote':return {...base,currency:c,customer:text(v.customer,160),until:day(v.until),lines:productLines(snapshot,v.lines)};
