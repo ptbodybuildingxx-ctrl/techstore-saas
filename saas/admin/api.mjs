@@ -27,19 +27,19 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
  return {
   security,
   async signInUsername(username,password,codeProvider){
-   if(typeof username!=='string'||username.trim().toLowerCase()!=='king')throw Error('Invalid username');
-   return this.signIn('king@techstore-admin.invalid',password,codeProvider);
+   if(typeof username!=='string'||!['king','king2'].includes(username.trim().toLowerCase()))throw Error('Invalid username');
+   return this.signIn(username.trim().toLowerCase()+'@techstore-admin.invalid',password,codeProvider);
   },
   // Password-authenticated first-factor enrollment has a separate ephemeral Auth session.
   // Never publish the token to the administrative RPC adapter or open the dashboard.
   async enrollFirstTotp(username,password,codeProvider){
-   if(setupBusy||session||typeof username!=='string'||username.trim().toLowerCase()!=='king'||typeof password!=='string'||!password||typeof codeProvider!=='function')throw Error('Initial enrollment unavailable');
+   if(setupBusy||session||typeof username!=='string'||!['king','king2'].includes(username.trim().toLowerCase())||typeof password!=='string'||!password||typeof codeProvider!=='function')throw Error('Initial enrollment unavailable');
    setupBusy=true;let temporary=null,pending=null,verificationStarted=false;
    const update=s=>{if(typeof s?.access_token!=='string'||!s.access_token||!Number.isFinite(s.expires_in)||s.expires_in<=0)throw Error('Invalid enrollment session');temporary={accessToken:s.access_token,expiresAt:clock()+s.expires_in*1000}};
    const temporaryToken=()=>{if(!temporary||temporary.expiresAt<=clock()+5000)throw Error('Enrollment session expired');return temporary.accessToken};
    const enrollment=createAccountSecurity({request,token:temporaryToken,replaceSession:update,rpc:async()=>{throw Error('Administrative RPC denied during enrollment')},requireVerifiedFactor:true});
    try{
-    update(await request('/auth/v1/token?grant_type=password',{email:'king@techstore-admin.invalid',password}));
+    update(await request('/auth/v1/token?grant_type=password',{email:username.trim().toLowerCase()+'@techstore-admin.invalid',password}));
     if((await enrollment.factors()).some(x=>x.status==='verified'))throw Error('Authenticator already enrolled');
     pending=await enrollment.enroll();
     const code=await codeProvider(pending.secret);
