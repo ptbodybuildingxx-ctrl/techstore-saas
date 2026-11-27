@@ -3,12 +3,12 @@ import {validMembershipTier} from '../design/membership.mjs';
 const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
 const int=(v,a,b)=>Number.isSafeInteger(v)&&v>=a&&v<=b;
 const current=(v,now=Date.now())=>Number.isFinite(Date.parse(v))&&now-Date.parse(v)>=-60000&&now-Date.parse(v)<=86400000;
-function index(rows,max,check,key){if(!Array.isArray(rows)||rows.length>max)throw Error('Invalid local pricing rows');const m=new Map();for(const r of rows){if(!r||!check(r)||m.has(key(r)))throw Error('Invalid local pricing record');m.set(key(r),r)}return m}
+function index(rows,check,key){if(!Array.isArray(rows))throw Error('Invalid local pricing rows');const m=new Map();for(const r of rows){if(!r||!check(r)||m.has(key(r)))throw Error('Invalid local pricing record');m.set(key(r),r)}return m}
 export function validateLocalMembershipSnapshot(v,identity={}){
  if(!v||v.version!==1||!uuid(v.store)||!uuid(v.actor)||!(v.branch===null||uuid(v.branch))||!['SYP','USD','EUR'].includes(v.currency)||!Number.isFinite(Date.parse(v.capturedAt))||['store','actor','branch','currency'].some(k=>identity[k]!==undefined&&identity[k]!==v[k]))throw Error('Invalid local pricing identity');
- const terms=index(v.terms,2000,r=>uuid(r.customer_id)&&validMembershipTier(r.tier)&&int(r.basis_points,0,5000)&&int(r.min_units,1,5000),r=>r.customer_id);
- const tiers=index(v.tiers,12000,r=>uuid(r.product_id)&&validMembershipTier(r.tier)&&int(r.price_minor,1,100000000)&&int(r.min_units,1,100),r=>r.tier+':'+r.product_id);
- const prices=index(v.prices,6000,r=>terms.has(r.customer_id)&&uuid(r.product_id)&&int(r.price_minor,1,100000000)&&int(r.min_units,1,100),r=>r.customer_id+':'+r.product_id);
+ const terms=index(v.terms,r=>uuid(r.customer_id)&&validMembershipTier(r.tier)&&int(r.basis_points,0,5000)&&int(r.min_units,1,5000),r=>r.customer_id);
+ const tiers=index(v.tiers,r=>uuid(r.product_id)&&validMembershipTier(r.tier)&&int(r.price_minor,1,100000000)&&int(r.min_units,1,100),r=>r.tier+':'+r.product_id);
+ const prices=index(v.prices,r=>terms.has(r.customer_id)&&uuid(r.product_id)&&int(r.price_minor,1,100000000)&&int(r.min_units,1,100),r=>r.customer_id+':'+r.product_id);
  if(identity.ledger){const ids=new Set(identity.ledger.customers.map(x=>x.id));if([...terms.keys()].some(k=>!ids.has(k)))throw Error('Missing local customer reference')}
  return v;
 }
