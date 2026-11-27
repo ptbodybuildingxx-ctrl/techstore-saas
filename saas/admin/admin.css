@@ -609,3 +609,74 @@ header .locale-toggle{min-width:86px;min-height:40px;white-space:nowrap;margin-i
 :root[data-workspace-appearance=dark]:not([data-design=on]) .workspace-layout-control select{background:var(--aurora-soft);color:var(--aurora-ink);border-color:var(--line)}
 :root[data-workspace-appearance=dark]:not([data-design=on]) .design-receipt :is(th,td){background:#fff!important;color:#111!important;border-color:#bbb!important}
 :root[data-workspace-appearance=dark]:not([data-design=on]) .design-receipt tbody tr{background:#fff!important}
+
+
+/* Aurora parity: operational dialogs, responsive forms and paper.
+   Default chrome only; published tenant design tokens remain authoritative. */
+@media screen {
+  :root:not([data-design=on]) dialog {
+    color:var(--aurora-ink);background:var(--panel);border:1px solid var(--aurora-line);
+    border-radius:20px;box-shadow:0 24px 80px #101a3540;padding:clamp(16px,3vw,26px);
+  }
+  dialog {
+    box-sizing:border-box;inline-size:min(920px,calc(100% - 32px));max-inline-size:calc(100% - 32px);
+    max-block-size:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;
+    margin:auto;text-align:start;
+  }
+  dialog::backdrop {background:#101a3590}
+  dialog h2 {margin-block:0 14px;overflow-wrap:anywhere}
+  dialog form,dialog label,.design-editor form,.design-editor label {min-inline-size:0}
+  dialog :is(input,select,textarea),.design-editor :is(input,select,textarea) {max-inline-size:100%;min-inline-size:0}
+  :root:not([data-design=on]) dialog :is(input:not([type=checkbox]):not([type=radio]),select,textarea) {
+    background:var(--aurora-soft);color:var(--aurora-ink);border:1px solid var(--aurora-line);
+    border-radius:10px;padding:10px 12px;min-height:43px;
+  }
+  :root:not([data-design=on]) dialog button {border-radius:11px;min-height:40px}
+  :root:not([data-design=on]) dialog button.primary {background:var(--aurora-gradient);color:white;border-color:transparent}
+  :root:not([data-design=on]) dialog .scroll {border:1px solid var(--aurora-line);border-radius:13px}
+  :root:not([data-design=on]) dialog :is(th,td) {text-align:start;border-color:var(--aurora-line)}
+  .design-editor,.design-sample,.site-preview,.site-preview-products {min-inline-size:0}
+  .design-editor :is(.design-actions,.design-order-row) {flex-wrap:wrap}
+  .design-order-row span {min-inline-size:0;overflow-wrap:anywhere}
+  .site-preview {box-sizing:border-box;max-inline-size:100%;overflow:auto}
+  .site-preview .site-block {min-inline-size:0;overflow-wrap:anywhere}
+  .workspace-shell #dashboard,.panel,.scroll {min-inline-size:0}
+  .scroll {max-inline-size:100%;overscroll-behavior-inline:contain}
+  :root:not([data-design=on]) :is(.panel,dialog) details>summary {cursor:pointer;color:var(--aurora-ink);overflow-wrap:anywhere}
+  :root:not([data-design=on]) :is(.panel,dialog) details[open]>summary {margin-block-end:12px}
+  :root:not([data-design=on]) :is(.panel,dialog) :is(input,textarea)::placeholder {color:var(--aurora-muted)}
+  :root:not([data-design=on]) :is(.panel,dialog) :is(input,select,textarea,button):focus-visible {outline:3px solid var(--aurora-ring);outline-offset:2px}
+  html[dir=rtl] :is(h1,h2,.workspace-page-title,.metric strong) {letter-spacing:normal}
+  :is(input[type=email],input[type=url],input[type=tel]) {direction:ltr;text-align:start}
+}
+@media screen and (min-width:761px) and (max-width:1024px) {
+  :root:not([data-design=on]) .metrics {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .design-editor form {grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr))}
+}
+@media screen and (max-width:540px) {
+  dialog {inline-size:calc(100% - 16px);max-inline-size:calc(100% - 16px);max-block-size:calc(100dvh - 16px);padding:14px}
+  dialog form label,:root:not([data-design=on]) .panel form label {min-inline-size:0;flex-basis:100%}
+  dialog form,:root:not([data-design=on]) .panel form {gap:10px}
+  .design-editor form {grid-template-columns:minmax(0,1fr)}
+  .design-editor .design-actions button,dialog .design-actions button {max-inline-size:100%;white-space:normal;overflow-wrap:anywhere}
+  .design-order-row button {min-block-size:40px}
+}
+/* Preserve current A4/80mm receipt contract; no change to document data. */
+@page techstore-a4 {size:A4;margin:10mm}
+@page techstore-thermal {size:80mm 200mm;margin:3mm}
+@media print {
+  body.design-printing>#receiptPrint:has(>.design-receipt.a4) {page:techstore-a4}
+  body.design-printing>#receiptPrint:has(>.design-receipt.thermal) {page:techstore-thermal}
+  body.design-printing>#receiptPrint>.design-receipt {
+    font-family:Arial,Tahoma,sans-serif;line-height:1.5;color:#182235!important;background:white!important;
+    padding:0!important;box-shadow:none!important;border-radius:0!important;
+  }
+  body.design-printing>#receiptPrint>.design-receipt :is(th,td) {color:#182235!important;border:1px solid #cbd5e1!important;padding:7px;overflow-wrap:anywhere}
+  body.design-printing>#receiptPrint>.design-receipt th {background:#eef2f7!important}
+  body.design-printing>#receiptPrint>.design-receipt .design-logo {max-width:110px;max-height:80px}
+  body.design-printing>#receiptPrint>.design-receipt.thermal {font-size:10px;width:72mm;max-width:72mm}
+  body.design-printing>#receiptPrint>.design-receipt.thermal table {table-layout:fixed;font-size:8px}
+  body.design-printing>#receiptPrint>.design-receipt.thermal :is(th,td) {padding:2px}
+  body.design-printing>#receiptPrint>.design-receipt.thermal h2 {font-size:15px}
+  body.design-printing>#receiptPrint>.design-receipt.thermal .design-logo {max-width:45mm;max-height:22mm}
+}
