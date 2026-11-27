@@ -43,7 +43,7 @@ export function createOfflineReceivablePanel({root,canDraft,onDraft,onCredit}){
  const customer=el('select'),branchSelect=el('select'),modeSelect=el('select'),currencySelect=el('select'),statusSelect=el('select');
  const specs=[[q,'بحث بالاسم أو الهاتف أو رقم الفاتورة'],[customer,'العميل'],[branchSelect,'الفرع'],[modeSelect,'نوع الذمة'],[currencySelect,'العملة'],[statusSelect,'الحالة']];
  for(const [control,label] of specs){const l=el('label',tr(label));l.append(control);filters.append(l)}
- function opts(select,options,value){select.replaceChildren(...options.map(([id,label])=>new Option(label,id)));select.value=value}
+ function opts(select,options,value){const f=document.createDocumentFragment();for(const [id,label] of options)f.append(new Option(label,id));select.replaceChildren(f);select.value=value}
  function resetPages(){customerPage=debtPage=paymentPage=0;detailKey=null}
  q.oninput=()=>{query=q.value;resetPages();paint()};customer.onchange=()=>{customerId=customer.value;resetPages();paint()};branchSelect.onchange=()=>{branch=branchSelect.value;resetPages();paint()};modeSelect.onchange=()=>{mode=modeSelect.value;resetPages();paint()};currencySelect.onchange=()=>{c=currencySelect.value;resetPages();paint()};statusSelect.onchange=()=>{status=statusSelect.value;resetPages();paint()};
  function draftButton(t,fn){const n=button(t,fn,blocked);n.dataset.localDraft='1';return n}
