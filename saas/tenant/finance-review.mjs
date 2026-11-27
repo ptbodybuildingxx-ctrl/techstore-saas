@@ -8,7 +8,7 @@ function helpers({api,node,run,store,active,write,blocked}){
  const requests=new Map();
  const text=(tag,s)=>node(tag,tr(s));
  const button=(label,fn)=>{const b=text('button',label);b.type='button';b.onclick=()=>run(fn);return b};
- const record=async(kind,data)=>{if(!write||!active()||!navigator.onLine||blocked())throw Error('Online owner confirmation required');const key=JSON.stringify([kind,data]);if(!requests.has(key))requests.set(key,crypto.randomUUID());const r=kind==='mixed'?await api.syTaxMixedRecord(store,requests.get(key),data.kind,data.source,data.parts,data.digest,data.proof):await api.financeWrite(store,kind,{...data,req:requests.get(key)});requests.delete(key);return r};
+ const record=async(kind,data)=>{if(!write||!active()||!navigator.onLine||blocked())throw Error('Online owner confirmation required');const key=JSON.stringify([kind,data]);if(!requests.has(key))requests.set(key,crypto.randomUUID());const r=kind==='mixed'?await api.syTaxMixedRecord(store,requests.get(key),data.kind,data.source,data.parts,data.digest,data.proof):kind==='filing'?await api.syTaxFiling(store,requests.get(key),data):await api.financeWrite(store,kind,{...data,req:requests.get(key)});requests.delete(key);return r};
  const status=(area,id)=>{if(active())area.replaceChildren(text('p','تم الحفظ'),node('code',id))};
  return {text,button,record,status}
 }
@@ -56,5 +56,29 @@ export function createSyTaxPanel(opts){
  if(offset>0)queue.append(button('السابق',async()=>{offset-=50;await load()}));if(r.more)queue.append(button('التالي',async()=>{offset+=50;await load()}))
  }
  const search=form([['from','من تاريخ دمشق','date'],['to','إلى تاريخ دمشق','date'],['kind','نوع المستند','select',types],['missing','غير المصنف فقط','select',[['yes','نعم'],['no','لا']]]],'عرض المستندات الضريبية',async v=>{query=v;offset=0;await load()});for(const i of search.querySelectorAll('input[type=date]'))i.value=day();
- panel.append(search,notice,queue,editor);return panel
+ panel.append(search,notice,queue,editor,createTaxSettlement(opts));return panel
+}
+
+function createTaxSettlement(opts){
+ const {api,node,form,table,money,minor,store,active,write}=opts,{text,record,status}=helpers(opts);
+ const panel=node('div'),result=node('div'),action=node('div'),notice=node('div');
+ const kinds=[['indirect','ضريبة غير مباشرة'],['income','ضريبة الدخل']];
+ panel.append(text('h3','التسويات الضريبية والإقرارات الموثقة'),text('p','تسوية دفترية لفترة منتهية حسب توقيت دمشق. تسجيل الإقرار يوثق مستنداً مقدماً خارج المنصة ولا يرسل إقراراً أو يسدد ضريبة أو يثبت خصماً تلقائياً.'));
+ async function review(v){
+  const r=await api.syTaxSettlement(store,v.kind,v.currency,v.from,v.to);if(!active())return;
+  const amount=x=>money(String(x).replace(/\.0+$/,''),r.currency);
+  result.replaceChildren(table(['البيان','المبلغ'],[['رصيد الضريبة الافتتاحي',r.opening],['صافي الضريبة المثبتة خلال الفترة',r.net_assessed],['الدفعات الضريبية المثبتة',r.paid],['رصيد الضريبة الختامي',r.closing]].map(([k,x])=>[tr(k),amount(x)])),text('h4','الدفعات الموثقة خلال الفترة'),node('p',String(r.payment_count)),table(['التاريخ','المستند','البيان','المبلغ'],r.payments.map(x=>[new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Damascus',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(x.created_at)),x.reference,x.note,amount(x.amount_minor)])));
+  if(r.payment_count>r.payments.length)result.append(text('p','تعرض أحدث 100 دفعة؛ الإجماليات تشمل جميع الدفعات.'));
+  if(r.tax_review)result.append(table(['شرط المطابقة','الحالة'],[['مخرجات ضريبية غير مصنفة',r.tax_review.output_unclassified],['مدخلات ضريبية تحتاج مراجعة',r.tax_review.input_unclassified],['قيود ضريبية خارج الفترة',r.tax_review.late_output_postings]].map(([k,x])=>[tr(k),String(x)])));
+  if(r.latest)result.append(text('p',r.matches_latest?'مطابق لآخر إقرار موثق':'تغيرت الدفاتر منذ آخر إقرار موثق'),text('h4','سجل الإقرارات الموثقة'),table(['تاريخ التقديم','الجهة','المستند','المرجع القانوني','المبلغ المصرح به','صافي الضريبة عند المراجعة','البيان'],r.history.map(x=>[x.filed_on,x.authority,x.reference,x.legal_reference,amount(x.declared_minor),amount(x.reviewed_assessment),x.explanation||'—'])));
+  action.replaceChildren();
+  if(write){const f=form([['filed','تاريخ التقديم الخارجي','date'],['authority','الجهة الضريبية','text'],['reference','مرجع الإقرار الخارجي','text'],['legal','المرجع القانوني','text'],['declared','المبلغ المصرح به','text'],['explanation','تفسير الفروقات أو المستندات غير المكتملة','optional']],'توثيق إقرار مقدم خارج المنصة',async x=>{
+   if(!confirm(tr('أؤكد أن الإقرار مقدم خارج المنصة وأنني راجعت الدفاتر والمستندات. لا ينشئ هذا التسجيل دفعة أو قيداً ضريبياً.')))return;
+   status(notice,await record('filing',{kind:v.kind,currency:v.currency,from:v.from,to:v.to,previous:r.latest,digest:r.review_digest,filed_on:x.filed,authority:x.authority.trim(),reference:x.reference.trim(),legal:x.legal.trim(),declared:minor(x.declared.trim(),true),explanation:(x.explanation||'').trim(),confirmed:true}));await review(v)
+  });f.elements.filed.value=day();action.append(f)}
+ }
+ const search=form([['kind','النظام الضريبي','select',kinds],['currency','العملة','select',[['SYP','SYP'],['USD','USD'],['EUR','EUR']]],['from','من تاريخ دمشق','date'],['to','إلى تاريخ دمشق','date']],'مراجعة التسوية الضريبية',review);
+ const yesterday=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Damascus',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(Date.now()-86400000));
+ for(const i of search.querySelectorAll('input[type=date]'))i.value=yesterday;
+ panel.append(search,result,notice,action);return panel
 }
