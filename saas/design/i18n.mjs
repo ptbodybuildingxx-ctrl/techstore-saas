@@ -284,6 +284,7 @@ export const english=Object.freeze({
   "من تاريخ دمشق": "From Damascus date",
   "إلى تاريخ دمشق": "To Damascus date",
   "مراجعة نتائج الفروع": "Review branch results",
+  "الخصم الموثق يوزع على تكلفة المبيعات والمخزون المؤهل. تنتقل حصة الخصم مع المخزون بين الفروع، وتعود إلى تقييمه عند إرجاع بيع مرحل بعد اعتماد الخصم. اعكس الخصم قبل مرتجع المورد أو مرتجع بيع سابق للاعتماد أو تعديل المدخلات.": "Documented credit is allocated to cost of sales and eligible inventory. Its share follows interbranch stock moves and returns to inventory on a post-credit customer return. Reverse before supplier returns, pre-credit sale returns or input revisions.",
   "الخصم الموثق يوزع على تكلفة الوحدات المباعة، وعلى المخزون غير المباع عند اكتمال شروط تقييمه. تنقل حصة المخزون إلى تكلفة المبيعات عند البيع بسعر الصرف المثبت. اعكس الخصم قبل المرتجعات أو نقل المخزون المقيم أو تعديل المدخلات.": "Documented credit is allocated to sold-unit cost and qualifying unsold inventory. The inventory share is released to cost of sales on sale using the recorded FX rate. Reverse before returns, transfers of credited stock or input revisions.",
   "المخزون مؤهل لتخفيض تقييمه الصافي بالخصم الموثق.": "Inventory qualifies for documented net valuation reduction.",
   "الخصم المخصص للمخزون": "Credit allocated to inventory",
