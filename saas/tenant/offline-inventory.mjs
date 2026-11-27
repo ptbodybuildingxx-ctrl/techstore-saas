@@ -75,11 +75,13 @@ export async function sendOfflineOriginal(api,scope,pass,device,x){
 // Resume a server-reserved image without inventing a new request. An uploaded
 // object is verified against the reservation even if the local encrypted bytes
 // have disappeared. Missing uploads still require the original local file.
-export async function recoverOfflineImage(api,scope,device,requestId,kind,approve){
+export async function recoverOfflineImage(api,scope,device,requestId,kind,approve,replacement=null){
  const r=await api.offlineImageRecovery(scope.store,device,requestId,kind);
- if(['confirmed','conflict','metadata_missing','upload_pending'].includes(r.status))return r;
+ if(['confirmed','conflict','metadata_missing'].includes(r.status))return r;
+ if(r.status==='upload_pending'&&!replacement)return r;
  if(!await approve(r))return {status:'cancelled',requestId};
- if(r.status==='verification_pending'){
+ if(r.status==='upload_pending'){const op=r.operation,bytes=await replacement.arrayBuffer();if(bytes.byteLength!==op.bytes||await sha(bytes)!==op.digest)throw Error('Replacement must match original saved JPEG bytes exactly');await api.uploadProductOriginal(scope.store,r,new Blob([bytes],{type:'image/jpeg'}))}
+ if(['verification_pending','upload_pending'].includes(r.status)){
   const actual=await api.readProductOriginal(scope.store,r),op=r.operation;
   if(actual.byteLength!==op.bytes||await sha(actual)!==op.digest)throw Error('Reserved image checksum differs; do not publish');
   const done=await api.offlineOriginalFinish(scope.store,device,op);if(done.status!=='confirmed')throw Error('Image unconfirmed');return done;
