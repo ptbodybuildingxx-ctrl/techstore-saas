@@ -1,6 +1,6 @@
 // Encrypted ordered operation drafts. Server is authoritative; never store auth credentials.
 import {sealOfflineVault,openOfflineVault} from '../design/theme.mjs';
-const permitted=new Set(['cashSale','supplier','supplierProfile','purchase','purchaseBatch','procureReceipt','procureDue','supplierPayment','supplierReturn','repair','transition','repairCheckout','warrantyOpen','warrantyPart','warrantyTransition','saleClaimOpen','saleClaimTransition','repairRefund','voucher','mixed','tradein','tradeinExecute','campaign','stockCount','customer','customerEdit','pay','credit','standaloneOpen','standalonePay']);
+const permitted=new Set(['cashSale','supplier','supplierProfile','purchase','purchaseBatch','procureReceipt','procureDue','supplierPayment','supplierReturn','repair','transition','repairCheckout','warrantyOpen','warrantyPart','warrantyTransition','saleClaimOpen','saleClaimTransition','repairRefund','voucher','mixed','tradein','tradeinExecute','campaign','stockCount','customer','customerEdit','pay','credit','standaloneOpen','standalonePay','quote','costIntake','branchTransfer','cashMovement','payrollAdjustment','payrollPartial','payrollReverse','accountingAdjust']);
 const uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 const key=(store,actor)=>{if(!uuid(store)||!uuid(actor))throw Error('Invalid offline identity');return 'techstore-operations-v1:'+store+':'+actor};
 function assertDraft(x,store){if(!x||!permitted.has(x.kind)||x.store!==store||!uuid(x.requestId)||JSON.stringify(x).length>18000)throw Error('Operation cannot be stored offline')}
@@ -28,4 +28,23 @@ export async function resolveAttemptedReceivable({store,actor,pass,resolve}){
   if(!['confirmed','cancelled','conflict_acknowledged'].includes(result))throw Error('Receivable still unresolved');
   await write(scope,pass,store,actor,entries.slice(1));return result;
  });
+}
+
+// Explicit dispatcher: fixed payload and request reference, never arbitrary RPC names.
+// Methods below already validate server confirmations and enforce current store permissions.
+export async function sendQueuedOperation(api,store,x){
+ assertDraft(x,store);
+ switch(x.kind){
+ case 'cashSale':return api.recordSale(x);
+ case 'stockCount':return api.countCommit(store,{branch:x.branch,request:x.requestId,reason:x.reason,items:x.items});
+ case 'customer':case 'customerEdit':case 'pay':case 'credit':case 'standaloneOpen':case 'standalonePay':return api.receivableOperation(store,x);
+ case 'quote':return api.createQuote(store,{...x,request:x.requestId});
+ case 'costIntake':return api.receiveCostedStock(store,x);
+ case 'branchTransfer':return api.branchTransfer(store,{...x,request:x.requestId});
+ case 'cashMovement':return api.recordCash(store,{...x,kind:x.cashKind});
+ case 'payrollAdjustment':return api.payrollAdjustment(store,{...x,id:x.requestId,kind:x.adjustment});
+ case 'payrollPartial':return api.payrollPartial(store,{id:x.payroll,request:x.requestId,amount:x.amount,confirm:x.confirm});
+ case 'payrollReverse':return api.payrollReverse(store,{id:x.requestId,original:x.original,reason:x.reason});
+ default:return api.operation(store,x);
+ }
 }

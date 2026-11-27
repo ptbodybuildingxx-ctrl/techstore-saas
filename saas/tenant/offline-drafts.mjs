@@ -7,7 +7,32 @@ const money=(v,zero=false)=>{if(typeof v!=='string'||!/^\d{1,12}(?:\.\d{1,2})?$/
 const units=v=>{if(typeof v!=='string'||!/^\d{1,7}$/.test(v)||Number(v)<1||Number(v)>1000000)throw Error('Invalid units');return Number(v)};
 const select=(v,choices)=>{if(!choices.includes(v))throw Error('Invalid choice');return v};
 const field=(key,label,type='text',options)=>({key,label,type,options});
+function productLines(snapshot,raw,{cost=false,optional=false,max=100}={}){
+ if(typeof raw!=='string'||raw.length>14000)throw Error('Invalid lines');
+ if(!raw.trim()&&optional)return [];
+ const rows=raw.trim().split(/\r?\n/).filter(s=>s.trim()).map(s=>{
+ const [product,quantity,price,...extra]=s.split(',').map(x=>x.trim());
+ const product_id=id(product),p=snapshot.products.find(x=>x.id===product_id),u=units(quantity);
+ if(!p||extra.length||(cost?price===undefined:price!==undefined)||(!cost&&u>10000))throw Error('Invalid line');
+ const value=cost?money(price):p.price;if(value>100000000)throw Error('Invalid price');
+ return {product_id,units:u,[cost?'unit_cost_minor':'expected_price_minor']:value};
+ });
+ if(!rows.length||rows.length>max||new Set(rows.map(x=>x.product_id.toLowerCase())).size!==rows.length||rows.reduce((n,x)=>n+BigInt(x.units)*BigInt(cost?x.unit_cost_minor:x.expected_price_minor),0n)>100000000000000n)throw Error('Invalid lines total');
+ return rows;
+}
+const day=v=>{if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v))||new Date(v+'T00:00:00Z').toISOString().slice(0,10)!==v)throw Error('Invalid date');return v};
 export const draftForms=Object.freeze({
+ purchaseBatch:{label:'فواتير المشتريات متعددة المنتجات',fields:[field('supplier','معرّف المورد'),field('reference','مرجع الشراء'),field('lines','معرّف المنتج,الكمية,تكلفة الوحدة؛ سطر لكل منتج','multiline'),field('paid','المبلغ المدفوع (0 للآجل)'),field('due','تاريخ الاستحقاق (اختياري)','optional')]},
+ repairCheckout:{label:'إصدار فاتورة صيانة',fields:[field('repair','معرّف الصيانة الجاهزة'),field('service','أجرة الخدمة (0 مسموح)'),field('lines','معرّف المنتج,الكمية؛ سطر لكل قطعة (اختياري)','optionalMultiline'),field('warranty','أيام الضمان (0–730)','countNumber')]},
+ quote:{label:'عروض الأسعار',fields:[field('customer','اسم العميل'),field('until','صالح حتى','date'),field('lines','معرّف المنتج,الكمية؛ سطر لكل منتج','multiline')]},
+ costIntake:{label:'إدخال المخزون بالتكلفة',fields:[field('product','المنتج','product'),field('units','الكمية','number'),field('cost','تكلفة القطعة'),field('note','مرجع الشراء')]},
+ branchTransfer:{label:'نقل المخزون',fields:[field('product','المنتج','product'),field('source','معرّف فرع المصدر (فارغ للمستودع الرئيسي)','optional'),field('target','معرّف فرع الوجهة (فارغ للمستودع الرئيسي)','optional'),field('units','الكمية','number')]},
+ cashMovement:{label:'تسجيل حركة نقدية',fields:[field('cashKind','نوع الحركة','select',[['funding','تمويل'],['expense','مصروف'],['exchange','صرف عملة']]),field('amount','المبلغ'),field('targetCurrency','العملة المستلمة عند الصرف','select',[['','—'],['SYP','SYP'],['USD','USD'],['EUR','EUR']]),field('targetAmount','المبلغ المستلم عند الصرف (اختياري)','optional'),field('note','البيان'),field('confirmed','تأكيد الحركة النقدية الفعلية','select',[['no','لا'],['yes','نعم']])]},
+ payrollAdjustment:{label:'إضافات وحسميات الرواتب',fields:[field('payroll','معرّف مسير الراتب'),field('adjustment','نوع التسوية','select',[['bonus','مكافأة'],['deduction','حسم']]),field('amount','المبلغ'),field('reason','السبب')]},
+ payrollPartial:{label:'دفعة راتب جزئية',fields:[field('payroll','معرّف مسير الراتب'),field('amount','المبلغ بعملة الراتب'),field('confirmed','تأكيد الصرف الفعلي','select',[['no','لا'],['yes','نعم']])]},
+ payrollReverse:{label:'عكس إضافة أو حسم راتب',fields:[field('original','معرّف التسوية الأصلية'),field('reason','السبب')]},
+ accountingAdjust:{label:'تسجيل قيد موثق',fields:[field('adjustment','نوع القيد','select',[['funding_equity','تمويل رأس المال'],['funding_loan','تمويل قرض'],['stock_equity','مخزون رأس المال'],['expense_rent','إيجار'],['expense_payroll','رواتب'],['expense_utilities','خدمات'],['expense_other','مصروف آخر'],['expense_tax_payment','سداد ضريبة الدخل'],['expense_indirect_tax_payment','سداد ضريبة غير مباشرة'],['expense_loan_payment','سداد قرض'],['expense_capital_withdrawal','مسحوبات رأس المال']]),field('source','مرجع الحركة'),field('amount','المبلغ'),field('reference','رقم المستند'),field('note','البيان')]},
+
  customer:{label:'إضافة عميل',fields:[field('name','اسم العميل'),field('phone','الهاتف (اختياري)','optional')]},
  customerEdit:{label:'تعديل بيانات العميل',fields:[field('customer','معرّف العميل'),field('oldName','الاسم السابق'),field('oldPhone','الهاتف السابق (اختياري)','optional'),field('name','اسم العميل'),field('phone','الهاتف (اختياري)','optional')]},
  pay:{label:'تحصيل دفعة دين فاتورة',fields:[field('debt','معرّف الدين'),field('currency','العملة','select',[['SYP','SYP'],['USD','USD'],['EUR','EUR']]),field('amount','المبلغ')]},
@@ -38,7 +63,7 @@ export function coldDraftAllowed(snapshot,kind){
  if(!snapshot)return false;
  if(kind==='stockCount')return ['owner','stock'].includes(snapshot.role)&&!!snapshot.countProducts?.length;
  if(snapshot.ledger&&Object.hasOwn(receivableDraftActions,kind))return ledgerFresh(snapshot.ledger)&&snapshot.receivableActions?.includes('read')&&snapshot.receivableActions.includes(receivableDraftActions[kind]);
- if(snapshot.role==='owner')return true;
+ if(snapshot.role==='owner'){if(['costIntake','cashMovement'].includes(kind)&&snapshot.branch!==null)return false;if(['purchaseBatch','quote','costIntake','branchTransfer'].includes(kind)&&!snapshot.products.length)return false;return true;}
  return snapshot.role==='cashier'&&Array.isArray(snapshot.receivableActions)&&snapshot.receivableActions.includes('read')&&Object.hasOwn(receivableDraftActions,kind)&&snapshot.receivableActions.includes(receivableDraftActions[kind]);
 }
 export function coldPayablesAllowed(snapshot){return snapshot?.role==='owner'||(snapshot?.role==='cashier'&&snapshot.receivableActions?.includes('payable_manage'))}
@@ -46,6 +71,16 @@ export function createColdDraft(snapshot,kind,v,requestId=crypto.randomUUID()){
  if(!coldDraftAllowed(snapshot,kind)||!uuid(snapshot.store)||!uuid(requestId)||!Object.hasOwn(draftForms,kind)||!['SYP','USD','EUR'].includes(snapshot.currency)||!(snapshot.branch===null||uuid(snapshot.branch)))throw Error('Invalid draft scope');
  const base={kind,store:snapshot.store,requestId},c=snapshot.currency,b=snapshot.branch;
  switch(kind){
+ case 'purchaseBatch':{const lines=productLines(snapshot,v.lines,{cost:true}),paid=money(v.paid,true),total=lines.reduce((n,x)=>n+x.units*x.unit_cost_minor,0);if(paid>total)throw Error('Invalid paid amount');return {...base,kind:'procureReceipt',branch:b,currency:c,supplier:id(v.supplier),reference:text(v.reference,160),lines,paid,due:v.due?day(v.due):null,batch:true}}
+ case 'repairCheckout':{const warranty=Number(v.warranty);if(!/^\d{1,3}$/.test(v.warranty)||warranty>730)throw Error('Invalid warranty');return {...base,repair:id(v.repair),currency:c,service:money(v.service,true),lines:productLines(snapshot,v.lines,{optional:true,max:50}),warranty}}
+ case 'quote':return {...base,currency:c,customer:text(v.customer,160),until:day(v.until),lines:productLines(snapshot,v.lines)};
+ case 'costIntake':{const product=id(v.product),cost=money(v.cost,true);if(b!==null||!snapshot.products.some(x=>x.id===product)||cost>100000000)throw Error('Main warehouse intake only');return {...base,product,currency:c,units:units(v.units),cost,note:text(v.note,300)}}
+ case 'branchTransfer':{const product=id(v.product),source=v.source?id(v.source):null,target=v.target?id(v.target):null;if(source===target||!snapshot.products.some(x=>x.id===product))throw Error('Invalid transfer');return {...base,product,source,target,units:units(v.units)}}
+ case 'cashMovement':{if(b!==null||v.confirmed!=='yes')throw Error('Main treasury and actual confirmation required');const cashKind=select(v.cashKind,['funding','expense','exchange']),exchange=cashKind==='exchange',targetCurrency=exchange?select(v.targetCurrency,['USD','SYP','EUR']):null;if(exchange?targetCurrency===c:!!(v.targetCurrency||v.targetAmount))throw Error('Invalid currency');return {...base,cashKind,currency:c,amount:money(v.amount),note:text(v.note,300),targetCurrency,targetAmount:exchange?money(v.targetAmount):null}}
+ case 'payrollAdjustment':return {...base,payroll:id(v.payroll),adjustment:select(v.adjustment,['bonus','deduction']),amount:money(v.amount),reason:text(v.reason,160)};
+ case 'payrollPartial':if(v.confirmed!=='yes')throw Error('Confirm actual disbursement');return {...base,payroll:id(v.payroll),amount:money(v.amount),confirm:true};
+ case 'payrollReverse':return {...base,original:id(v.original),reason:text(v.reason,160)};
+ case 'accountingAdjust':return {...base,adjustment:select(v.adjustment,draftForms.accountingAdjust.fields[0].options.map(x=>x[0])),source:id(v.source),currency:c,amount:money(v.amount),reference:text(v.reference,160),note:text(v.note,300)};
  case 'customer':return {...base,name:text(v.name,160),phone:text(v.phone,60,true)};
  case 'customerEdit':{const customer=id(v.customer),oldName=text(v.oldName,160),oldPhone=text(v.oldPhone,60,true);if(snapshot.ledger&&!snapshot.ledger.customers.some(x=>x.id===customer&&x.name===oldName&&x.phone===oldPhone))throw Error('Customer not in snapshot');return {...base,customer,oldName,oldPhone,name:text(v.name,160),phone:text(v.phone,60,true)}}
  case 'pay':{const debt=id(v.debt),currency=select(v.currency,['SYP','USD','EUR']),amount=money(v.amount);if(snapshot.ledger&&!snapshot.ledger.debts.some(d=>d.kind==='invoice'&&d.id===debt&&d.currency===currency&&amount<=d.remaining_minor))throw Error('Payment exceeds captured debt or reference not found');return {...base,debt,currency,amount}}
