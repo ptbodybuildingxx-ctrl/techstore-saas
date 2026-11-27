@@ -22,6 +22,12 @@ function productLines(snapshot,raw,{cost=false,optional=false,max=100}={}){
 }
 const day=v=>{if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v))||new Date(v+'T00:00:00Z').toISOString().slice(0,10)!==v)throw Error('Invalid date');return v};
 export const draftForms=Object.freeze({
+ catalogCreate:{label:'إضافة منتج محلي',fields:[field('sku','SKU'),field('name','اسم المنتج'),field('price','السعر')]},
+ catalogRename:{label:'تعديل اسم ورمز المنتج',fields:[field('product','المنتج','product'),field('sku','SKU الجديد'),field('name','الاسم الجديد')]},
+ orderCancel:{label:'مسودة إلغاء طلب متجر',fields:[field('order','معرّف الطلب'),field('channel','قناة الطلب','select',[['online','حساب عميل'],['guest','ضيف']]),field('confirmed','تأكيد عدم تسليم الطلب','select',[['no','لا'],['yes','نعم']])]},
+ orderFulfill:{label:'مسودة تسليم طلب متجر وقبض قيمته',fields:[field('order','معرّف الطلب'),field('channel','قناة الطلب','select',[['online','حساب عميل'],['guest','ضيف']]),field('expected','المبلغ المقبوض بعملة الطلب'),field('delivery','حالة التوصيل','select',[['','استلام من المحل'],['dispatched','تم الإرسال']]),field('confirmed','تأكيد التسليم والقبض الفعلي','select',[['no','لا'],['yes','نعم']])]},
+ periodClose:{label:'مسودة الإغلاق المالي المراجع (UTC)',fields:[field('from','من','date'),field('to','إلى','date'),field('digest','بصمة مراجعة الإغلاق'),field('note','البيان'),field('confirmed','تأكيد مراجعة التقارير','select',[['no','لا'],['yes','نعم']])]},
+
  reviewedPrice:{label:'تعديل سعر منتج مع مقارنة السعر السابق',fields:[field('product','المنتج','product'),field('price','السعر الجديد')]},
  payrollFinal:{label:'التسوية النهائية للراتب',fields:[field('payroll','معرّف مسير الراتب'),field('expected','المبلغ المتبقي الذي تم صرفه'),field('confirmed','تأكيد الصرف الفعلي','select',[['no','لا'],['yes','نعم']])]},
  payrollAdvance:{label:'سلفة موظف',fields:[field('user','معرّف الموظف'),field('amount','المبلغ'),field('reference','مرجع السلفة'),field('confirmed','تأكيد الصرف الفعلي','select',[['no','لا'],['yes','نعم']])]},
@@ -71,7 +77,7 @@ export function coldDraftAllowed(snapshot,kind){
  if(!snapshot)return false;
  if(kind==='stockCount')return ['owner','stock'].includes(snapshot.role)&&!!snapshot.countProducts?.length;
  if(snapshot.ledger&&Object.hasOwn(receivableDraftActions,kind))return ledgerFresh(snapshot.ledger)&&snapshot.receivableActions?.includes('read')&&snapshot.receivableActions.includes(receivableDraftActions[kind]);
- if(snapshot.role==='owner'){if(['costIntake','cashMovement'].includes(kind)&&snapshot.branch!==null)return false;if(['purchaseBatch','quote','costIntake','branchTransfer'].includes(kind)&&!snapshot.products.length)return false;return true;}
+ if(snapshot.role==='owner'){if(['costIntake','cashMovement'].includes(kind)&&snapshot.branch!==null)return false;if(['purchaseBatch','quote','costIntake','branchTransfer','catalogRename','reviewedPrice'].includes(kind)&&!snapshot.products.length)return false;return true;}
  return snapshot.role==='cashier'&&Array.isArray(snapshot.receivableActions)&&snapshot.receivableActions.includes('read')&&Object.hasOwn(receivableDraftActions,kind)&&snapshot.receivableActions.includes(receivableDraftActions[kind]);
 }
 export function coldPayablesAllowed(snapshot){return snapshot?.role==='owner'||(snapshot?.role==='cashier'&&snapshot.receivableActions?.includes('payable_manage'))}
@@ -79,6 +85,10 @@ export function createColdDraft(snapshot,kind,v,requestId=crypto.randomUUID()){
  if(!coldDraftAllowed(snapshot,kind)||!uuid(snapshot.store)||!uuid(requestId)||!Object.hasOwn(draftForms,kind)||!['SYP','USD','EUR'].includes(snapshot.currency)||!(snapshot.branch===null||uuid(snapshot.branch)))throw Error('Invalid draft scope');
  const base={kind,store:snapshot.store,requestId},c=snapshot.currency,b=snapshot.branch;
  switch(kind){
+ case 'catalogCreate':{const price=money(v.price);if(price>100000000)throw Error('Invalid price');return {...base,sku:text(v.sku,80),name:text(v.name,160),currency:c,price}}
+ case 'catalogRename':{const product=id(v.product),p=snapshot.products.find(x=>x.id===product);if(!p)throw Error('Unknown product');return {...base,product,oldName:p.name,oldSku:p.sku,name:text(v.name,160),sku:text(v.sku,80)}}
+ case 'orderCancel':case 'orderFulfill':{if(v.confirmed!=='yes')throw Error('Confirm physical action');const channel=select(v.channel,['online','guest']),common={...base,order:id(v.order),channel,confirm:true};if(kind==='orderCancel')return common;const delivery=select(v.delivery,['','dispatched']);if(channel==='guest'&&delivery)throw Error('Guest pickup required');return {...common,currency:c,expected:money(v.expected),delivery:delivery||null}}
+ case 'periodClose':{const from=day(v.from),to=day(v.to),digest=text(v.digest,64);if(from>to||!/^[a-f0-9]{64}$/.test(digest)||v.confirmed!=='yes')throw Error('Reviewed close required');return {...base,from,to,digest,note:text(v.note,300),confirm:true}}
  case 'reviewedPrice':{const product=id(v.product),p=snapshot.products.find(x=>x.id===product),price=money(v.price);if(!p||price>100000000||price===p.price)throw Error('Invalid price change');return {...base,product,currency:c,expected:p.price,price}}
  case 'payrollFinal':if(v.confirmed!=='yes')throw Error('Confirm actual payment');return {...base,payroll:id(v.payroll),expected:money(v.expected,true),currency:c,confirm:true};
  case 'payrollAdvance':if(v.confirmed!=='yes')throw Error('Confirm actual advance');return {...base,user:id(v.user),branch:b,currency:c,amount:money(v.amount),reference:text(v.reference,160),confirm:true};

@@ -1,6 +1,6 @@
 // Encrypted ordered operation drafts. Server is authoritative; never store auth credentials.
 import {sealOfflineVault,openOfflineVault} from '../design/theme.mjs';
-const permitted=new Set(['cashSale','supplier','supplierProfile','purchase','purchaseBatch','procureReceipt','procureDue','supplierPayment','supplierReturn','repair','transition','repairCheckout','warrantyOpen','warrantyPart','warrantyTransition','saleClaimOpen','saleClaimTransition','repairRefund','voucher','mixed','tradein','tradeinExecute','campaign','stockCount','customer','customerEdit','pay','credit','standaloneOpen','standalonePay','quote','costIntake','branchTransfer','cashMovement','payrollAdjustment','payrollPartial','payrollReverse','accountingAdjust','reviewedPrice','payrollFinal','payrollAdvance','payrollOffset','orderConfirm','taxFiling','branchApproval']);
+const permitted=new Set(['cashSale','supplier','supplierProfile','purchase','purchaseBatch','procureReceipt','procureDue','supplierPayment','supplierReturn','repair','transition','repairCheckout','warrantyOpen','warrantyPart','warrantyTransition','saleClaimOpen','saleClaimTransition','repairRefund','voucher','mixed','tradein','tradeinExecute','campaign','stockCount','customer','customerEdit','pay','credit','standaloneOpen','standalonePay','quote','costIntake','branchTransfer','cashMovement','payrollAdjustment','payrollPartial','payrollReverse','accountingAdjust','reviewedPrice','payrollFinal','payrollAdvance','payrollOffset','orderConfirm','orderCancel','orderFulfill','taxFiling','branchApproval','periodClose','catalogCreate','catalogRename']);
 const uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 const key=(store,actor)=>{if(!uuid(store)||!uuid(actor))throw Error('Invalid offline identity');return 'techstore-operations-v1:'+store+':'+actor};
 function assertDraft(x,store){if(!x||!permitted.has(x.kind)||x.store!==store||!uuid(x.requestId)||JSON.stringify(x).length>18000)throw Error('Operation cannot be stored offline')}
@@ -34,7 +34,7 @@ export async function resolveAttemptedReceivable({store,actor,pass,resolve}){
 // Methods below already validate server confirmations and enforce current store permissions.
 export async function sendQueuedOperation(api,store,x,device){
  assertDraft(x,store);
- if(['reviewedPrice','payrollFinal','payrollAdvance','payrollOffset','orderConfirm','taxFiling','branchApproval'].includes(x.kind)){
+ if(['reviewedPrice','payrollFinal','payrollAdvance','payrollOffset','orderConfirm','orderCancel','orderFulfill','taxFiling','branchApproval','periodClose','catalogCreate','catalogRename'].includes(x.kind)){
  const result=await api.offlineReviewedWrite(store,device,x);if(result.status==='conflict'){const e=Error('Reviewed value changed');e.status=409;throw e}return result;
  }
  return api.withOfflineReplay(store,device,x.requestId,()=>sendLegacy(api,store,x));
@@ -60,7 +60,7 @@ async function sendLegacy(api,store,x){
 export async function resolveReviewedConflict({store,actor,pass,resolve,approve}){
  const scope=key(store,actor);return locked(scope,async()=>{
  const entries=await read(scope,pass,store,actor),head=entries[0];
- if(!head?.attemptedAt||head.failure!=='conflict'||!['reviewedPrice','payrollFinal','orderConfirm'].includes(head.operation.kind))throw Error('No recorded reviewed conflict');
+ if(!head?.attemptedAt||head.failure!=='conflict'||!['reviewedPrice','payrollFinal','orderConfirm','orderCancel','orderFulfill','taxFiling','branchApproval','periodClose','catalogCreate','catalogRename'].includes(head.operation.kind))throw Error('No recorded reviewed conflict');
  const result=await resolve(structuredClone(head.operation));
  if(result?.status!=='conflict'||result.requestId!==head.operation.requestId)throw Error('Conflict not confirmed');
  if(!await approve(result,structuredClone(head.operation)))return false;

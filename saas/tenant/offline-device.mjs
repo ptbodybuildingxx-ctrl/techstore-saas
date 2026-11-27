@@ -40,5 +40,8 @@ export async function collectOfflineReferences(api,store){
  const sources=[['supplier','suppliers',x=>x.name],['purchase','purchases',x=>x.currency+' / '+x.id],['repair','repairs',x=>x.device+' / '+x.state],['claim','warranty_claims',x=>x.state+' / '+x.id],['invoice','repair_invoices',x=>x.currency+' / '+x.id],['user','staff',x=>x.display_name||x.user_id],['order','orders',x=>x.state+' / '+x.id]];
  for(const [k,kind,format] of sources){try{refs[k]=compact(await api.operationsList(store,kind,null,50),format)}catch{if(!api.signedIn())throw Error('Sign in again')}}
  try{refs.branch=compact((await api.branchOverview(store)).branches,x=>x.name)}catch{if(!api.signedIn())throw Error('Sign in again')}
+ try{const guest=(await api.guestList(store)).orders;refs.order=[...(refs.order||[]),...compact(guest,x=>'guest / '+x.state+' / '+x.id)].slice(0,100);refs.order=[...new Map(refs.order.map(x=>[x.id,x])).values()]}catch{if(!api.signedIn())throw Error('Sign in again')}
+ refs.payroll=[];refs.advance=[];
+ for(const user of (refs.user||[]).slice(0,10)){try{const p=await api.payrollDetails(store,user.id);refs.payroll.push(...compact(p.statements.filter(x=>!x.paid_at).slice(0,10),x=>user.label+' / '+x.period+' / '+x.currency));refs.advance.push(...compact(p.advances.filter(x=>!x.reversed&&x.remaining_minor>0).slice(0,10),x=>user.label+' / '+x.currency+' / '+x.id))}catch{if(!api.signedIn())throw Error('Sign in again')}}
  return checkRefs(refs);
 }
