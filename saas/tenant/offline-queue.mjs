@@ -146,3 +146,18 @@ export async function acknowledgeTerminal({store,actor,pass,receipt,approve}){
   await write(scope,pass,store,actor,entries.slice(1));return true;
  });
 }
+
+
+// Status-only reconciliation of an attempted queue head, especially after an
+// access-scope change. The user must verify the exact reference with live records.
+// This path never re-executes, edits or reverses a business operation.
+export async function reconcileAttemptedReceipt({store,actor,pass,receipt,approve}){
+ const scope=key(store,actor);return locked(scope,async()=>{
+  const entries=await read(scope,pass,store,actor),head=entries[0];
+  if(!head?.attemptedAt)throw Error('No attempted operation');
+  const op=structuredClone(head.operation),r=await receipt(op.requestId);
+  if(r?.requestId!==op.requestId||!['confirmed','conflict'].includes(r.status))throw Error('No confirmed server receipt; keep the draft');
+  if(!await approve(r,op))return null;
+  await write(scope,pass,store,actor,entries.slice(1));return {status:r.status,requestId:op.requestId,kind:op.kind}
+ });
+}

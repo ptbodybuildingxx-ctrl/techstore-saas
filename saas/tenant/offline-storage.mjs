@@ -28,13 +28,13 @@ export async function readLocalVault(scope,pass){
 // Caller holds the scope's Web Lock. New chunks are staged, the active pointer
 // changes only when all encryption and writes complete, then the prior generation
 // may be removed. A failed quota write leaves the previous generation untouched.
-export async function writeLocalVault(scope,pass,value,{present=true}={}){
+export async function writeLocalVault(scope,pass,value,{present=true,beforeCommit=async()=>{}}={}){
  const previousMarker=localStorage.getItem(scope),previous=await get(active(scope)),g=crypto.randomUUID(),base=generationKey(scope,g),bytes=new TextEncoder().encode(JSON.stringify(value)),parts=Math.ceil(bytes.length/chunkBytes);
  if(previousMarker===null&&present)localStorage.setItem(scope,marker);
  try{
   for(let i=0;i<parts;i++){const k=base+':'+i;await put(k,await sealOfflineVault({data:encode(bytes.subarray(i*chunkBytes,(i+1)*chunkBytes))},pass,k))}
   const envelope=await sealOfflineVault({format:3,bytes:bytes.length,parts},pass,base+':manifest');
-  await put(active(scope),{generation:g,envelope});
+  await beforeCommit();await put(active(scope),{generation:g,envelope});
  }catch(err){await purge(base).catch(()=>{});if(previousMarker===null&&present)localStorage.removeItem(scope);throw err}
  // Keep the old encrypted legacy marker if replacing it unexpectedly fails.
  // Reads prefer the committed IndexedDB generation; no old draft is discarded.

@@ -25,17 +25,17 @@ async function getChunked(key,pass){
 const currencies=['SYP','USD','EUR'],tiers=['standard','member','silver','gold','vip','wholesale'];
 function validRow(x){const c=x?.catalog;if(!Array.isArray(x?.originals)||x.originals.length>4||x.originals.some(o=>!uuid(o.id)||typeof o.alt!=='string'||typeof o.published!=='boolean'||typeof o.uploaded!=='boolean')||!uuid(c?.id)||typeof c.name!=='string'||typeof c.sku!=='string'||typeof c.listed!=='boolean'||!/^[a-f0-9]{64}$/.test(x.digest))throw Error('Invalid catalog record');validateCatalogProfile(c.profile);validateSpecs(c.specs);for(const [key,rows] of Object.entries({retail:x.retail,tiers:x.tiers,customers:x.customers,buyers:x.buyers})){if(rows===null&&['customers','buyers'].includes(key))continue;if(!Array.isArray(rows)||rows.some(p=>!currencies.includes(p.currency)||!Number.isSafeInteger(p.price)||p.price<1||p.price>100000000||key!=='retail'&&(!Number.isSafeInteger(p.min)||p.min<1||p.min>100||!(key==='tiers'?tiers.includes(p.subject):uuid(p.subject)))))throw Error('Invalid prices')}return x}
 async function withLock(scope,fn){if(!navigator.locks?.request)throw Error('Exclusive storage unavailable');return navigator.locks.request(scope,fn)}
-export async function captureOfflineInventory(scope,pass,fetchPage){
+export async function captureOfflineInventory(scope,pass,fetchPage,{beforeCommit=async()=>{},capturedAt:newCapturedAt}={}){
  const base=scopeOf(scope);return withLock(base,async()=>{
   const prior=await get(activeKey(scope));if(prior)await openOfflineVault(prior,pass,activeKey(scope));
-  const generation=crypto.randomUUID(),prefix=base+':'+generation;let index=[],pages=0,total=0,after=null;const capturedAt=new Date().toISOString();
+  const generation=crypto.randomUUID(),prefix=base+':'+generation;let index=[],pages=0,total=0,after=null;const capturedAt=newCapturedAt||new Date().toISOString();
   const flush=async()=>{if(!index.length)return;await putChunked(prefix+':index:'+pages++,index,pass);index=[]};
   try{
    for(;;){const rows=await fetchPage(after);if(!Array.isArray(rows)||rows.length>5)throw Error('Invalid page');
     for(const raw of rows){const row=validRow(raw),id=row.catalog.id;if(after!==null&&id<=after)throw Error('Catalog cursor changed');after=id;await putChunked(prefix+':'+id,row,pass);index.push({id,name:row.catalog.name,sku:row.catalog.sku});total++;if(index.length>=200)await flush()}
     if(rows.length<5)break;
    }
-   await flush();await put(activeKey(scope),await sealOfflineVault({generation,indexPages:pages,total,capturedAt},pass,activeKey(scope)));
+   await flush();const envelope=await sealOfflineVault({generation,indexPages:pages,total,capturedAt},pass,activeKey(scope));await beforeCommit();await put(activeKey(scope),envelope);
   }catch(err){await purgePrefix(prefix).catch(()=>{});throw err}
   if(prior)try{const old=await openOfflineVault(prior,pass,activeKey(scope));await purgePrefix(base+':'+old.generation)}catch{}
   return total;
@@ -95,7 +95,7 @@ export function mountOfflineInventory({root,context,save,message}){
 const recordsBase=x=>'records:'+scopeOf(x),recordsKey=x=>recordsBase(x)+':active';
 async function purgePrefix(prefix){return access('readwrite',s=>{const r=s.openCursor();r.onsuccess=()=>{const c=r.result;if(c){if(typeof c.key==='string'&&c.key.startsWith(prefix+':'))c.delete();c.continue()}}})}
 export async function forgetOfflineRecords(scope){return withLock(recordsBase(scope),()=>purgePrefix(recordsBase(scope)))}
-export async function captureOfflineRecords(scope,pass,loadManifest,loadPage){
+export async function captureOfflineRecords(scope,pass,loadManifest,loadPage,{beforeCommit=async()=>{},capturedAt}={}){
  const base=recordsBase(scope);return withLock(base,async()=>{
   const prior=await get(recordsKey(scope));if(prior)await openOfflineVault(prior,pass,recordsKey(scope));
   const e=await loadManifest();if(e?.store!==scope.store||!Number.isFinite(Date.parse(e.captured_at))||!Array.isArray(e.tables)||new Set(e.tables).size!==e.tables.length)throw Error('Invalid records manifest');
@@ -107,7 +107,7 @@ export async function captureOfflineRecords(scope,pass,loadManifest,loadPage){
      if(p.done)break;if(!p.rows.length||!Array.isArray(p.cursor)||JSON.stringify(p.cursor)===JSON.stringify(cursor))throw Error('Invalid records cursor');cursor=p.cursor;
     }tables.push({name,rows:count,pages});
    }
-   await put(recordsKey(scope),await sealOfflineVault({generation,capturedAt:e.captured_at,completedAt:new Date().toISOString(),tables,total},pass,recordsKey(scope)));
+   const envelope=await sealOfflineVault({generation,capturedAt:capturedAt||e.captured_at,completedAt:new Date().toISOString(),tables,total},pass,recordsKey(scope));await beforeCommit();await put(recordsKey(scope),envelope);
   }catch(err){await purgePrefix(prefix).catch(()=>{});throw err}
   if(prior)try{const old=await openOfflineVault(prior,pass,recordsKey(scope));await purgePrefix(base+':'+old.generation)}catch{}
   return total;
