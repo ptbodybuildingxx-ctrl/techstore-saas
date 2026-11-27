@@ -249,6 +249,7 @@ export function createAdminApi({url,publishableKey,fetcher=fetch,clock=Date.now}
    if(id!==invoice)throw Error('Unconfirmed sandbox event');
    return id;
   },
+  async tenantBackupOverview(after=null){if(after!==null&&(typeof after!=='string'||!uuid.test(after)))throw Error('Invalid cursor');const r=await rpc('mt_admin_tenant_backup_overview',{after_store:after});const n=x=>Number.isSafeInteger(x)&&x>=0;if(!r||!Array.isArray(r.stores)||r.stores.length>50||!n(r.used_bytes)||!n(r.capacity_bytes)||typeof r.scheduler_active!=='boolean'||r.stores.some(x=>!uuid.test(x.store_id)||typeof x.name!=='string'||typeof x.enabled!=='boolean'||!n(x.copies)||!n(x.bytes)||!['not_configured','queued','saved','permission','capacity','error','paused'].includes(x.status)))throw Error('Invalid tenant backup health');return r},
   async backups(limit=50){
    if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('Invalid limit');
    const r=await rpc('saas_admin_backup_overview',{p_limit:limit});
