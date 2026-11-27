@@ -1,5 +1,5 @@
 // Scheduled worker. No arbitrary paths, caller-supplied service keys, or logs of payloads.
-// One-time database-generated token selects a single eligible image reservation.
+// Authenticated pull: the private scheduler key authorizes one bounded claim; job tokens never traverse pg_net.
 const expected='https://mezsyzdieqmqulddcrtg.supabase.co';
 const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const url=Deno.env.get('SUPABASE_URL')?.replace(/\/$/,'');
@@ -23,9 +23,12 @@ Deno.serve(async(req)=>{
   // Reject oversized or chunked requests before parsing. Scheduler sends tiny JSON.
   const length=Number(req.headers.get('content-length'));if(!Number.isSafeInteger(length)||length<1||length>256||!req.body)return response(400);
   const bytes=await bounded(req.body,length),body=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
-  if(!body||Object.keys(body).length!==1||typeof body.token!=='string'||!hex.test(body.token))return response(403);
-  token=body.token;const job=await rpc('mt_backup_media_claim',{token});
-  if(!job)return response(403);claimed=true;
+  if(!body||Object.keys(body).length!==1||typeof body.scheduler_key!=='string'||!hex.test(body.scheduler_key))return response(403);
+  const next=await rpc('mt_backup_media_next',{p_key:body.scheduler_key});
+  if(next?.status==='denied')return response(403);
+  if(['idle','busy','rate_limited'].includes(next?.status))return response(204);
+  if(next?.status!=='claimed'||!hex.test(next.token)||!next.job)throw Error('Invalid claim');
+  token=next.token;const job=next.job;claimed=true;
   if(!uuid.test(job.store)||!uuid.test(job.asset)||job.path!==job.store+'/'+job.asset+'.jpg'||!Number.isSafeInteger(job.bytes)||job.bytes<12||job.bytes>2000000)throw Error('Bad reservation');
   const r=await fetch(expected+'/storage/v1/object/authenticated/saas-design-originals/'+job.path,{headers:{apikey:key,Authorization:'Bearer '+key},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(45000)});
   if(!r.ok||!r.body)throw Error('Storage read failed');

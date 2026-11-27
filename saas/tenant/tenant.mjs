@@ -101,7 +101,7 @@ async function loadBackupMedia(){
  if(!backupReview)throw Error('Select archive');const {scope,a}=backupReview;backupGuard(scope);
  const r=await api.backupMediaOverview(scope.store,scope.device,a.id);backupGuard(scope);
  if(backupReview?.a.id!==a.id)throw Error('Archive changed');
- el('autoBackupMediaStatus').textContent=[tr(r.status),r.planned_count??'—',r.planned_bytes??'—'].join(' / ');
+ const scheduler=r.scheduler;const health=scheduler?.healthy?tr('المجدول متصل'):scheduler?.enabled?tr('المجدول مفعّل؛ لم يؤكد اتصالاً حديثاً'):tr('المجدول غير مفعّل');el('autoBackupMediaStatus').textContent=[tr(r.status),r.planned_count??'—',r.planned_bytes??'—',health,scheduler?.last_poll??'—'].join(' / ');
  el('autoBackupMediaRows').replaceChildren(...r.files.map(x=>{const trRow=row([x.product_id,x.asset_id,tr(x.state),x.plain_bytes,x.plaintext_sha256??'—']),td=node('td','');
   if(x.state==='saved'){const b=node('button',tr('تنزيل الصورة المشفرة'));b.type='button';b.onclick=()=>run(async()=>{backupGuard(scope);const bytes=new Uint8Array(x.cipher_bytes);
    for(let offset=0;offset<bytes.length;offset+=49152){const p=await api.backupMediaChunk(scope.store,scope.device,a.id,x.asset_id,offset);backupGuard(scope);const chunk=backupBytes(p.data);if(p.bytes!==bytes.length||p.sha256!==x.ciphertext_sha256||chunk.length!==Math.min(49152,bytes.length-offset))throw Error('Archive changed');bytes.set(chunk,offset)}
