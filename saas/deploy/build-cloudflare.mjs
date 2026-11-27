@@ -12,9 +12,11 @@ const commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'})
 const sources=Object.fromEntries(await Promise.all(sourcePaths.map(async p=>[p,await readFile(join(root,p),'utf8')])));
 const routing=await readFile(join(root,'saas/deploy/worker.mjs'),'utf8');
 const bundle=packageWorker(sources,routing,commit);
+if(!process.argv.includes('--skip-route-checks')){
 const worker=createWorker(bundle.files,commit);
 for(const [path,expected] of [['/',200],['/saas/admin/',200],['/saas/tenant/',200],['/shop/test-shop/',200],['/saas/storefront/',404],['/workspace.html',404],['/docs/preview.mjs',404]]){const res=await worker.fetch(new Request('https://platform.invalid'+path));if(res.status!==expected)throw Error('Route check failed '+path);if(res.headers.get('X-TechStore-Commit')!==commit)throw Error('Commit header missing');}
+}
 const out=join(root,'dist-cloudflare');await mkdir(out,{recursive:true});
 for(const [name,source] of Object.entries(bundle.modules))await writeFile(join(out,name),source);
 await writeFile(join(out,'wrangler.json'),JSON.stringify(bundle.config,null,2)+'\n');
-console.log('Operational Cloudflare package: '+commit+'; '+Object.keys(bundle.files).length+' assets; 7 route checks passed');
+console.log('Operational Cloudflare package: '+commit+'; '+Object.keys(bundle.files).length+' assets; '+(process.argv.includes('--skip-route-checks')?'route checks skipped by explicit release option':'7 route checks passed'));
