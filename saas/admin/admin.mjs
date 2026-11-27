@@ -115,7 +115,11 @@ firstTotpSetup.addEventListener('click',()=>{
   setMessage(ok?'تم تفعيل تطبيق المصادقة. أدخل كلمة المرور مجدداً ثم اضغط دخول.':'لم يكتمل تفعيل المصادقة.');
  })
 });
-el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password,chooseTotp);offset=0;await load();await loadContact();await loadPlanPrices();await planControl.load();await catalogControl.load();await moduleControl.load();await actionPolicy.load();await loadShards();await loadBilling();await loadBackups();await loadReleases();await loadSharedRecovery();loggedIn();setMessage('تم تسجيل الدخول.')})});
+el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{try{await api.signInUsername(String(f.get('username')),password,chooseTotp)}catch(err){loggedOut();setMessage(err.status===400?'تعذر تسجيل الدخول: تحقق من اسم المستخدم وكلمة المرور.':err.status===401||err.status===403?'رفض الخادم صلاحية الدخول.':err.status===429?'محاولات كثيرة؛ أعد المحاولة لاحقاً.':err instanceof TypeError?'تعذر الاتصال بخادم تسجيل الدخول. تحقق من اتصال الشبكة.':'تعذر إكمال المصادقة أو التحقق من صلاحية الإدارة.');return}
+offset=0;loggedIn();
+const sections=[['المحلات',load],['الحساب',loadContact],['الأسعار',loadPlanPrices],['الباقات',()=>planControl.load()],['كتالوج الباقات',()=>catalogControl.load()],['الوحدات',()=>moduleControl.load()],['القيود',()=>actionPolicy.load()],['التوزيع',loadShards],['الفوترة',loadBilling],['النسخ',loadBackups],['الإصدارات',loadReleases],['الاستعادة',loadSharedRecovery]];
+const failed=[];for(const [label,loader] of sections){try{await loader()}catch{failed.push(label);if(!api.signedIn()){loggedOut();setMessage('انتهت الجلسة أو رفض الخادم الصلاحية.');return}}}
+setMessage(failed.length?'تم تسجيل الدخول؛ تعذر تحميل: '+failed.join('، '):'تم تسجيل الدخول.')})});
 let recoveryAttempt=null;
 let priceAttempt=null,priceCatalog=new Map(),priceEditable=false;
 async function loadPlanPrices(){const r=await api.planPrices();priceEditable=r.editable;priceCatalog=new Map(r.plans.map(p=>[p.code,p.monthly_usd_cents]));el('priceStatus').textContent=r.editable?'تعديل أسعار التطوير متاح؛ لا توجد فوترة حية.':'الأسعار مقفلة إلى حين ترحيل أسعار مزود الدفع.';
