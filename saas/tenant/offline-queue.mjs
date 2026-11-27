@@ -90,7 +90,7 @@ export async function resolveDependencies(x,lookup){
 export async function acknowledgeTerminal({store,actor,pass,receipt,approve}){
  const scope=key(store,actor);return locked(scope,async()=>{
   const entries=await read(scope,pass,store,actor),head=entries[0];
-  if(!head?.attemptedAt)throw Error('No attempted operation');
+  if(!head?.attemptedAt||head.failure!=='conflict')throw Error('No exact rejected attempt');
   const r=await receipt(head.operation.requestId);
   if(r?.requestId!==head.operation.requestId||r.status!=='conflict')throw Error('No terminal conflict receipt');
   if(!await approve(r,structuredClone(head.operation)))return false;

@@ -57,8 +57,8 @@ export async function sendOfflineOriginal(api,scope,pass,device,x){
 }
 
 export function mountOfflineInventory({root,context,save,message}){
- let generation=0,local=null,selected=null,working=false,originalPending=null;
- const clear=()=>{generation++;local=null;selected=null;originalPending=null;root.replaceChildren();root.hidden=true};
+ let generation=0,selected=null,working=false,originalPending=null;
+ const clear=()=>{generation++;selected=null;originalPending=null;root.replaceChildren();root.hidden=true};
  const open=(snapshot,pass)=>{clear();if(snapshot.role!=='owner')return;const token=generation;root.hidden=false;const title=node('h2',tr('تفاصيل المخزون المحلية')),status=node('p',''),search=field(root,'بحث المنتجات'),list=node('select'),editor=node('div');root.prepend(title);root.append(status,list,editor);let m=null;
   const fail=()=>message('تعذر فتح أو حفظ تفاصيل المخزون');
   const update=()=>{if(!m)return;const query=search.value.toLowerCase(),rows=m.ids.filter(x=>(x.name+' '+x.sku).toLowerCase().includes(query));list.replaceChildren(...rows.slice(0,200).map(x=>new Option(x.name+' — '+x.sku,x.id)));status.textContent=m.capturedAt+' — '+rows.length+' / '+m.ids.length};
@@ -71,7 +71,40 @@ export function mountOfflineInventory({root,context,save,message}){
    const table=node('div');for(const [key,arr] of Object.entries({Retail:x.retail,Tier:x.tiers,Customer:x.customers,Buyer:x.buyers})){if(arr===null)continue;table.append(node('h4',key));for(const p of arr.slice(0,1000))table.append(node('p',[p.subject,p.currency,p.price/100,p.min].filter(v=>v!==undefined).join(' — ')))}refresh();editor.append(prices,table,node('h3',tr('الصور عالية الدقة')));const originalArea=node('div'),originalFile=field(originalArea,'ملف صورة عالي الدقة','','file'),originalAlt=field(originalArea,'وصف الصورة');originalFile.accept='image/jpeg,image/png,image/webp';for(const a of x.originals){const line=node('p',a.alt+' — '+(a.uploaded?(a.published?'منشورة':'خاصة'):'بانتظار الرفع'));if(a.uploaded)line.append(button(a.published?'إلغاء نشر الصورة':'نشر الصورة',guarded(()=>submit({kind:'originalPublish',asset:a.id,expected:a.published,enabled:!a.published}))));originalArea.append(line)}originalArea.append(button('حفظ ملف الصورة المشفر',guarded(async()=>{if(originalPending&&originalPending.product!==selected.catalog.id)throw Error('Retry pending image first');if(!originalPending){if(!confirm(tr('حفظ الصورة كمسودة خاصة؟')))return;originalPending=await stageOriginal(snapshot,pass,selected.catalog.id,originalFile.files[0],originalAlt.value,crypto.randomUUID())}if(token!==generation||!context())throw Error('Workspace changed');const count=await save(originalPending);originalPending=null;originalFile.value='';originalAlt.value='';message('تم الحفظ محلياً',': '+count)})));editor.append(originalArea);
   };
   root.insertBefore(button('فتح تفاصيل المنتج',guarded(async()=>{if(!list.value)return;selected=await readItem(snapshot,pass,m,list.value);if(token===generation)show()})),editor);
-  manifest(snapshot,pass).then(v=>{if(token!==generation)return;m=v;local=v;if(v)update();else status.textContent=tr('جهز تفاصيل المخزون أثناء الاتصال أولاً')}).catch(fail);
+  manifest(snapshot,pass).then(v=>{if(token!==generation)return;m=v;if(v)update();else status.textContent=tr('جهز تفاصيل المخزون أثناء الاتصال أولاً')}).catch(fail);
  };
  return {open,clear};
+}
+
+const recordsBase=x=>'records:'+scopeOf(x),recordsKey=x=>recordsBase(x)+':active';
+async function purgePrefix(prefix){return access('readwrite',s=>{const r=s.openCursor();r.onsuccess=()=>{const c=r.result;if(c){if(typeof c.key==='string'&&c.key.startsWith(prefix+':'))c.delete();c.continue()}}})}
+export async function forgetOfflineRecords(scope){return withLock(recordsBase(scope),()=>purgePrefix(recordsBase(scope)))}
+export async function captureOfflineRecords(scope,pass,exportData){
+ const base=recordsBase(scope);return withLock(base,async()=>{
+  const prior=await get(recordsKey(scope));if(prior)await openOfflineVault(prior,pass,recordsKey(scope));
+  const e=await exportData();
+  if(e?.scope!=='business_export_only'||e.store!==scope.store||!Number.isFinite(Date.parse(e.captured_at))||!e.tables||typeof e.tables!=='object'||Array.isArray(e.tables))throw Error('Invalid business snapshot');
+  const generation=crypto.randomUUID(),tables=[],written=[];let total=0;
+  try{
+   for(const [name,rows] of Object.entries(e.tables)){
+    if(!/^(public\.mt_[a-z_]+|tenant_private\.[a-z_]+)$/.test(name)||!Array.isArray(rows)||rows.length>5000)throw Error('Invalid export table');
+    let pages=0,chunk=[],size=0;const flush=async()=>{if(!chunk.length)return;const k=base+':'+generation+':'+name+':'+pages++;await put(k,await sealOfflineVault(chunk,pass,k));written.push(k);chunk=[];size=0};
+    for(const row of rows){const n=new TextEncoder().encode(JSON.stringify(row)).length;if(!row||row.store_id!==scope.store||n>1500000||++total>20000)throw Error('Invalid export row');if(chunk.length>=50||size+n>1500000)await flush();chunk.push(row);size+=n+1}
+    await flush();tables.push({name,rows:rows.length,pages});
+   }
+   if(total!==e.rows)throw Error('Incomplete business snapshot');
+   await put(recordsKey(scope),await sealOfflineVault({generation,capturedAt:e.captured_at,tables,total},pass,recordsKey(scope)));
+  }catch(err){for(const k of written)try{await del(k)}catch{}throw err}
+  if(prior)try{const old=await openOfflineVault(prior,pass,recordsKey(scope));await purgePrefix(base+':'+old.generation)}catch{}
+  return total
+ });
+}
+export function mountOfflineRecords({root,message}){
+ let generation=0;const clear=()=>{generation++;root.replaceChildren();root.hidden=true};
+ const open=(scope,pass)=>{clear();if(scope.role!=='owner')return;const token=generation;root.hidden=false;const status=node('p',''),table=node('select'),page=node('select'),view=node('pre','');root.append(node('h2',tr('السجلات التشغيلية المحلية')),node('p',tr('نسخة للقراءة فقط وليست سجلاً مالياً معتمداً.')),status,table,page,view);
+  const read=async()=>{view.textContent='';if(!m||token!==generation)return;const t=m.tables.find(x=>x.name===table.value),n=Number(page.value);if(!t||!Number.isInteger(n)||n<0||n>=t.pages)return;try{const key=recordsBase(scope)+':'+m.generation+':'+t.name+':'+n,rows=await openOfflineVault(await get(key),pass,key);if(token!==generation||table.value!==t.name||Number(page.value)!==n)return;view.textContent=JSON.stringify(rows,null,2)}catch{message('تعذر فتح السجلات المحلية')}};
+  let m=null;const choose=()=>{view.textContent='';const t=m?.tables.find(x=>x.name===table.value);page.replaceChildren(...Array.from({length:t?.pages||0},(_,i)=>new Option(String(i+1),String(i))));read()};table.onchange=choose;page.onchange=read;
+  get(recordsKey(scope)).then(raw=>raw?openOfflineVault(raw,pass,recordsKey(scope)):null).then(v=>{if(token!==generation)return;if(!v){status.textContent=tr('جهز السجلات أثناء الاتصال أولاً');return}if(!uuid(v.generation)||!Array.isArray(v.tables)||!Number.isFinite(Date.parse(v.capturedAt)))throw Error('Invalid snapshot');m=v;status.textContent=v.capturedAt+' — '+v.total+' / '+tr('سجل');table.replaceChildren(...v.tables.map(t=>new Option(t.name+' ('+t.rows+')',t.name)));choose()}).catch(()=>{if(token===generation)message('تعذر فتح السجلات المحلية')});
+ };
+ return {open,clear}
 }
