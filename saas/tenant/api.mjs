@@ -31,7 +31,7 @@ function validPosLinePrices(p,lines,total){return !!p&&typeof p==='object'&&!Arr
 function validStandaloneDebt(d,store){return !!d&&d.store_id===store&&isId(d.id)&&(d.customer_id===null||isId(d.customer_id))&&(d.branch_id===null||isId(d.branch_id))&&['receivable','payable'].includes(d.direction)&&typeof d.party==='string'&&typeof d.phone==='string'&&currency(d.currency)&&int(d.principal_minor,1,100000000000000)&&int(d.remaining_minor,0,d.principal_minor)&&int(d.installment_count,1,120)&&typeof d.first_due==='string'&&typeof d.notes==='string'}
 export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now}){
  if(url!==origin||typeof publishableKey!=='string'||!/^sb_publishable_[A-Za-z0-9_-]{20,200}$/.test(publishableKey))throw Error('Invalid shared project configuration');
- let session=null,allowed=new Set(),epoch=0;
+ let session=null,allowed=new Set(),epoch=0,offlineReplay=null;
  function setAuth(r){if(typeof r?.access_token!=='string'||!r.access_token||!Number.isFinite(r.expires_in)||r.expires_in<=0)throw Error('Invalid auth response');session={token:r.access_token,expires:clock()+r.expires_in*1000}}
  function liveToken(){if(!session||session.expires<=clock()+5000)throw Error('Sign in again');return session.token}
  async function factors(){const u=await request('/auth/v1/user',undefined,liveToken(),'GET'),r=u?.factors??[];if(!u||!isId(u.id)||!Array.isArray(r)||r.some(x=>!isId(x.id)||typeof x.status!=='string'||typeof x.factor_type!=='string'))throw Error('Invalid factors');return r.filter(x=>x.factor_type==='totp').map(x=>({id:x.id,status:x.status,name:typeof x.friendly_name==='string'?x.friendly_name:''}))}
@@ -46,7 +46,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   if(!session||session.expires<=clock()+5000){clear();throw Error('Sign in again')}
   if(store!==null&&(!isId(store)||!allowed.has(store.toLowerCase())))throw Error('Select your assigned store');
   const e=epoch;
-  try{const r=await request('/rest/v1/rpc/'+name,args,session.token);if(e!==epoch)throw Error('Session changed');return r}
+  try{let method=name,body=args;if(offlineReplay){const scope=offlineReplay;if(store!==scope.store||scope.used||name==='mt_offline_dispatch')throw Error('Offline replay scope changed');scope.used=true;method='mt_offline_dispatch';body={s:store,d:scope.device.id,secret:scope.device.secret,req:scope.requestId,method:name,args}}const r=await request('/rest/v1/rpc/'+method,body,session.token);if(e!==epoch)throw Error('Session changed');return r}
   catch(err){if(e===epoch&&(err.status===401||err.status===403))clear();throw err}
  }
  return {
@@ -111,6 +111,7 @@ export function createTenantApi({url,publishableKey,fetcher=fetch,clock=Date.now
   async mfaEnroll(){const r=await request('/auth/v1/factors',{factor_type:'totp',friendly_name:'TechStore '+crypto.randomUUID()},liveToken());if(!isId(r?.id)||typeof r.totp?.secret!=='string'||! /^[A-Z2-7]{16,128}$/i.test(r.totp.secret))throw Error('Invalid enrollment');return {id:r.id,secret:r.totp.secret}},
   async mfaVerify(id,code){await verifyFactor(id,code);return true},
   async mfaRemove(id){if(!isId(id))throw Error('Invalid factor');await request('/auth/v1/factors/'+id,undefined,liveToken(),'DELETE')},
+  async withOfflineReplay(store,device,requestId,send){if(offlineReplay||!isId(store)||!isId(device?.id)||!isId(device?.secret)||!isId(requestId)||typeof send!=='function')throw Error('Invalid offline replay');const scope={store,device,requestId,used:false};offlineReplay=scope;try{const result=await send();if(!scope.used)throw Error('Missing server dispatch');return result}finally{offlineReplay=null}},
   async offlineRegister(store,d,label){if(!isId(d.id)||!isId(d.secret)||typeof label!=='string'||!label.trim()||label.length>100)throw Error('Invalid device');const r=await rpc('mt_offline_device_register',{s:store,d:d.id,secret:d.secret,n:label.trim()},store);if(!['pending','approved','revoked'].includes(r))throw Error('Device unconfirmed');return r},
   async offlineDevices(store){const r=await rpc('mt_offline_device_list',{s:store},store);if(!Array.isArray(r)||r.length>100||r.some(x=>!isId(x.id)||!isId(x.actor)||typeof x.label!=='string'||!['pending','approved','revoked'].includes(x.state)))throw Error('Invalid device list');return r},
   async offlineDeviceChange(store,id,state){if(!isId(id)||!['approved','revoked'].includes(state)||await rpc('mt_offline_device_change',{s:store,d:id,desired:state},store)!==state)throw Error('Device change unconfirmed')},

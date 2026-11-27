@@ -34,10 +34,13 @@ export async function resolveAttemptedReceivable({store,actor,pass,resolve}){
 // Methods below already validate server confirmations and enforce current store permissions.
 export async function sendQueuedOperation(api,store,x,device){
  assertDraft(x,store);
- switch(x.kind){
- case 'reviewedPrice':case 'payrollFinal':case 'payrollAdvance':case 'payrollOffset':case 'orderConfirm':case 'taxFiling':case 'branchApproval':{
+ if(['reviewedPrice','payrollFinal','payrollAdvance','payrollOffset','orderConfirm','taxFiling','branchApproval'].includes(x.kind)){
  const result=await api.offlineReviewedWrite(store,device,x);if(result.status==='conflict'){const e=Error('Reviewed value changed');e.status=409;throw e}return result;
  }
+ return api.withOfflineReplay(store,device,x.requestId,()=>sendLegacy(api,store,x));
+}
+async function sendLegacy(api,store,x){
+ switch(x.kind){
  case 'cashSale':return api.recordSale(x);
  case 'stockCount':return api.countCommit(store,{branch:x.branch,request:x.requestId,reason:x.reason,items:x.items});
  case 'customer':case 'customerEdit':case 'pay':case 'credit':case 'standaloneOpen':case 'standalonePay':return api.receivableOperation(store,x);
