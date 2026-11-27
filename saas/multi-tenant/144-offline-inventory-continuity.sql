@@ -9,7 +9,7 @@ begin
  customer_read:=tenant_private.central_read_permitted(s,'all_customer_read');
  select coalesce(jsonb_agg(x.row_data order by x.id),'[]'::jsonb) into result from (
  select p.id,jsonb_build_object(
- 'catalog',c.item,'digest',tenant_private.finance_review_digest(c.item),
+ 'catalog',c.item,'digest',tenant_private.finance_review_digest(c.item),'originals',tenant_private.product_original_list(s,p.id),
  'retail',coalesce((select jsonb_agg(jsonb_build_object('currency',currency,'price',price_minor) order by currency) from public.mt_product_prices where store_id=s and product_id=p.id),'[]'),
  'tiers',coalesce((select jsonb_agg(jsonb_build_object('subject',tier,'currency',currency,'price',price_minor,'min',min_units) order by tier,currency) from tenant_private.product_tier_prices where store_id=s and product_id=p.id),'[]'),
  'customers',case when customer_read then coalesce((select jsonb_agg(jsonb_build_object('subject',customer_id,'currency',currency,'price',price_minor,'min',min_units) order by customer_id,currency) from tenant_private.local_customer_prices where store_id=s and product_id=p.id),'[]') else null end,
@@ -29,13 +29,20 @@ begin
  if not tenant_private.central_read_permitted(s,'all_catalog_read') then raise exception 'Catalog denied' using errcode='42501';end if;
  if jsonb_typeof(op) is distinct from 'object' or octet_length(op::text)>300000 or (op->>'store')::uuid is distinct from s then raise exception 'Invalid inventory payload' using errcode='22023';end if;
  req:=(op->>'requestId')::uuid;k:=op->>'kind';pid:=(op->>'product')::uuid;
- if req is null or pid is null or k is null or k not in ('catalogEdit','retailPrice','tierPrice','customerPrice','buyerPrice') then raise exception 'Invalid inventory action' using errcode='22023';end if;
+ if req is null or pid is null or k is null or k not in ('catalogEdit','retailPrice','tierPrice','customerPrice','buyerPrice','originalPublish') then raise exception 'Invalid inventory action' using errcode='22023';end if;
  select * into old from tenant_private.offline_reviewed_requests where store_id=s and request_id=req;
  if found then
   if old.actor<>auth.uid() or old.device_id<>d or old.payload is distinct from op then raise exception 'Request identity conflict' using errcode='22023';end if;
   return old.result;
  end if;
- if k='catalogEdit' then
+ if k='originalPublish' then
+  if tenant_private.central_action_denied(s,'product_profile_edit') then raise exception 'Product edit denied' using errcode='42501';end if;
+  rid:=(op->>'asset')::uuid;
+  if rid is null or (op->>'expected')::boolean is null or (op->>'enabled')::boolean is null then raise exception 'Image review required' using errcode='22023';end if;
+  select jsonb_build_object('published',published) into actual from tenant_private.product_originals where store_id=s and id=rid and product_id=pid for update;
+  if actual is null or (actual->>'published')::boolean is distinct from (op->>'expected')::boolean then res:=jsonb_build_object('status','conflict','requestId',req,'current',actual);
+  elsif public.mt_product_original_publish(s,rid,(op->>'enabled')::boolean) is distinct from (op->>'enabled')::boolean then raise exception 'Image publication unconfirmed';end if;
+ elsif k='catalogEdit' then
   if tenant_private.central_action_denied(s,'product_profile_edit') then raise exception 'Product edit denied' using errcode='42501';end if;
   desired:=op->'desired';
   if op->>'digest' is null or op->>'digest' !~ '^[a-f0-9]{64}$' or jsonb_typeof(desired) is distinct from 'object' then raise exception 'Review required' using errcode='22023';end if;
@@ -133,7 +140,7 @@ begin
   return old.result;
  end if;
  begin
-  if op->>'kind' in ('catalogEdit','retailPrice','tierPrice','customerPrice','buyerPrice') then result:=tenant_private.offline_inventory_write(s,d,secret,op);
+  if op->>'kind' in ('catalogEdit','retailPrice','tierPrice','customerPrice','buyerPrice','originalPublish') then result:=tenant_private.offline_inventory_write(s,d,secret,op);
   else result:=tenant_private.offline_reviewed_write(s,d,secret,op);end if;
  exception when sqlstate '22023' or unique_violation or check_violation or foreign_key_violation then
   result:=jsonb_build_object('offline_terminal',true,'status','conflict','requestId',req,'code',SQLSTATE);
@@ -189,4 +196,62 @@ create function public.mt_offline_receipt(s uuid,d uuid,secret uuid,req uuid) re
 create function public.mt_offline_dependency(s uuid,d uuid,secret uuid,parent uuid,entity text) returns uuid language sql set search_path='' as $$select tenant_private.offline_dependency(s,d,secret,parent,entity)$$;
 revoke all on function tenant_private.offline_inventory_page(uuid,uuid,uuid,uuid),tenant_private.offline_inventory_write(uuid,uuid,uuid,jsonb),tenant_private.offline_dispatch_v2(uuid,uuid,uuid,uuid,text,jsonb),tenant_private.offline_review_v2(uuid,uuid,uuid,jsonb),tenant_private.offline_receipt(uuid,uuid,uuid,uuid),tenant_private.offline_dependency(uuid,uuid,uuid,uuid,text),public.mt_offline_inventory_page(uuid,uuid,uuid,uuid),public.mt_offline_dispatch_v2(uuid,uuid,uuid,uuid,text,jsonb),public.mt_offline_review_v2(uuid,uuid,uuid,jsonb),public.mt_offline_receipt(uuid,uuid,uuid,uuid),public.mt_offline_dependency(uuid,uuid,uuid,uuid,text) from public,anon,authenticated,service_role;
 grant execute on function tenant_private.offline_inventory_page(uuid,uuid,uuid,uuid),tenant_private.offline_dispatch_v2(uuid,uuid,uuid,uuid,text,jsonb),tenant_private.offline_review_v2(uuid,uuid,uuid,jsonb),tenant_private.offline_receipt(uuid,uuid,uuid,uuid),tenant_private.offline_dependency(uuid,uuid,uuid,uuid,text),public.mt_offline_inventory_page(uuid,uuid,uuid,uuid),public.mt_offline_dispatch_v2(uuid,uuid,uuid,uuid,text,jsonb),public.mt_offline_review_v2(uuid,uuid,uuid,jsonb),public.mt_offline_receipt(uuid,uuid,uuid,uuid),public.mt_offline_dependency(uuid,uuid,uuid,uuid,text) to authenticated;
+-- Separate durable reservation for immutable, privately uploaded originals.
+-- Storage is an external API; database completion follows a client read-back and size check.
+create table tenant_private.offline_original_uploads(
+ store_id uuid not null,request_id uuid not null,actor uuid not null,device_id uuid not null,
+ product_id uuid not null,alt text not null,digest text not null check(digest ~ '^[0-9a-f]{64}$'),
+ bytes integer not null check(bytes between 12 and 2000000),created_at timestamptz not null default now(),
+ primary key(store_id,request_id),
+ foreign key(store_id,device_id) references tenant_private.offline_devices(store_id,id),
+ foreign key(store_id,product_id) references public.mt_products(store_id,id)
+);
+alter table tenant_private.offline_original_uploads enable row level security;
+revoke all on tenant_private.offline_original_uploads from public,anon,authenticated,service_role;
+
+create function tenant_private.offline_original_reserve(s uuid,d uuid,secret uuid,op jsonb) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare req uuid;pid uuid;old tenant_private.offline_original_uploads%rowtype;reserved jsonb;prior tenant_private.offline_reviewed_requests%rowtype;
+begin
+ perform tenant_private.owner_write(s);
+ perform tenant_private.offline_device_require(s,d,secret);
+ if not tenant_private.central_read_permitted(s,'all_catalog_read') or tenant_private.central_action_denied(s,'product_profile_edit') then raise exception 'Product access denied' using errcode='42501';end if;
+ if jsonb_typeof(op) is distinct from 'object' or octet_length(op::text)>4000 or op->>'kind' is distinct from 'originalUpload' or (op->>'store')::uuid is distinct from s then raise exception 'Invalid image request' using errcode='22023';end if;
+ req:=(op->>'requestId')::uuid;pid:=(op->>'product')::uuid;
+ if req is null or pid is null or op->>'digest' is null or op->>'digest' !~ '^[a-f0-9]{64}$' or (op->>'bytes')::integer is null or (op->>'bytes')::integer not between 12 and 2000000 or op->>'alt' is null or length(btrim(op->>'alt')) not between 1 and 100 then raise exception 'Invalid image metadata' using errcode='22023';end if;
+ select * into prior from tenant_private.offline_reviewed_requests where store_id=s and request_id=req;
+ if found then
+  if prior.actor<>auth.uid() or prior.device_id<>d or prior.payload is distinct from op then raise exception 'Request identity conflict' using errcode='22023';end if;
+  return prior.result;
+ end if;
+ select * into old from tenant_private.offline_original_uploads where store_id=s and request_id=req;
+ if found then
+  if old.actor<>auth.uid() or old.device_id<>d or old.product_id<>pid or old.alt<>btrim(op->>'alt') or old.digest<>op->>'digest' or old.bytes<>(op->>'bytes')::integer then raise exception 'Image request conflict' using errcode='22023';end if;
+ else
+  if exists(select 1 from tenant_private.product_originals where store_id=s and id=req) then raise exception 'Image reference in use' using errcode='22023';end if;
+  insert into tenant_private.offline_original_uploads(store_id,request_id,actor,device_id,product_id,alt,digest,bytes) values(s,req,auth.uid(),d,pid,btrim(op->>'alt'),op->>'digest',(op->>'bytes')::integer);
+ end if;
+ reserved:=public.mt_product_original_reserve(s,req,pid,op->>'alt');
+ return reserved||jsonb_build_object('status','reserved','requestId',req);
+end $$;
+
+create function tenant_private.offline_original_finish(s uuid,d uuid,secret uuid,op jsonb) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare req uuid;reservation jsonb;result jsonb;size_text text;
+begin
+ reservation:=tenant_private.offline_original_reserve(s,d,secret,op);
+ if reservation->>'status'='confirmed' then return reservation;end if;
+ req:=(op->>'requestId')::uuid;
+ if (reservation->>'uploaded')::boolean is distinct from true then raise exception 'Image not uploaded' using errcode='22023';end if;
+ select metadata->>'size' into size_text from storage.objects where bucket_id='saas-design-originals' and name=reservation->>'path';
+ if size_text is null or size_text !~ '^[0-9]+$' or size_text::bigint<>(op->>'bytes')::bigint then raise exception 'Image size mismatch' using errcode='22023';end if;
+ result:=jsonb_build_object('status','confirmed','requestId',req,'resultId',req);
+ insert into tenant_private.offline_reviewed_requests(store_id,request_id,actor,device_id,payload,result) values(s,req,auth.uid(),d,op,result);
+ return result;
+end $$;
+create function public.mt_offline_original_reserve(s uuid,d uuid,secret uuid,op jsonb) returns jsonb language sql set search_path='' as $$select tenant_private.offline_original_reserve(s,d,secret,op)$$;
+create function public.mt_offline_original_finish(s uuid,d uuid,secret uuid,op jsonb) returns jsonb language sql set search_path='' as $$select tenant_private.offline_original_finish(s,d,secret,op)$$;
+revoke all on function tenant_private.offline_original_reserve(uuid,uuid,uuid,jsonb),tenant_private.offline_original_finish(uuid,uuid,uuid,jsonb),public.mt_offline_original_reserve(uuid,uuid,uuid,jsonb),public.mt_offline_original_finish(uuid,uuid,uuid,jsonb) from public,anon,authenticated,service_role;
+grant execute on function tenant_private.offline_original_reserve(uuid,uuid,uuid,jsonb),tenant_private.offline_original_finish(uuid,uuid,uuid,jsonb),public.mt_offline_original_reserve(uuid,uuid,uuid,jsonb),public.mt_offline_original_finish(uuid,uuid,uuid,jsonb) to authenticated;
+
 commit;
