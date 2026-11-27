@@ -257,4 +257,57 @@ create function public.mt_offline_original_delete_begin(s uuid,d uuid,secret uui
 create function public.mt_offline_original_delete_finish(s uuid,d uuid,secret uuid,op jsonb) returns jsonb language sql set search_path='' as $$select tenant_private.offline_original_delete_finish(s,d,secret,op)$$;
 revoke all on function tenant_private.offline_original_delete_begin(uuid,uuid,uuid,jsonb),tenant_private.offline_original_delete_finish(uuid,uuid,uuid,jsonb),public.mt_offline_original_delete_begin(uuid,uuid,uuid,jsonb),public.mt_offline_original_delete_finish(uuid,uuid,uuid,jsonb) from public,anon,authenticated,service_role;
 grant execute on function tenant_private.offline_original_delete_begin(uuid,uuid,uuid,jsonb),tenant_private.offline_original_delete_finish(uuid,uuid,uuid,jsonb),public.mt_offline_original_delete_begin(uuid,uuid,uuid,jsonb),public.mt_offline_original_delete_finish(uuid,uuid,uuid,jsonb) to authenticated;
+-- Same-account, store-scoped, typed resolution. A prerequisite can refer to any
+-- confirmed queue receipt, but only specific creation methods yield entity identifiers.
+create or replace function tenant_private.offline_dependency(s uuid,d uuid,secret uuid,parent uuid,entity text) returns uuid
+language plpgsql security definer set search_path='' as $$
+declare x tenant_private.offline_reviewed_requests%rowtype;rid uuid;method text;k text;action text;batch boolean;
+begin
+ perform tenant_private.offline_device_require(s,d,secret);
+ if parent is null or entity is null or entity not in ('operation','product','customer','supplier','repair','purchase','purchaseBatch','sale','invoiceDebt','standaloneDebt','repairInvoice','warrantyClaim','saleClaim','tradein','advance','payrollAdjustment','branchApproval','taxFiling','original') then raise exception 'Invalid dependency' using errcode='22023';end if;
+ select * into x from tenant_private.offline_reviewed_requests where store_id=s and request_id=parent and actor=auth.uid();
+ if not found or x.result is null or x.result->>'status'='conflict' or x.result->>'offline_terminal'='true' then return null;end if;
+ if entity='operation' then return parent;end if;
+ method:=x.payload->>'method';k:=x.payload->>'kind';batch:=coalesce((x.payload#>>'{args,p_batch}')::boolean,false);
+ action:=case entity when 'product' then 'all_catalog_read' when 'original' then 'all_catalog_read' when 'customer' then 'all_customer_read' when 'supplier' then 'all_supplier_read' when 'purchase' then 'all_purchase_read' when 'purchaseBatch' then 'all_purchase_read' when 'sale' then 'all_sales_read' when 'invoiceDebt' then 'all_debt_read' when 'standaloneDebt' then 'all_debt_read' when 'repair' then 'all_repair_read' when 'repairInvoice' then 'all_repair_read' when 'warrantyClaim' then 'all_warranty_read' when 'saleClaim' then 'all_warranty_read' when 'tradein' then 'all_customer_read' else 'all_finance_read' end;
+ if not coalesce(tenant_private.central_read_permitted(s,action),false) then raise exception 'Dependency read denied' using errcode='42501';end if;
+ if entity='product' and k='catalogCreate' then
+  select (result->>'id')::uuid into rid from tenant_private.catalog_requests where store_id=s and request_id=parent and actor=auth.uid();
+ elsif entity='customer' and method='mt_add_customer' then
+  select id into rid from public.mt_customers where store_id=s and request_id=parent and actor=auth.uid();
+ elsif entity='supplier' and (method='mt_add_supplier' or method='mt_supplier_save' and x.payload#>>'{args,p_supplier}' is null) then
+  select id into rid from public.mt_suppliers where store_id=s and request_id=parent and actor=auth.uid();
+ elsif entity='repair' and method in ('mt_add_repair','mt_branch_add_repair') then
+  select id into rid from public.mt_repairs where store_id=s and request_id=parent and actor=auth.uid();
+ elsif entity='purchase' and (method in ('mt_purchase','mt_branch_purchase') or method='mt_procurement_receive' and not batch) then
+  if jsonb_typeof(x.result)='string' then select id into rid from public.mt_purchases where store_id=s and id=(x.result#>>'{}')::uuid;end if;
+ elsif entity='purchaseBatch' and (method in ('mt_purchase_batch','mt_branch_purchase_batch') or method='mt_procurement_receive' and batch) then
+  if jsonb_typeof(x.result)='string' then select id into rid from public.mt_purchase_batches where store_id=s and id=(x.result#>>'{}')::uuid;end if;
+ elsif entity in ('sale','invoiceDebt') and method in ('mt_record_currency_sale','mt_branch_cash_sale','mt_record_credit_sale','mt_branch_credit_sale','mt_issue_sale_invoice','mt_local_membership_sale','mt_record_mixed_sale','mt_branch_mixed_sale','mt_tradein_execute','mt_tradein_execute_invoice') then
+  if entity='sale' then select id into rid from public.mt_sales where store_id=s and request_id=parent and actor=auth.uid();
+  else select debt.id into rid from public.mt_debts debt join public.mt_sales sale on sale.store_id=debt.store_id and sale.id=debt.sale_id where sale.store_id=s and sale.request_id=parent and sale.actor=auth.uid();end if;
+ elsif entity='standaloneDebt' and method='mt_standalone_open' then
+  select id into rid from tenant_private.standalone_debts where store_id=s and id=parent and actor=auth.uid();
+ elsif entity='repairInvoice' and method='mt_repair_checkout' then
+  select id into rid from public.mt_repair_invoices where store_id=s and request_id=parent and actor=auth.uid();
+ elsif entity='warrantyClaim' and method='mt_warranty_open' then
+  if jsonb_typeof(x.result)='string' then select id into rid from public.mt_warranty_claims where store_id=s and id=(x.result#>>'{}')::uuid;end if;
+ elsif entity='saleClaim' and method='mt_sale_claim_open' then
+  if jsonb_typeof(x.result)='string' then select id into rid from tenant_private.sale_warranty_claims where store_id=s and id=(x.result#>>'{}')::uuid;end if;
+ elsif entity='tradein' and method='mt_tradein_create' then
+  if jsonb_typeof(x.result)='string' then select id into rid from tenant_private.tradein_estimates where store_id=s and id=(x.result#>>'{}')::uuid;end if;
+ elsif entity='advance' and (k='payrollAdvance' or method='mt_payroll_advance') then
+  select id into rid from tenant_private.staff_advances where store_id=s and id=parent;
+ elsif entity='payrollAdjustment' and method='mt_payroll_adjust' then
+  select id into rid from tenant_private.staff_payroll_adjustments where store_id=s and id=parent;
+ elsif entity='branchApproval' and k='branchApproval' then
+  select request_id into rid from tenant_private.branch_result_approvals where store_id=s and request_id=parent;
+ elsif entity='taxFiling' and k='taxFiling' then
+  select request_id into rid from tenant_private.sy_tax_filing_evidence where store_id=s and request_id=parent;
+ elsif entity='original' and k='originalUpload' and x.result->>'status'='confirmed' then
+  select id into rid from tenant_private.product_originals where store_id=s and id=parent;
+ end if;
+ return rid;
+end $$;
+
 commit;

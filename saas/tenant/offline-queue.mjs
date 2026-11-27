@@ -3,14 +3,14 @@ import {sealOfflineVault,openOfflineVault} from '../design/theme.mjs';
 const permitted=new Set(['cashSale','supplier','supplierProfile','purchase','purchaseBatch','procureReceipt','procureDue','supplierPayment','supplierReturn','repair','transition','repairCheckout','warrantyOpen','warrantyPart','warrantyTransition','saleClaimOpen','saleClaimTransition','repairRefund','voucher','mixed','tradein','tradeinExecute','campaign','stockCount','customer','customerEdit','pay','credit','standaloneOpen','standalonePay','quote','costIntake','branchTransfer','cashMovement','payrollAdjustment','payrollPartial','payrollReverse','accountingAdjust','reviewedPrice','payrollFinal','payrollAdvance','payrollOffset','orderConfirm','orderCancel','orderFulfill','taxFiling','branchApproval','periodClose','catalogCreate','catalogRename','catalogEdit','retailPrice','tierPrice','customerPrice','buyerPrice','originalPublish','originalUpload','originalDelete']);
 const uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 const key=(store,actor)=>{if(!uuid(store)||!uuid(actor))throw Error('Invalid offline identity');return 'techstore-operations-v1:'+store+':'+actor};
-function assertDraft(x,store){if(!x||!permitted.has(x.kind)||x.store!==store||!uuid(x.requestId)||new TextEncoder().encode(JSON.stringify(x)).length>(x.kind==='catalogEdit'?300000:18000))throw Error('Operation cannot be stored offline')}
+function assertDraft(x,store){if(!x||!permitted.has(x.kind)||x.store!==store||!uuid(x.requestId)||new TextEncoder().encode(JSON.stringify(x)).length>(x.kind==='catalogEdit'?300000:18000))throw Error('Operation cannot be stored offline');checkedDeps(x)}
 async function locked(scope,fn){if(!navigator.locks?.request)throw Error('Exclusive offline storage unavailable');return navigator.locks.request(scope,{mode:'exclusive'},fn)}
-async function read(scope,pass,store,actor){const raw=localStorage.getItem(scope);if(raw===null)return [];const v=await openOfflineVault(raw,pass,scope);if(v.version!==1||v.store!==store||v.actor!==actor||!Array.isArray(v.entries)||v.entries.length>30)throw Error('Invalid offline queue');const seen=new Set();for(const e of v.entries){assertDraft(e.operation,store);if(!Number.isFinite(Date.parse(e.createdAt))||seen.has(e.operation.requestId))throw Error('Invalid queued entry');if(e.attemptedAt!==undefined&&!Number.isFinite(Date.parse(e.attemptedAt)))throw Error('Invalid attempt timestamp');if(e.failure!==undefined&&(!e.attemptedAt||!['authorization','conflict','unconfirmed'].includes(e.failure)))throw Error('Invalid failure status');seen.add(e.operation.requestId)}return v.entries}
+async function read(scope,pass,store,actor){const raw=localStorage.getItem(scope);if(raw===null)return [];const v=await openOfflineVault(raw,pass,scope);if(v.version!==1||v.store!==store||v.actor!==actor||!Array.isArray(v.entries)||v.entries.length>30)throw Error('Invalid offline queue');const seen=new Set();for(const e of v.entries){assertDraft(e.operation,store);if(!Number.isFinite(Date.parse(e.createdAt))||seen.has(e.operation.requestId))throw Error('Invalid queued entry');if(e.attemptedAt!==undefined&&(e.operation.dependencies||!Number.isFinite(Date.parse(e.attemptedAt))))throw Error('Invalid attempt timestamp');if(e.failure!==undefined&&(!e.attemptedAt||!['authorization','conflict','unconfirmed'].includes(e.failure)))throw Error('Invalid failure status');seen.add(e.operation.requestId)}return v.entries}
 async function write(scope,pass,store,actor,entries){if(!entries.length){localStorage.removeItem(scope);return}const raw=await sealOfflineVault({version:1,store,actor,entries},pass,scope);localStorage.setItem(scope,raw)}
 export function queuePresent(store,actor){try{return !!localStorage.getItem(key(store,actor))}catch{return false}}
 export function canQueue(operation){return permitted.has(operation?.kind)}
-export async function addQueuedOperation({store,actor,pass,operation,attempted=false}){const scope=key(store,actor);assertDraft(operation,store);if(typeof attempted!=='boolean')throw Error('Invalid delivery marker');return locked(scope,async()=>{const entries=await read(scope,pass,store,actor),existing=entries.find(e=>e.operation.requestId===operation.requestId);if(existing){if(JSON.stringify(existing.operation)!==JSON.stringify(operation))throw Error('Conflicting request');if(attempted&&!existing.attemptedAt){existing.attemptedAt=new Date().toISOString();existing.failure='unconfirmed';await write(scope,pass,store,actor,entries)}return entries.length}if(entries.length>=30)throw Error('Offline queue full');entries.push({createdAt:new Date().toISOString(),operation:structuredClone(operation),...(attempted?{attemptedAt:new Date().toISOString(),failure:'unconfirmed'}:{})});await write(scope,pass,store,actor,entries);return entries.length})}
-export async function inspectQueuedOperations({store,actor,pass}){const scope=key(store,actor);return locked(scope,async()=>{const entries=await read(scope,pass,store,actor);return entries.map(e=>({id:e.operation.requestId,kind:e.operation.kind,createdAt:e.createdAt,attemptedAt:e.attemptedAt??null,failure:e.failure??null}))})}
+export async function addQueuedOperation({store,actor,pass,operation,attempted=false}){const scope=key(store,actor);assertDraft(operation,store);if(typeof attempted!=='boolean')throw Error('Invalid delivery marker');return locked(scope,async()=>{const entries=await read(scope,pass,store,actor),existing=entries.find(e=>e.operation.requestId===operation.requestId);if(existing){if(JSON.stringify(existing.operation)!==JSON.stringify(operation))throw Error('Conflicting request');if(attempted&&!existing.attemptedAt){existing.attemptedAt=new Date().toISOString();existing.failure='unconfirmed';await write(scope,pass,store,actor,entries)}return entries.length}if(entries.length>=30)throw Error('Offline queue full');if(operation.dependencies?.some(a=>a.request===operation.requestId))throw Error('Invalid prerequisite');entries.push({createdAt:new Date().toISOString(),operation:structuredClone(operation),...(attempted?{attemptedAt:new Date().toISOString(),failure:'unconfirmed'}:{})});await write(scope,pass,store,actor,entries);return entries.length})}
+export async function inspectQueuedOperations({store,actor,pass}){const scope=key(store,actor);return locked(scope,async()=>{const entries=await read(scope,pass,store,actor);return entries.map(e=>({id:e.operation.requestId,kind:e.operation.kind,createdAt:e.createdAt,attemptedAt:e.attemptedAt??null,failure:e.failure??null,dependencies:e.operation.dependencies?.length||0}))})}
 // Only the newest draft can be discarded; an attempted operation may already exist on the server.
 export async function discardUnsentTail({store,actor,pass,requestId}){const scope=key(store,actor);if(!uuid(requestId))throw Error('Invalid request');return locked(scope,async()=>{const entries=await read(scope,pass,store,actor),tail=entries.at(-1);if(!tail||tail.operation.requestId!==requestId||tail.attemptedAt!==undefined)throw Error('Only the latest never-attempted draft may be removed');await write(scope,pass,store,actor,entries.slice(0,-1));return entries.length})}
 export async function reviewQueuedOperation({store,actor,pass,requestId}){const scope=key(store,actor);if(!uuid(requestId))throw Error('Invalid request');return locked(scope,async()=>{const entry=(await read(scope,pass,store,actor)).find(e=>e.operation.requestId===requestId);if(!entry)throw Error('Missing draft');return structuredClone(entry.operation)})}
@@ -33,7 +33,7 @@ export async function resolveAttemptedReceivable({store,actor,pass,resolve}){
 // Explicit dispatcher: fixed payload and request reference, never arbitrary RPC names.
 // Methods below already validate server confirmations and enforce current store permissions.
 export async function sendQueuedOperation(api,store,x,device,sendOriginal){
- assertDraft(x,store);
+ assertDraft(x,store);if(x.dependencies)throw Error('Unresolved dependency');
  if(['originalUpload','originalDelete'].includes(x.kind)){if(typeof sendOriginal!=='function')throw Error('Image storage unavailable');return sendOriginal(x)}
  if(['reviewedPrice','payrollFinal','payrollAdvance','payrollOffset','orderConfirm','orderCancel','orderFulfill','taxFiling','branchApproval','periodClose','catalogCreate','catalogRename','catalogEdit','retailPrice','tierPrice','customerPrice','buyerPrice','originalPublish'].includes(x.kind)){
  const result=await api.offlineReviewedWrite(store,device,x);if(result.status==='conflict'){const e=Error('Reviewed value changed');e.status=409;throw e}return result;
@@ -69,21 +69,54 @@ export async function resolveReviewedConflict({store,actor,pass,resolve,approve}
  });
 }
 
-// Resolve only explicitly allowlisted reference fields, before the first delivery attempt.
-const dependencyFields={repair:{customer:'customer'},transition:{repair:'repair'},purchase:{supplier:'supplier'},procureReceipt:{supplier:'supplier'},purchaseBatch:{supplier:'supplier'},supplierPayment:{purchase:'purchase'},procureDue:{purchase:'purchase'},supplierReturn:{purchase:'purchase'}};
+// Typed dependency slots. Nested paths are generated locally, not arbitrary property paths.
+// A prerequisite is useful for same-record transitions where no replacement ID is needed.
+const dependencyFields={
+ repair:{customer:'customer'},transition:{repair:'repair'},repairCheckout:{repair:'repair'},repairRefund:{invoice:'repairInvoice'},warrantyOpen:{invoice:'repairInvoice'},warrantyPart:{claim:'warrantyClaim',product:'product'},warrantyTransition:{claim:'warrantyClaim'},saleClaimOpen:{sale:'sale',product:'product'},saleClaimTransition:{claim:'saleClaim'},
+ purchase:{supplier:'supplier',product:'product'},purchaseBatch:{supplier:'supplier'},procureReceipt:{supplier:'supplier'},supplierPayment:{purchase:'purchase'},procureDue:{purchase:'purchase'},supplierReturn:{purchase:'purchase'},tradein:{customer:'customer'},tradeinExecute:{id:'tradein',usedProduct:'product'},
+ customerEdit:{customer:'customer'},pay:{debt:'invoiceDebt'},credit:{'terms.customer':'customer'},standaloneOpen:{'payload.customer':'customer'},standalonePay:{'payload.debt':'standaloneDebt'},payrollOffset:{advance:'advance'},payrollReverse:{original:'payrollAdjustment'},
+ catalogRename:{product:'product'},reviewedPrice:{product:'product'},costIntake:{product:'product'},branchTransfer:{product:'product'},branchApproval:{previous:'branchApproval'},taxFiling:{previous:'taxFiling'},
+ catalogEdit:{product:'product'},retailPrice:{product:'product'},tierPrice:{product:'product'},customerPrice:{product:'product',subject:'customer'},originalPublish:{asset:'original'},originalDelete:{asset:'original'}
+};
+function allowedDependency(kind,field,entity){return field==='$after'?entity==='operation':dependencyFields[kind]?.[field]===entity||entity==='product'&&['procureReceipt','purchaseBatch','repairCheckout','quote','tradeinExecute'].includes(kind)&&/^lines\.(?:0|[1-9]\d?)\.product_id$/.test(field)}
+const inputPaths={standaloneOpen:{customer:'payload.customer'},standalonePay:{debt:'payload.debt'},procureReceipt:{product:'lines.0.product_id'}};
+const draftKind=k=>k==='purchaseBatch'?'procureReceipt':k;
+export function canLinkProduct(kind){return allowedDependency(draftKind(kind),inputPaths[kind]?.product||'product','product')}
+function checkedDeps(x){
+ const list=x.dependencies;if(list===undefined)return [];if(!Array.isArray(list)||!list.length||list.length>120)throw Error('Invalid dependencies');
+ const seen=new Set();for(const a of list){if(!a||typeof a.field!=='string'||!uuid(a.request)||a.request===x.requestId||!allowedDependency(x.kind,a.field,a.entity))throw Error('Invalid dependency');const key=a.field==='$after'?'$after:'+a.request:a.field;if(seen.has(key))throw Error('Duplicate dependency');seen.add(key)}
+ return list
+}
 export function attachDependencies(kind,values,make){
- const v={...values},dependencies=[];
- for(const [field,entity] of Object.entries(dependencyFields[kind]||{})){
-  if(typeof v[field]==='string'&&v[field].startsWith('@')){const request=v[field].slice(1);if(!uuid(request))throw Error('Invalid parent request');v[field]=request;dependencies.push({field,entity,request})}
+ const v={...values},dependencies=[],target=draftKind(kind);
+ for(const [key,value] of Object.entries(v)){
+  if(key==='afterRequest'){if(value?.trim()){for(const request of value.trim().split(/\s*,\s*/)){if(!uuid(request))throw Error('Invalid prerequisite');dependencies.push({field:'$after',entity:'operation',request})}}delete v[key];continue}
+  const field=inputPaths[kind]?.[key]||key;if(typeof value!=='string'||!value.startsWith('@')||key==='lines')continue;
+  const entity=dependencyFields[target]?.[field]||(field==='lines.0.product_id'?'product':null);if(!entity||!allowedDependency(target,field,entity))continue;
+  const request=value.slice(1);if(!uuid(request))throw Error('Invalid parent request');v[key]=request;dependencies.push({field,entity,request});
  }
- const x=make(v);return dependencies.length?{...x,dependencies}:x;
+ if(['purchaseBatch','repairCheckout','quote','tradeinExecute'].includes(kind)&&typeof v.lines==='string'){
+  v.lines=v.lines.trim().split(/\r?\n/).filter(s=>s.trim()).map((line,i)=>{const a=line.split(',');if(a[0]?.trim().startsWith('@')){const request=a[0].trim().slice(1);if(!uuid(request)||i>99)throw Error('Invalid product dependency');dependencies.push({field:'lines.'+i+'.product_id',entity:'product',request});a[0]=request}return a.join(',')}).join('\n')
+ }
+ const x=make(v,dependencies),out=dependencies.length?{...x,dependencies}:x;checkedDeps(out);return out;
 }
 export async function resolveDependencies(x,lookup){
- const y=structuredClone(x);
- if(!Array.isArray(y.dependencies)||!y.dependencies.length||y.dependencies.length>3)throw Error('Invalid dependencies');
- const seen=new Set();
- for(const a of y.dependencies){if(!a||seen.has(a.field)||dependencyFields[y.kind]?.[a.field]!==a.entity||!uuid(a.request)||y[a.field]!==a.request||a.request===y.requestId)throw Error('Invalid dependency');seen.add(a.field);const id=await lookup(a.request,a.entity);if(!uuid(id))throw Error('Parent not confirmed');y[a.field]=id}
+ const y=structuredClone(x),deps=checkedDeps(y);
+ if(!deps.length)throw Error('Missing dependencies');
+ for(const a of deps){const id=await lookup(a.request,a.entity);if(!uuid(id))throw Error('Parent not confirmed');if(a.field==='$after')continue;
+  const parts=a.field.split('.');let node=y;for(const k of parts.slice(0,-1)){if(!node||typeof node!=='object'||!Object.hasOwn(node,k))throw Error('Invalid dependency slot');node=node[k]}const key=parts.at(-1);if(!node||!Object.hasOwn(node,key)||node[key]!==a.request)throw Error('Invalid dependency placeholder');node[key]=id;
+ }
  delete y.dependencies;return y;
+}
+// Add a prerequisite to any never-sent draft. Reject forward links in the same FIFO
+// queue; external-device parent IDs are allowed but must have a confirmed server receipt.
+export async function addQueuedPrerequisite({store,actor,pass,requestId,parent}){
+ const scope=key(store,actor);if(!uuid(requestId)||!uuid(parent)||requestId===parent)throw Error('Invalid prerequisite');return locked(scope,async()=>{
+  const entries=await read(scope,pass,store,actor),index=entries.findIndex(e=>e.operation.requestId===requestId),parentIndex=entries.findIndex(e=>e.operation.requestId===parent);
+  if(index<0||entries[index].attemptedAt||parentIndex>=index)throw Error('Only earlier or external confirmed prerequisite allowed');
+  const op=entries[index].operation,dependencies=[...(op.dependencies||[])];if(dependencies.some(a=>a.field==='$after'&&a.request===parent))return entries.length;
+  op.dependencies=[...dependencies,{field:'$after',entity:'operation',request:parent}];assertDraft(op,store);await write(scope,pass,store,actor,entries);return entries.length
+ });
 }
 // A receipt from this approved installation may acknowledge a terminal rejection.
 // It does not assert that a pre-gateway manual operation never existed.
