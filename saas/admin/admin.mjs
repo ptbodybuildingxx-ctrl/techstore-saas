@@ -96,6 +96,25 @@ async function openDesign(s){
  const change=async(action,theme=null,restore=null)=>{if(busy)throw Error('Busy');busy=true;try{await api.designChange(s.id,state,action,theme,restore);await openDesign(s)}finally{busy=false}};
  el('designEditor').replaceChildren(createDesignEditor({translate:tr,language:currentLanguage,initial:state.theme||{...defaults,brand:s.name.slice(0,80)},revision:state.revision,publishedRevision:state.published_revision,history,onSave:t=>change('save',t),onPublish:()=>change('publish'),onRestore:r=>change('restore',null,r)}));el('designEditor').append(await originalLibrary(s,state),await domainPanel(s));workspace.sync(adminGroups);workspace.select('shops');el('designPanel').scrollIntoView({block:'start'});
 }
+// A new operator must enroll a verified authenticator before privileged RPC access.
+const firstTotpSetup=node('button','تفعيل المصادقة الثنائية لأول دخول');
+firstTotpSetup.type='button';
+el('login').append(firstTotpSetup);
+firstTotpSetup.addEventListener('click',()=>{
+ const form=el('login');if(!form.reportValidity())return;
+ const username=form.elements.username.value,password=form.elements.password.value;
+ form.elements.password.value='';
+ run(async()=>{
+  const ok=await api.enrollFirstTotp(username,password,async secret=>{
+   const dialog=document.createElement('dialog'),content=node('p','أضف حساباً في تطبيق المصادقة باستخدام مفتاح الإعداد التالي، ثم أدخل الرمز الحالي المكون من 6 أرقام.');
+   const key=node('code',secret);key.dir='ltr';
+   const label=node('label','رمز المصادقة'),input=document.createElement('input');input.inputMode='numeric';input.autocomplete='one-time-code';input.maxLength=6;input.pattern='[0-9]{6}';
+   label.append(input);const accept=node('button','تأكيد التفعيل'),cancel=node('button','إلغاء');accept.type=cancel.type='button';dialog.append(content,key,label,accept,cancel);document.body.append(dialog);
+   try{return await new Promise(resolve=>{let settled=false;const finish=value=>{if(settled)return;settled=true;resolve(value);dialog.close()};accept.onclick=()=>{if(/^\d{6}$/.test(input.value.trim()))finish(input.value.trim());else input.focus()};cancel.onclick=()=>finish(null);dialog.addEventListener('cancel',e=>{e.preventDefault();finish(null)});dialog.addEventListener('close',()=>finish(null));dialog.showModal()})}finally{key.textContent='';input.value='';dialog.remove()}
+  });
+  setMessage(ok?'تم تفعيل تطبيق المصادقة. أدخل كلمة المرور مجدداً ثم اضغط دخول.':'لم يكتمل تفعيل المصادقة.');
+ })
+});
 el('login').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const password=String(f.get('password'));e.currentTarget.elements.password.value='';run(async()=>{await api.signInUsername(String(f.get('username')),password,chooseTotp);offset=0;await load();await loadContact();await loadPlanPrices();await planControl.load();await catalogControl.load();await moduleControl.load();await actionPolicy.load();await loadShards();await loadBilling();await loadBackups();await loadReleases();await loadSharedRecovery();loggedIn();setMessage('تم تسجيل الدخول.')})});
 let recoveryAttempt=null;
 let priceAttempt=null,priceCatalog=new Map(),priceEditable=false;
