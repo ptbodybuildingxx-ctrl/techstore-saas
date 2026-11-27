@@ -284,6 +284,7 @@ export const english=Object.freeze({
   "من تاريخ دمشق": "From Damascus date",
   "إلى تاريخ دمشق": "To Damascus date",
   "مراجعة نتائج الفروع": "Review branch results",
+  "القراءة ممنوعة مركزياً": "Reading is centrally restricted",
   "قراءة سجلات المنتجات لجميع الأدوار": "Read catalog records (all roles)",
   "قراءة سجلات المبيعات لجميع الأدوار": "Read sales records (all roles)",
   "قراءة سجلات المشتريات لجميع الأدوار": "Read purchases records (all roles)",
